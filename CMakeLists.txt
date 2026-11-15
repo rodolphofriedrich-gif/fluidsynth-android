@@ -223,6 +223,18 @@ target_compile_options(libfluidsynth-OBJ
 
 add_library ( libfluidsynth $<TARGET_OBJECTS:libfluidsynth-OBJ> )
 
+# Android application JNI bridge. Configure this repository root directly so
+# FluidSynth's Android branch resolves source files from CMAKE_SOURCE_DIR.
+add_library(player SHARED
+    ${CMAKE_SOURCE_DIR}/android-app/app/src/main/cpp/native_player.cpp
+)
+target_include_directories(player PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_BINARY_DIR}/include
+)
+target_compile_features(player PRIVATE cxx_std_17)
+target_link_libraries(player PRIVATE libfluidsynth log)
+
 set_target_properties ( libfluidsynth
     PROPERTIES
       PUBLIC_HEADER "${public_HEADERS}"
