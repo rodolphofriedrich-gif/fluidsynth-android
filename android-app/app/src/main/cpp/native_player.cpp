@@ -69,7 +69,6 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeShutdown(JNIEnv*, jobject) {
     std::lock_guard<std::mutex> guard(synth_mutex);
     if (synth) {
-        fluid_synth_all_sounds_off(synth, -1);
         delete_fluid_synth(synth);
         synth = nullptr;
     }
