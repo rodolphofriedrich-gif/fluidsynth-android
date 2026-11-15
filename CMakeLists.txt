@@ -218,6 +218,7 @@ target_compile_options(libfluidsynth-OBJ
                             -DHAVE_CONFIG_H
                             -Wno-unused-variable
                             -Wno-error=format
+                            -Wno-error=pointer-sign
                             "$<$<CONFIG:DEBUG>:-Werror>" # Only include -Werror when building debug config
 )
 
