@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <algorithm>
 #include <fluidsynth.h>
 #include <mutex>
 #include <string>
