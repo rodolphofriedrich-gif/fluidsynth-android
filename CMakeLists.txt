@@ -222,6 +222,16 @@ target_compile_options(libfluidsynth-OBJ
                             "$<$<CONFIG:DEBUG>:-Werror>" # Only include -Werror when building debug config
 )
 
+# Android NDK Clang reports a signedness mismatch for FluidSynth's unsigned
+# sample counter passed to the legacy pthread integer-atomic helpers. Keep this
+# exception local to that source file and after all global -Werror flags.
+if(ANDROID_ABI)
+    set_source_files_properties(
+        "${CMAKE_SOURCE_DIR}/src/synth/fluid_synth.c"
+        PROPERTIES COMPILE_OPTIONS "-Wno-pointer-sign;-Wno-error=pointer-sign"
+    )
+endif()
+
 add_library ( libfluidsynth $<TARGET_OBJECTS:libfluidsynth-OBJ> )
 
 # Android application JNI bridge. Configure this repository root directly so
