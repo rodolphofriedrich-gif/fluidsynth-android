@@ -208,7 +208,7 @@ public final class UsbMidiInput implements AutoCloseable {
 
         MidiStreamParser(MessageSink sink) { this.sink = sink; }
 
-        void releaseActiveNotes() {
+        synchronized void releaseActiveNotes() {
             for (int channel = 0; channel < 16; channel++) {
                 if (sustainActive[channel]) {
                     sink.accept(0xB0 | channel, 64, 0);
@@ -223,7 +223,7 @@ public final class UsbMidiInput implements AutoCloseable {
             }
         }
 
-        private void dispatch(int status, int d1, int d2) {
+        private synchronized void dispatch(int status, int d1, int d2) {
             int command = status & 0xF0;
             int channel = status & 0x0F;
             if (command == 0x90 && d2 > 0) activeNotes[channel][d1] = true;

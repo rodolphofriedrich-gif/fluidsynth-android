@@ -79,7 +79,10 @@ void SynthEngine::setTrackEnabled(int channel, bool enabled) {
     if (channel < 0 || channel >= 16) return;
     std::lock_guard<std::mutex> lock(mutex_);
     if (!synth_) return;
-    if (!enabled) fluid_synth_all_sounds_off(synth_, channel);
+    if (!enabled) {
+        fluid_synth_cc(synth_, channel, 64, 0);
+        fluid_synth_all_sounds_off(synth_, channel);
+    }
     enabled_[channel] = enabled;
 }
 

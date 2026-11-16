@@ -103,7 +103,8 @@ public final class TrackManager {
                     .putBoolean("track_" + channel + "_enabled", enabled)
                     .apply();
         }
-        engine.setEnabled(channel, enabled);
+        // loadSoundFontForChannel already enables the channel atomically with the new preset.
+        // Do not issue a second native call here: it could race with a user mute operation.
         return true;
     }
 

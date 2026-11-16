@@ -331,9 +331,12 @@ public class MainActivity extends Activity {
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
             });
             updateTrackControls();
+            setTrackControlsEnabled(false);
+            operationStatus.setText("Restaurando SoundFonts e configurações...");
             trackManager.restoreAsync(loader, () -> runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     updateTrackControls();
+                    setTrackControlsEnabled(true);
                     operationStatus.setText("Configurações das faixas restauradas.");
                 }
             }));
@@ -521,6 +524,16 @@ public class MainActivity extends Activity {
         choose.setText(selected.hasSoundFont() ? "TROCAR SF2 DA FAIXA" : "IMPORTAR SF2 PARA ESTA FAIXA");
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : "sem SoundFont";
         status.setText("CH " + (channel + 1) + ": " + soundFont);
+    }
+
+    private void setTrackControlsEnabled(boolean enabled) {
+        if (choose != null) choose.setEnabled(enabled);
+        if (trackEnableButton != null) trackEnableButton.setEnabled(enabled);
+        if (trackButtons != null) {
+            for (Button button : trackButtons) {
+                if (button != null) button.setEnabled(enabled);
+            }
+        }
     }
 
     private void updateBleSearchButton() {
