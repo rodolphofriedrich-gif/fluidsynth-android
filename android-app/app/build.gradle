@@ -15,5 +15,13 @@ android {
             cmake { cppFlags '-std=c++17 -O3'; arguments '-DANDROID_STL=c++_shared' }
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
     externalNativeBuild { cmake { path '../../CMakeLists.txt'; version '3.22.1' } }
+}
+
+dependencies {
+    implementation 'jp.kshoji:ble-midi:0.0.21'
 }
