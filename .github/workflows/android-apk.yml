@@ -1,8 +1,10 @@
 name: Build Android APK
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [ android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control' ]
+    branches: [ 'feature/sf2-preset-browser', android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control' ]
     paths:
       - 'android-app/**'
       - 'src/**'
