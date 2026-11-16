@@ -121,14 +121,10 @@ public final class BleMidiInput implements AutoCloseable {
             });
             provider.startScanDevice(0);
             listener.onDeviceStatus("Procurando controladores BLE MIDI...");
-        } catch (SecurityException | UnsupportedOperationException error) {
-            Log.e(TAG, "Não foi possível iniciar o BLE MIDI", error);
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Não foi possível iniciar o driver BLE MIDI", error);
             provider = null;
             listener.onDeviceStatus("Não foi possível iniciar BLE MIDI: " + safeMessage(error));
-        } catch (RuntimeException error) {
-            Log.e(TAG, "Falha ao iniciar o driver BLE MIDI", error);
-            provider = null;
-            listener.onDeviceStatus("Falha ao iniciar BLE MIDI");
         }
     }
 
@@ -193,7 +189,7 @@ public final class BleMidiInput implements AutoCloseable {
             try {
                 current.startScanDevice(0);
                 listener.onDeviceStatus("Procurando controlador BLE MIDI novamente...");
-            } catch (SecurityException | RuntimeException error) {
+            } catch (RuntimeException error) {
                 Log.w(TAG, "Falha ao reiniciar a busca BLE", error);
                 listener.onDeviceStatus("Não foi possível reiniciar a busca BLE MIDI");
             }
