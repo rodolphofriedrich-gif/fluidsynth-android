@@ -5,26 +5,53 @@ import android.net.Uri;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 
-/** Copies selected SoundFonts into app-private storage, one file per track. */
+/** Imports SoundFonts into private storage and deduplicates identical files across tracks. */
 public final class SoundFontManager {
     private final Context context;
-    public SoundFontManager(Context context) { this.context = context.getApplicationContext(); }
+
+    public SoundFontManager(Context context) {
+        this.context = context.getApplicationContext();
+    }
+
     public File importForTrack(Uri uri, int channel) throws Exception {
-        if (uri == null || channel < 0 || channel >= 16) throw new IllegalArgumentException("Arquivo ou canal inválido");
+        if (uri == null || channel < 0 || channel >= 16)
+            throw new IllegalArgumentException("Arquivo ou canal inválido");
+
         File directory = new File(context.getFilesDir(), "soundfonts");
-        if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Não foi possível criar a pasta de SoundFonts");
-        String revision = Long.toString(System.currentTimeMillis());
-        File target = new File(directory, "channel-" + (channel + 1) + "-" + revision + ".sf2");
-        File temp = new File(directory, "channel-" + (channel + 1) + "-" + revision + ".sf2.tmp");
-        try (InputStream in = context.getContentResolver().openInputStream(uri); FileOutputStream out = new FileOutputStream(temp)) {
+        if (!directory.exists() && !directory.mkdirs())
+            throw new IllegalStateException("Não foi possível criar a pasta de SoundFonts");
+
+        String nonce = channel + "-" + System.nanoTime();
+        File temp = new File(directory, "import-" + nonce + ".tmp");
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        try (InputStream in = context.getContentResolver().openInputStream(uri);
+             FileOutputStream out = new FileOutputStream(temp)) {
             if (in == null) throw new IllegalStateException("Não foi possível abrir o arquivo selecionado");
-            byte[] buffer = new byte[65536]; int count;
-            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            byte[] buffer = new byte[65536];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                digest.update(buffer, 0, count);
+                out.write(buffer, 0, count);
+            }
             out.getFD().sync();
-        } catch (Exception error) { temp.delete(); throw error; }
-        if (target.exists() && !target.delete()) { temp.delete(); throw new IllegalStateException("Não foi possível substituir o SF2 anterior"); }
-        if (!temp.renameTo(target)) { temp.delete(); throw new IllegalStateException("Não foi possível concluir a importação do SF2"); }
+        } catch (Exception error) {
+            temp.delete();
+            throw error;
+        }
+
+        StringBuilder hash = new StringBuilder();
+        for (byte value : digest.digest()) hash.append(String.format(java.util.Locale.ROOT, "%02x", value & 0xff));
+        File target = new File(directory, "sf2-" + hash + ".sf2");
+
+        if (target.exists()) {
+            temp.delete();
+        } else if (!temp.renameTo(target)) {
+            temp.delete();
+            throw new IllegalStateException("Não foi possível concluir a importação do SF2");
+        }
         return target;
     }
 }
