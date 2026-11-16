@@ -12,9 +12,10 @@ import android.view.MotionEvent;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -23,7 +24,11 @@ public class MainActivity extends Activity {
     static { System.loadLibrary("player"); }
     private native boolean nativeInit();
     private native int nativeLoad(String path);
+    private native int nativeLoadTrack(int channel, String path);
+    private native void nativeSetTrackEnabled(int channel, boolean enabled);
+    private native void nativeSetActiveTrack(int channel);
     private native void nativeNote(int note, int velocity, boolean on);
+    private native void nativeNoteOnTrack(int channel, int note, int velocity, boolean on);
     private native void nativeMidiEvent(int status, int data1, int data2);
     private native void nativeRender(float[] out, int frames);
     private native void nativeShutdown();
@@ -37,6 +42,11 @@ public class MainActivity extends Activity {
     private UsbMidiInput usbMidiInput;
     private BleMidiInput bleMidiInput;
     private Button choose;
+    private Button trackEnableButton;
+    private Button bleSearchButton;
+    private Spinner trackSelector;
+    private TrackManager trackManager;
+    private SoundFontManager soundFontManager;
     private boolean initialized;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
@@ -58,8 +68,39 @@ public class MainActivity extends Activity {
         bleStatus = new TextView(this);
         bleStatus.setText("BLE MIDI: aguardando busca");
         root.addView(bleStatus);
+
+        TextView trackLabel = new TextView(this);
+        trackLabel.setText("FAIXA MIDI ATIVA");
+        root.addView(trackLabel);
+        trackSelector = new Spinner(this);
+        String[] trackNames = new String[16];
+        for (int i = 0; i < 16; i++) trackNames[i] = "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1);
+        trackSelector.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, trackNames));
+        root.addView(trackSelector);
+
+        trackEnableButton = new Button(this);
+        trackEnableButton.setText("FAIXA ATIVA");
+        trackEnableButton.setOnClickListener(v -> {
+            if (trackManager == null) return;
+            int channel = trackManager.getActiveChannel();
+            boolean enabled = !trackManager.get(channel).isEnabled();
+            trackManager.setEnabled(channel, enabled);
+            updateTrackControls();
+        });
+        root.addView(trackEnableButton);
+
+        bleSearchButton = new Button(this);
+        bleSearchButton.setText("BUSCA BLE: LIGADA");
+        bleSearchButton.setOnClickListener(v -> {
+            if (bleMidiInput == null) return;
+            boolean enabled = !bleMidiInput.isScanningEnabled();
+            bleMidiInput.setScanningEnabled(enabled);
+            updateBleSearchButton();
+        });
+        root.addView(bleSearchButton);
+
         choose = new Button(this);
-        choose.setText("ESCOLHER SOUNDFONT (.sf2)");
+        choose.setText("IMPORTAR SF2 PARA ESTA FAIXA");
         choose.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
@@ -86,11 +127,11 @@ public class MainActivity extends Activity {
                     if (!initialized || !playing) return true;
                     int action = event.getActionMasked();
                     if (action == MotionEvent.ACTION_DOWN) {
-                        nativeNote(note, 100, true);
+                        nativeNoteOnTrack(trackManager == null ? 0 : trackManager.getActiveChannel(), note, 100, true);
                         return true;
                     }
                     if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                        nativeNote(note, 0, false);
+                        nativeNoteOnTrack(trackManager == null ? 0 : trackManager.getActiveChannel(), note, 0, false);
                         return true;
                     }
                     return true;
@@ -100,6 +141,19 @@ public class MainActivity extends Activity {
         setContentView(root);
         initialized = nativeInit();
         if (initialized) {
+            soundFontManager = new SoundFontManager(this);
+            trackManager = new TrackManager(new TrackManager.Engine() {
+                @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
+                @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
+                @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
+            });
+            trackSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                    if (trackManager != null) { trackManager.select(position); updateTrackControls(); }
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
+            trackSelector.setSelection(0);
             startAudio();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
@@ -123,6 +177,7 @@ public class MainActivity extends Activity {
                 }
             });
             bleMidiInput.start();
+            updateBleSearchButton();
         } else status.setText("Falha ao iniciar o motor FluidSynth.");
     }
 
@@ -185,32 +240,16 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         choose.setEnabled(false);
-        status.setText("Copiando e carregando SoundFont...");
+        final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
+        status.setText("Importando SF2 para CH " + (channel + 1) + "...");
         final android.net.Uri uri = data.getData();
         loader.execute(() -> {
             String message;
             try {
-                File file = new File(getFilesDir(), "selected.sf2");
-                File temp = new File(getFilesDir(), "selected.sf2.tmp");
-                try (InputStream in = getContentResolver().openInputStream(uri);
-                     FileOutputStream out = new FileOutputStream(temp)) {
-                    if (in == null) throw new IllegalStateException("Não foi possível abrir o arquivo.");
-                    byte[] buffer = new byte[65536];
-                    int count;
-                    while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
-                    out.getFD().sync();
-                }
-                if (!temp.renameTo(file)) {
-                    try (InputStream in = new java.io.FileInputStream(temp);
-                         FileOutputStream out = new FileOutputStream(file)) {
-                        byte[] buffer = new byte[65536];
-                        int count;
-                        while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
-                    }
-                    temp.delete();
-                }
-                int id = nativeLoad(file.getAbsolutePath());
-                message = id >= 0 ? "SoundFont carregado: " + file.getName() : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
+                File file = soundFontManager.importForTrack(uri, channel);
+                boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), file.getName());
+                message = loaded ? "CH " + (channel + 1) + " carregado: " + file.getName()
+                        : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
             } catch (Exception error) {
                 message = "Erro ao importar SF2: " + error.getMessage();
             }
@@ -219,9 +258,26 @@ public class MainActivity extends Activity {
                 if (!isFinishing() && !isDestroyed()) {
                     status.setText(result);
                     choose.setEnabled(true);
+                    updateTrackControls();
                 }
             });
         });
+    }
+
+    private void updateTrackControls() {
+        if (trackManager == null || trackEnableButton == null) return;
+        int channel = trackManager.getActiveChannel();
+        Track selected = trackManager.get(channel);
+        trackEnableButton.setText("CH " + (channel + 1) + (selected.isEnabled() ? " — ATIVA" : " — MUTADA"));
+        choose.setText(selected.hasSoundFont() ? "TROCAR SF2 DA FAIXA" : "IMPORTAR SF2 PARA ESTA FAIXA");
+        String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : "sem SoundFont";
+        status.setText("CH " + (channel + 1) + ": " + soundFont);
+    }
+
+    private void updateBleSearchButton() {
+        if (bleSearchButton == null) return;
+        boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
+        bleSearchButton.setText(enabled ? "BUSCA BLE: LIGADA" : "BUSCA BLE: DESLIGADA");
     }
 
     private void stopAudio() {
