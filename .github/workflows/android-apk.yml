@@ -2,7 +2,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ android-apk-player, 'feature/usb-midi-input' ]
+    branches: [ android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input' ]
     paths:
       - 'android-app/**'
       - 'src/**'
