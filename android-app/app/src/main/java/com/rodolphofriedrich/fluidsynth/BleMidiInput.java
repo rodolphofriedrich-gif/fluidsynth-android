@@ -95,6 +95,7 @@ public final class BleMidiInput implements AutoCloseable {
     public void onPermissionResult(boolean granted) {
         if (!started || closed) return;
         if (!granted) {
+            scanningEnabled = false;
             listener.onDeviceStatus("Permissão Bluetooth negada");
             return;
         }
@@ -164,6 +165,7 @@ public final class BleMidiInput implements AutoCloseable {
         } catch (RuntimeException error) {
             Log.e(TAG, "Não foi possível iniciar o driver BLE MIDI", error);
             provider = null;
+            scanningEnabled = false;
             listener.onDeviceStatus("Não foi possível iniciar BLE MIDI: " + safeMessage(error));
         }
     }
