@@ -121,9 +121,6 @@ public class MainActivity extends Activity {
                         if (!isFinishing() && !isDestroyed()) bleStatus.setText("BLE MIDI: " + message);
                     });
                 }
-                @Override public void requestPermissionResult(boolean granted) {
-                    // Permission results are forwarded directly by onRequestPermissionsResult.
-                }
             });
             bleMidiInput.start();
         } else status.setText("Falha ao iniciar o motor FluidSynth.");
