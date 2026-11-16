@@ -211,6 +211,7 @@ public final class BleMidiInput implements AutoCloseable {
 
     @Override public synchronized void close() {
         if (closed) return;
+        releaseAllNotes();
         closed = true;
         started = false;
         BleMidiCentralProvider current = provider;
@@ -226,6 +227,5 @@ public final class BleMidiInput implements AutoCloseable {
             }
         }
         connectedDevices.clear();
-        releaseAllNotes();
     }
 }
