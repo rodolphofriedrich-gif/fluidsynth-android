@@ -1,34 +1,37 @@
-# USB MIDI input implementation
+# Entrada MIDI por USB
 
-This feature is isolated from the audio engine.
+A implementação desta funcionalidade fica separada do motor de áudio.
 
-## Files
+## Arquivos envolvidos
 
-- `UsbMidiInput.java`: discovers USB MIDI devices through Android's MIDI service, opens controller output ports, parses MIDI channel messages, and closes devices safely.
-- `MainActivity.java`: owns the lifecycle of the USB input manager and forwards received MIDI events to JNI. The existing virtual keyboard and audio thread remain unchanged.
-- `native_player.cpp`: receives MIDI channel events and routes Note On, Note Off, Control Change, Program Change, and Pitch Bend to FluidSynth under the existing synth mutex.
-- `AndroidManifest.xml`: declares USB host and MIDI as optional device features.
+- `UsbMidiInput.java`: localiza dispositivos USB MIDI pelo serviço MIDI do Android, abre as portas de saída dos controladores, interpreta mensagens MIDI de canal e encerra as conexões com segurança.
+- `MainActivity.java`: gerencia o ciclo de vida do gerenciador de entrada USB e encaminha os eventos MIDI recebidos para JNI. O teclado virtual e a thread de áudio existentes permanecem preservados.
+- `native_player.cpp`: recebe eventos MIDI de canal e os encaminha ao FluidSynth — Note On, Note Off, Control Change, Program Change e Pitch Bend — usando o mutex existente do sintetizador.
+- `AndroidManifest.xml`: declara os recursos USB Host e MIDI como opcionais.
 
-## Design choice and reference
+## Decisão de implementação e referência
 
-The implementation was informed by the architecture and compatibility notes in [kshoji/USB-MIDI-Driver](https://github.com/kshoji/USB-MIDI-Driver), which is Apache-2.0 licensed. It uses Android's built-in `MidiManager` API rather than vendoring the full third-party driver. This avoids adding a separate USB stack or an unnecessary dependency.
+A implementação considerou a arquitetura e as notas de compatibilidade do projeto [kshoji/USB-MIDI-Driver](https://github.com/kshoji/USB-MIDI-Driver), distribuído sob Apache License 2.0. O aplicativo utiliza a API `MidiManager` integrada ao Android, em vez de incorporar toda a biblioteca de terceiros. Isso evita adicionar uma pilha USB separada ou uma dependência desnecessária.
 
-Official Android documentation:
-- [Android MIDI overview](https://source.android.com/docs/core/audio/midi)
-- [Android MIDI API](https://developer.android.com/reference/android/media/midi/package-summary)
+Documentação oficial do Android:
 
-## Current scope
+- [Visão geral de MIDI no Android](https://source.android.com/docs/core/audio/midi)
+- [API MIDI do Android](https://developer.android.com/reference/android/media/midi/package-summary)
 
-- USB MIDI controller input (controller output ports).
-- MIDI 1.0 channel voice messages, including running status.
-- Note On/Off, velocity, channel, sustain/control changes, program changes, and pitch bend.
-- Releases active notes on device removal.
-- Audio continues through the phone's existing AudioTrack output.
+## Escopo atual
 
-## Device compatibility
+- Entrada de controladores USB MIDI, por meio das portas de saída do controlador.
+- Mensagens MIDI 1.0 de voz de canal, incluindo running status.
+- Note On/Off, velocity, canal, sustain/control changes, program changes e pitch bend.
+- Liberação de notas ativas quando o dispositivo é removido.
+- O áudio continua sendo reproduzido pela saída AudioTrack do próprio telefone.
 
-Android's MIDI service exposes USB MIDI devices when the Android build and kernel support USB host MIDI. Some devices or vendor-specific USB implementations may not be exposed by the platform service. If a real controller is not detected on the target phone, evaluate integrating the kshoji driver as a fallback, preserving this class boundary.
+## Compatibilidade dos dispositivos
 
-## Validation still required
+O serviço MIDI do Android disponibiliza dispositivos USB MIDI quando a versão do Android e o kernel oferecem suporte a USB Host MIDI. Alguns dispositivos ou implementações USB específicas de fabricantes podem não ser expostos pelo serviço da plataforma.
 
-This code must pass the GitHub Actions build and be tested on the target Android phone with a real USB-OTG MIDI controller. No hardware test is claimed by this document.
+Se um controlador físico não for detectado no aparelho de destino, avalie a integração do driver kshoji como alternativa, preservando a separação desta classe em relação ao motor de áudio.
+
+## Validação necessária
+
+O código deve passar pelo build do GitHub Actions e ser testado no aparelho Android de destino com um controlador MIDI USB-OTG real. Este documento não declara que um teste físico foi realizado ou aprovado.
