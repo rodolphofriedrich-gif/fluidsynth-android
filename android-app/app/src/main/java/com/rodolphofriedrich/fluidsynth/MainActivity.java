@@ -1,6 +1,9 @@
 package com.rodolphofriedrich.fluidsynth;
 
 import android.app.Activity;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.view.View;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
@@ -61,21 +64,88 @@ public class MainActivity extends Activity {
     private static final int SAMPLE_RATE = 48000;
     private static final int FRAMES = 256;
 
+    private static final int BG = Color.rgb(13, 17, 27);
+    private static final int PANEL = Color.rgb(23, 30, 45);
+    private static final int CONTROL = Color.rgb(35, 45, 64);
+    private static final int ACCENT = Color.rgb(79, 140, 255);
+    private static final int TEXT = Color.rgb(239, 244, 255);
+    private static final int MUTED = Color.rgb(164, 178, 201);
+
+    private GradientDrawable rounded(int color, int radiusDp, int strokeColor) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(color);
+        shape.setCornerRadius(radiusDp * getResources().getDisplayMetrics().density);
+        if (strokeColor != 0) shape.setStroke((int)(1 * getResources().getDisplayMetrics().density), strokeColor);
+        return shape;
+    }
+
+    private void styleButton(Button button, int background, int textColor, int heightDp, int textSize) {
+        button.setAllCaps(false);
+        button.setTextColor(textColor);
+        button.setTextSize(textSize);
+        button.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setPadding(8, 8, 8, 8);
+        button.setBackground(rounded(background, 12, 0));
+        button.setElevation(0);
+        button.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int)(heightDp * getResources().getDisplayMetrics().density)));
+    }
+
+    private TextView sectionLabel(String value) {
+        TextView label = new TextView(this);
+        label.setText(value);
+        label.setTextColor(MUTED);
+        label.setTextSize(12);
+        label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        label.setLetterSpacing(0.06f);
+        return label;
+    }
+
+    private LinearLayout panel(LinearLayout parent) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(14, 12, 14, 12);
+        box.setBackground(rounded(PANEL, 16, Color.rgb(42, 54, 75)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = 12;
+        parent.addView(box, lp);
+        return box;
+    }
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(20, 28, 20, 20);
+        root.setPadding(16, 20, 16, 20);
+        root.setBackgroundColor(BG);
+
+        LinearLayout header = panel(root);
+        TextView title = new TextView(this);
+        title.setText("FLUIDSYNTH PLAYER");
+        title.setTextColor(TEXT);
+        title.setTextSize(19);
+        title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        header.addView(title);
         status = new TextView(this);
-        status.setText("FluidSynth — selecione um arquivo SF2");
-        status.setTextSize(18);
-        root.addView(status);
-        TextView deviceLabel = new TextView(this);
-        deviceLabel.setText("CONTROLADOR USB / MIDI INTERNO");
-        root.addView(deviceLabel);
+        status.setText("Selecione uma faixa e carregue um SoundFont");
+        status.setTextColor(MUTED);
+        status.setTextSize(13);
+        status.setPadding(0, 5, 0, 0);
+        header.addView(status);
+
+        LinearLayout controllerPanel = panel(root);
+        controllerPanel.addView(sectionLabel("CONTROLADOR MIDI"));
         deviceSelector = new Spinner(this);
+        deviceSelector.setPadding(4, 4, 4, 4);
         deviceSelector.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"Nenhum controlador selecionado"}));
+                new String[]{"Teclado interno do aplicativo"}));
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
                 if (usbMidiInput == null) return;
@@ -89,17 +159,30 @@ public class MainActivity extends Activity {
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
-        root.addView(deviceSelector);
+        controllerPanel.addView(deviceSelector, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int)(52 * getResources().getDisplayMetrics().density)));
         usbStatus = new TextView(this);
         usbStatus.setText("MIDI: aguardando controlador");
-        root.addView(usbStatus);
+        usbStatus.setTextColor(MUTED);
+        usbStatus.setTextSize(12);
+        controllerPanel.addView(usbStatus);
         bleStatus = new TextView(this);
-        bleStatus.setText("BLE MIDI: aguardando busca");
-        root.addView(bleStatus);
+        bleStatus.setText("BLE MIDI: busca desligada");
+        bleStatus.setTextColor(MUTED);
+        bleStatus.setTextSize(12);
+        bleStatus.setPadding(0, 3, 0, 0);
+        controllerPanel.addView(bleStatus);
 
-        TextView trackLabel = new TextView(this);
-        trackLabel.setText("16 FAIXAS MIDI — SELECIONE UMA FAIXA");
-        root.addView(trackLabel);
+        LinearLayout tracksPanel = panel(root);
+        TextView trackLabel = sectionLabel("16 FAIXAS MIDI");
+        tracksPanel.addView(trackLabel);
+        TextView trackHint = new TextView(this);
+        trackHint.setText("Toque em uma faixa para selecioná-la");
+        trackHint.setTextColor(MUTED);
+        trackHint.setTextSize(12);
+        trackHint.setPadding(0, 3, 0, 10);
+        tracksPanel.addView(trackHint);
+
         GridLayout trackGrid = new GridLayout(this);
         trackGrid.setColumnCount(4);
         trackGrid.setRowCount(4);
@@ -108,10 +191,16 @@ public class MainActivity extends Activity {
             Button trackButton = new Button(this);
             trackButton.setText("CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\nVAZIA");
             trackButton.setTextSize(11);
+            trackButton.setTextColor(TEXT);
+            trackButton.setAllCaps(false);
+            trackButton.setPadding(2, 2, 2, 2);
+            trackButton.setMinHeight(0);
+            trackButton.setMinimumHeight(0);
+            trackButton.setBackground(rounded(CONTROL, 10, Color.rgb(55, 69, 94)));
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
                     GridLayout.spec(i / 4, 1f), GridLayout.spec(i % 4, 1f));
             params.width = 0;
-            params.height = 68;
+            params.height = (int)(64 * getResources().getDisplayMetrics().density);
             params.setMargins(3, 3, 3, 3);
             trackGrid.addView(trackButton, params);
             trackButtons[i] = trackButton;
@@ -122,10 +211,12 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        root.addView(trackGrid);
+        tracksPanel.addView(trackGrid);
 
+        LinearLayout actionsPanel = panel(root);
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
+        styleButton(trackEnableButton, CONTROL, TEXT, 48, 14);
         trackEnableButton.setOnClickListener(v -> {
             if (trackManager == null) return;
             int channel = trackManager.getActiveChannel();
@@ -133,42 +224,65 @@ public class MainActivity extends Activity {
             trackManager.setEnabled(channel, enabled);
             updateTrackControls();
         });
-        root.addView(trackEnableButton);
-
+        actionsPanel.addView(trackEnableButton);
         bleSearchButton = new Button(this);
-        bleSearchButton.setText("BUSCA BLE: DESLIGADA");
+        bleSearchButton.setText("Ativar busca BLE");
+        styleButton(bleSearchButton, CONTROL, TEXT, 48, 14);
+        LinearLayout.LayoutParams bleLp = (LinearLayout.LayoutParams) bleSearchButton.getLayoutParams();
+        bleLp.topMargin = (int)(8 * getResources().getDisplayMetrics().density);
+        bleSearchButton.setLayoutParams(bleLp);
         bleSearchButton.setOnClickListener(v -> {
             if (bleMidiInput == null) return;
             boolean enabled = !bleMidiInput.isScanningEnabled();
             bleMidiInput.setScanningEnabled(enabled);
             updateBleSearchButton();
         });
-        root.addView(bleSearchButton);
-
+        actionsPanel.addView(bleSearchButton);
         choose = new Button(this);
-        choose.setText("IMPORTAR SF2 PARA ESTA FAIXA");
+        choose.setText("＋  Importar SoundFont para a faixa");
+        styleButton(choose, ACCENT, Color.WHITE, 54, 14);
+        LinearLayout.LayoutParams chooseLp = (LinearLayout.LayoutParams) choose.getLayoutParams();
+        chooseLp.topMargin = (int)(8 * getResources().getDisplayMetrics().density);
+        choose.setLayoutParams(chooseLp);
         choose.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(intent, PICK_SF2);
         });
-        root.addView(choose);
-        TextView hint = new TextView(this);
-        hint.setText("Carregue um SF2 para liberar o teclado.");
-        root.addView(hint);
+        actionsPanel.addView(choose);
 
+        LinearLayout keyboardPanel = panel(root);
+        keyboardPanel.addView(sectionLabel("TECLADO VIRTUAL"));
+        TextView keyboardHint = new TextView(this);
+        keyboardHint.setText("O teclado toca na faixa selecionada");
+        keyboardHint.setTextColor(MUTED);
+        keyboardHint.setTextSize(12);
+        keyboardHint.setPadding(0, 3, 0, 8);
+        keyboardPanel.addView(keyboardHint);
         int[] notes = {60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79};
         for (int row = 0; row < 2; row++) {
             LinearLayout line = new LinearLayout(this);
             line.setGravity(Gravity.CENTER);
-            root.addView(line);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowLp.bottomMargin = (int)(6 * getResources().getDisplayMetrics().density);
+            keyboardPanel.addView(line, rowLp);
             for (int col = 0; col < 6; col++) {
                 final int note = notes[row * 6 + col];
                 Button key = new Button(this);
                 key.setText(noteName(note));
-                key.setTextSize(11);
-                line.addView(key, new LinearLayout.LayoutParams(0, 150, 1));
+                key.setTextSize(12);
+                key.setTextColor(TEXT);
+                key.setAllCaps(false);
+                key.setPadding(0, 0, 0, 0);
+                key.setMinHeight(0);
+                key.setMinimumHeight(0);
+                key.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
+                LinearLayout.LayoutParams keyLp = new LinearLayout.LayoutParams(0,
+                        (int)(66 * getResources().getDisplayMetrics().density), 1);
+                keyLp.setMargins(2, 2, 2, 2);
+                line.addView(key, keyLp);
                 final int[] pressedChannel = {-1};
                 key.setOnTouchListener((v, event) -> {
                     if (!initialized || !playing) return true;
@@ -178,6 +292,7 @@ public class MainActivity extends Activity {
                         int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
                         pressedChannel[0] = channel;
                         nativeNoteOnTrack(channel, note, 100, true);
+                        v.setBackground(rounded(ACCENT, 10, 0));
                         return true;
                     }
                     if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
@@ -185,16 +300,21 @@ public class MainActivity extends Activity {
                             nativeNoteOnTrack(pressedChannel[0], note, 0, false);
                             pressedChannel[0] = -1;
                         }
+                        v.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
                         return true;
                     }
                     return true;
                 });
             }
         }
+
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
+        scrollView.setClipToPadding(false);
+        scrollView.setPadding(0, 0, 0, 0);
         scrollView.addView(root);
         setContentView(scrollView);
+
         initialized = nativeInit();
         if (initialized) {
             soundFontManager = new SoundFontManager(this);
@@ -349,8 +469,11 @@ public class MainActivity extends Activity {
             Track item = trackManager.get(i);
             String state = item.hasSoundFont() ? "SF2" : "VAZIA";
             if (!item.isEnabled()) state += " • MUTE";
-            String prefix = i == channel ? "▶ " : "";
+            String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);
+            trackButtons[i].setTextColor(TEXT);
+            trackButtons[i].setBackground(rounded(i == channel ? ACCENT : CONTROL, 10,
+                    i == channel ? ACCENT : Color.rgb(55, 69, 94)));
         }
         choose.setText(selected.hasSoundFont() ? "TROCAR SF2 DA FAIXA" : "IMPORTAR SF2 PARA ESTA FAIXA");
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : "sem SoundFont";
