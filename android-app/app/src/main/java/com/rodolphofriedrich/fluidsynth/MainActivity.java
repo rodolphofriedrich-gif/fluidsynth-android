@@ -516,7 +516,7 @@ public class MainActivity extends Activity {
             String message;
             try {
                 String displayName = getSoundFontDisplayName(uri);
-                File file = soundFontManager.importForTrack(uri, channel);
+                File file = soundFontManager.importForTrack(uri, channel, displayName);
                 boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), displayName);
                 message = loaded ? "CH " + (channel + 1) + " carregado: " + file.getName()
                         : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
@@ -543,7 +543,7 @@ public class MainActivity extends Activity {
         }
         java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
         String[] names = new String[files.length];
-        for (int i = 0; i < files.length; i++) names[i] = files[i].getName();
+        for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
         new android.app.AlertDialog.Builder(this).setTitle("Bibliotecas SoundFont")
             .setItems(names, (dialog, which) -> showPresetPicker(channel, files[which]))
             .setNegativeButton("Cancelar", null).show();
@@ -570,10 +570,10 @@ public class MainActivity extends Activity {
                             String[] fields = presets[which].split("\\|", 3);
                             int bank = Integer.parseInt(fields[0]);
                             int program = Integer.parseInt(fields[1]);
-                            int loaded = nativeLoadTrack(channel, library.getAbsolutePath());
-                            boolean selected = loaded >= 0 && nativeSelectTrackPreset(channel, bank, program);
+                            boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
+                                    soundFontManager.getDisplayName(library));
+                            boolean selected = loaded && nativeSelectTrackPreset(channel, bank, program);
                             if (selected) {
-                                trackManager.loadSoundFont(channel, library.getAbsolutePath(), library.getName());
                                 trackManager.updatePreset(channel, bank, program, fields[2]);
                                 operationStatus.setText("Instrumento selecionado: " + fields[2]);
                                 updateTrackControls();
