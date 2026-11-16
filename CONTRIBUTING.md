@@ -1,97 +1,62 @@
-# Contributing
+# Como contribuir
 
-Thanks for considering to contribute to FluidSynth. Before implementing
-any huge new feature, consider bringing up your ideas on our mailing list:
-https://lists.nongnu.org/mailman/listinfo/fluid-dev
+Obrigado por considerar contribuir com este projeto. Este repositório reúne a adaptação Android e o código do FluidSynth utilizado como motor. Para mudanças no motor original, consulte também as orientações do projeto upstream: https://github.com/FluidSynth/fluidsynth.
 
-Contributing can be done by
-* [submitting pull requests on Github](
-https://help.github.com/articles/proposing-changes-to-your-work-with-pull-requests/) or
-* submitting patches to the mailing list.
+## Antes de começar
 
-Patches should be created with `git format-patch`, so in every case you should be familiar with the basics of git. Make sure you develop against the master branch, i.e. **not** against any FluidSynth release.
+1. Confira as issues e os pull requests abertos para evitar trabalho duplicado.
+2. Explique o problema que pretende resolver e o comportamento esperado.
+3. Para mudanças grandes, proponha primeiro a solução em uma issue.
+4. Não altere o motor de áudio para resolver um problema que pertença à interface, à persistência ou à integração MIDI.
 
-Some things that will increase the chance that your pull request or patch is accepted:
+## Regras de arquitetura
 
-* Give a reasoning / motivation for any changes or proposals you make.
-* Follow our style guide.
-* Keep your commits "atomic".
-* Write meaningful commit messages.
+- Mantenha cada responsabilidade em módulo/arquivo próprio sempre que viável.
+- Preserve as interfaces existentes entre Java, JNI e C/C++.
+- Evite misturar interface, armazenamento, comunicação MIDI e processamento de áudio.
+- Não remova recursos existentes sem discussão e autorização.
+- Prefira mudanças pequenas, isoladas e fáceis de revisar.
 
-## Style Guide
+## Fluxo recomendado
 
-Find FluidSynth's style guide below. Syntax related issues, like missing braces, can be taken care of by calling `make format` (provided that cmake has found `astyle` on your system).
+1. Crie uma branch a partir da branch de trabalho indicada na issue.
+2. Faça commits pequenos, com mensagens objetivas.
+3. Atualize a documentação quando o comportamento, a arquitetura ou os requisitos mudarem.
+4. Execute o build Android.
+5. Faça testes funcionais no aparelho sempre que a alteração afetar áudio, SoundFonts, MIDI, permissões ou ciclo de vida.
+6. Abra um pull request descrevendo o problema, a solução, os arquivos alterados, os testes executados e eventuais limitações.
 
-#### General
-* Every function should have a short comment explaining it's purpose
-* Every public API function **must** be documented with purpose, params and return value
-* Prefer signed integer types to unsigned ones
-* Use spaces rather than tabs
-* Avoid macros
+## Verificações obrigatórias conforme a mudança
 
-#### Naming Conventions
-* Words separated by underscores
-* Macros always UPPER_CASE
-* Function and Variable names always lower_case,  (e.g. `fluid_componentname_purpose()`)
+| Área alterada | Verificações |
+|---|---|
+| Motor / JNI | Compilação nativa, inicialização, notas, encerramento e ausência de regressões de áudio |
+| SoundFonts | Importação, carregamento, troca de biblioteca, listagem e seleção de presets |
+| Canais/faixas | Independência entre canais e restauração após reabrir o app |
+| Áudio | Notas rápidas, acordes, encerramento de notas e reprodução contínua |
+| USB MIDI | Permissões, conexão, eventos Note On/Off e desconexão com notas ativas |
+| BLE MIDI | Busca, conexão, eventos MIDI, desconexão e reconexão |
+| Interface | Navegação, estados vazios, mensagens de erro e telas em diferentes tamanhos |
 
-#### Bracing
-* Every block after an if, else, while or for should be enclosed in braces
-* **Allman-Style** braces everywhere
+## Descrição do pull request
 
-### Documentation Style Guide
-We use Doxygen for public API functions, usage examples and other
-information.
+Inclua:
 
-#### Order of Elements
-Please ensure that the order of elements in the documentation block
-is consistent with the existing documentation. Most importantly,
-each function starts with a single sentence brief description,
-followed by any `@param` and `@return` tags. `@deprecated` and
-`@since` should always come last.
+- **Motivação:** qual problema está sendo resolvido?
+- **Solução:** o que foi alterado e por quê?
+- **Arquivos:** quais módulos foram modificados?
+- **Testes:** quais comandos e testes físicos foram executados?
+- **Riscos:** existe impacto possível no motor, na latência, nos presets ou na persistência?
 
-Example:
-```
-/**
- * Brief description of the function (only a single sentence).
- *
- * @param ...
- * @param ...
- * @return ...
- *
- * Detailed description of the function. This can be multiple paragraphs,
- * include code examples etc. It can also include @note, @warning or
- * other special tags not mentioned below.
- *
- * @deprecated This is deprecated because ...
- *
- * @since 1.2.3
- */
-```
+Não declare um teste físico como aprovado se ele não tiver sido executado.
 
-#### Mark Lifecycle Functions
-All functions are sorted alphabetically in the generated API documentation.
-To ensure that the `new_*` and `delete_*` functions appear first, please make
-sure to surround those lifecycle functions with `@startlifecycle{}` and
-`@endlifecycle` tags.
+## Licenças e créditos
 
-Example:
-```
-/** @startlifecycle{Some Name} */
-new_fluid_some_name(...);
-delete_fluid_some_name(...);
-/** @endlifecycle */
-```
+Ao adicionar código ou dependências de terceiros:
 
-#### Referencing Setting Items
-If you want to mention a setting item (for example `audio.periods`),
-please use the custom `@setting{name}` tag. The argument `name` should be
-the setting name with all `.` replaced by `_`.
+- Verifique a licença e as condições de redistribuição.
+- Preserve avisos de copyright e arquivos de licença exigidos.
+- Registre a dependência e sua versão em [LICENCAS_E_CREDITOS.md](LICENCAS_E_CREDITOS.md).
+- Não copie código sem identificar sua origem e compatibilidade de licença.
 
-Example:
-```
-/**
- * This is a comment that references \setting{audio_periods}. You
- * can also link to a group of settings with \setting{audio} or
- * \setting{synth}.
- */
-```
+Consulte também [ARCHITECTURE.md](ARCHITECTURE.md) e [SECURITY.md](SECURITY.md).
