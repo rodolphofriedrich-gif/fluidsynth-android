@@ -570,14 +570,22 @@ public class MainActivity extends Activity {
                             String[] fields = presets[which].split("\\|", 3);
                             int bank = Integer.parseInt(fields[0]);
                             int program = Integer.parseInt(fields[1]);
-                            boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
-                                    soundFontManager.getDisplayName(library));
-                            boolean selected = loaded && nativeSelectTrackPreset(channel, bank, program);
-                            if (selected) {
-                                trackManager.updatePreset(channel, bank, program, fields[2]);
-                                operationStatus.setText("Instrumento selecionado: " + fields[2]);
-                                updateTrackControls();
-                            } else operationStatus.setText("Não foi possível carregar o instrumento.");
+                            String presetName = fields[2];
+                            loader.execute(() -> {
+                                boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
+                                        soundFontManager.getDisplayName(library));
+                                boolean selected = loaded && nativeSelectTrackPreset(channel, bank, program);
+                                runOnUiThread(() -> {
+                                    if (isFinishing() || isDestroyed()) return;
+                                    if (selected) {
+                                        trackManager.updatePreset(channel, bank, program, presetName);
+                                        operationStatus.setText("Instrumento selecionado: " + presetName);
+                                        updateTrackControls();
+                                    } else {
+                                        operationStatus.setText("Não foi possível carregar o instrumento.");
+                                    }
+                                });
+                            });
                         } catch (Exception error) {
                             operationStatus.setText("Erro ao selecionar instrumento: " + error.getMessage());
                         }
