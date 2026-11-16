@@ -1,4 +1,16 @@
 pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        maven {
+            url = uri("https://github.com/kshoji/BLE-MIDI-for-Android/raw/develop/library/repository")
+        }
+        maven {
+            url = uri("https://github.com/kshoji/javax.sound.midi-for-Android/raw/master/javax.sound.midi/repository")
+        }
+        mavenCentral()
+    }
+}
 rootProject.name = "FluidSynthPlayer"
 include(":app")
