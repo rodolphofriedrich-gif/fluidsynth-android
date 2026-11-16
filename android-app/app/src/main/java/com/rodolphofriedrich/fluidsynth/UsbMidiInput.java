@@ -13,6 +13,8 @@ import android.util.Log;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * USB MIDI input only. The Android MIDI service owns USB enumeration and permission handling.
@@ -24,6 +26,7 @@ public final class UsbMidiInput implements AutoCloseable {
     public interface Listener {
         void onMidiMessage(int status, int data1, int data2);
         void onDeviceStatus(String message);
+        void onDevicesChanged(List<MidiDeviceInfo> devices);
     }
 
     private final MidiManager midiManager;
@@ -31,15 +34,18 @@ public final class UsbMidiInput implements AutoCloseable {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Map<Integer, OpenDevice> openDevices = new HashMap<>();
     private boolean started;
+    private int selectedDeviceId = -1;
 
     private final MidiManager.DeviceCallback deviceCallback = new MidiManager.DeviceCallback() {
         @Override public void onDeviceAdded(MidiDeviceInfo info) {
+            publishDevices();
             openIfMidiInput(info);
         }
 
         @Override public void onDeviceRemoved(MidiDeviceInfo info) {
             closeDevice(info.getId());
-            listener.onDeviceStatus("Controlador USB desconectado");
+            publishDevices();
+            listener.onDeviceStatus("Controlador desconectado");
         }
     };
 
@@ -57,13 +63,15 @@ public final class UsbMidiInput implements AutoCloseable {
             return;
         }
         midiManager.registerDeviceCallback(deviceCallback, mainHandler);
-        for (MidiDeviceInfo info : midiManager.getDevices()) {
-            openIfMidiInput(info);
+        publishDevices();
+        if (selectedDeviceId >= 0) {
+            for (MidiDeviceInfo info : midiManager.getDevices()) openIfMidiInput(info);
         }
     }
 
     private void openIfMidiInput(MidiDeviceInfo info) {
-        if (!started || info.getType() != MidiDeviceInfo.TYPE_USB
+        if (!started || info.getId() != selectedDeviceId
+                || (info.getType() != MidiDeviceInfo.TYPE_USB && info.getType() != MidiDeviceInfo.TYPE_VIRTUAL)
                 || info.getOutputPortCount() == 0 || openDevices.containsKey(info.getId())) {
             return;
         }
@@ -112,6 +120,35 @@ public final class UsbMidiInput implements AutoCloseable {
         }, mainHandler);
     }
 
+    public List<MidiDeviceInfo> getAvailableDevices() {
+        List<MidiDeviceInfo> result = new ArrayList<>();
+        if (midiManager == null) return result;
+        for (MidiDeviceInfo info : midiManager.getDevices()) {
+            if ((info.getType() == MidiDeviceInfo.TYPE_USB || info.getType() == MidiDeviceInfo.TYPE_VIRTUAL)
+                    && info.getOutputPortCount() > 0) result.add(info);
+        }
+        return result;
+    }
+
+    public void selectDevice(int deviceId) {
+        selectedDeviceId = deviceId;
+        for (Integer id : openDevices.keySet().toArray(new Integer[0])) closeDevice(id);
+        if (deviceId < 0) {
+            listener.onDeviceStatus("Nenhum controlador selecionado");
+            return;
+        }
+        if (midiManager != null) {
+            for (MidiDeviceInfo info : getAvailableDevices()) {
+                if (info.getId() == deviceId) { openIfMidiInput(info); return; }
+            }
+        }
+        listener.onDeviceStatus("Controlador não disponível");
+    }
+
+    private void publishDevices() {
+        listener.onDevicesChanged(getAvailableDevices());
+    }
+
     private static void closeMidiDeviceQuietly(MidiDevice device) {
         try {
             device.close();
@@ -125,11 +162,8 @@ public final class UsbMidiInput implements AutoCloseable {
         if (opened == null) return;
         try { opened.output.close(); } catch (IOException ignored) {}
         closeMidiDeviceQuietly(opened.device);
-        // Release any notes that may have remained active after a cable/device removal.
-        for (int channel = 0; channel < 16; channel++) {
-            listener.onMidiMessage(0xB0 | channel, 123, 0);
-            listener.onMidiMessage(0xB0 | channel, 120, 0);
-        }
+        // Device-specific note cleanup is handled by the MIDI source parser; do not
+        // send global All Notes Off here because another controller may be playing.
     }
 
     @Override public void close() {
