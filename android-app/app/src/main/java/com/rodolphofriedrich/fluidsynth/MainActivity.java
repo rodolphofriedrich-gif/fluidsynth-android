@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
     private native boolean nativeSetPolyphony(int voices);
     private native int nativeLoad(String path);
     private native int nativeLoadTrack(int channel, String path);
+    private native String[] nativeListPresets(String path);
+    private native boolean nativeSelectTrackPreset(int channel, int bank, int program);
     private native void nativeSetTrackEnabled(int channel, boolean enabled);
     private native void nativeSetActiveTrack(int channel);
     private native void nativeNote(int note, int velocity, boolean on);
@@ -220,6 +222,7 @@ public class MainActivity extends Activity {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
+                    showSoundFontLibraryPicker(channel);
                 }
             });
         }
@@ -526,6 +529,56 @@ public class MainActivity extends Activity {
                     choose.setEnabled(true);
                     updateTrackControls();
                 }
+            });
+        });
+    }
+
+    private void showSoundFontLibraryPicker(int channel) {
+        File directory = new File(getFilesDir(), "soundfonts");
+        File[] files = directory.listFiles((dir, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".sf2"));
+        if (files == null || files.length == 0) {
+            operationStatus.setText("Importe uma biblioteca SF2 primeiro.");
+            return;
+        }
+        java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
+        String[] names = new String[files.length];
+        for (int i = 0; i < files.length; i++) names[i] = files[i].getName();
+        new android.app.AlertDialog.Builder(this).setTitle("Bibliotecas SoundFont")
+            .setItems(names, (dialog, which) -> showPresetPicker(channel, files[which]))
+            .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void showPresetPicker(int channel, File library) {
+        operationStatus.setText("Lendo instrumentos...");
+        loader.execute(() -> {
+            String[] presets = nativeListPresets(library.getAbsolutePath());
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (presets == null || presets.length == 0) {
+                    operationStatus.setText("Nenhum instrumento encontrado.");
+                    return;
+                }
+                String[] labels = new String[presets.length];
+                for (int i = 0; i < presets.length; i++) {
+                    String[] fields = presets[i].split("\\|", 3);
+                    labels[i] = fields.length == 3 ? fields[2] + " (Banco " + fields[0] + ", Programa " + fields[1] + ")" : presets[i];
+                }
+                new android.app.AlertDialog.Builder(this).setTitle(library.getName())
+                    .setItems(labels, (dialog, which) -> {
+                        try {
+                            String[] fields = presets[which].split("\\|", 3);
+                            int bank = Integer.parseInt(fields[0]);
+                            int program = Integer.parseInt(fields[1]);
+                            int loaded = nativeLoadTrack(channel, library.getAbsolutePath());
+                            boolean selected = loaded >= 0 && nativeSelectTrackPreset(channel, bank, program);
+                            if (selected) {
+                                operationStatus.setText("Instrumento selecionado: " + fields[2]);
+                                updateTrackControls();
+                            } else operationStatus.setText("Não foi possível carregar o instrumento.");
+                        } catch (Exception error) {
+                            operationStatus.setText("Erro ao selecionar instrumento: " + error.getMessage());
+                        }
+                    }).setNegativeButton("Voltar", (dialog, which) -> showSoundFontLibraryPicker(channel)).show();
             });
         });
     }
