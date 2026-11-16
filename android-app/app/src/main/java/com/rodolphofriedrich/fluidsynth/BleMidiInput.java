@@ -33,7 +33,7 @@ public final class BleMidiInput implements AutoCloseable {
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
     private volatile boolean started;
     private volatile boolean closed;
-    private volatile boolean scanningEnabled = true;
+    private volatile boolean scanningEnabled = false;
     private BleMidiCentralProvider provider;
 
     public BleMidiInput(Activity activity, Listener listener) {
