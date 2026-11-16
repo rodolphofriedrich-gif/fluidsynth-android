@@ -87,7 +87,6 @@ std::vector<SoundFontPreset> SynthEngine::listPresets(const std::string& path) {
             const char* name = fluid_preset_get_name(preset);
             result.push_back({fluid_preset_get_banknum(preset), fluid_preset_get_num(preset), name ? name : "Preset sem nome"});
         }
-        fluid_sfont_iteration_stop(soundfont);
     }
     if (temporary) fluid_synth_sfunload(synth_, id, 1);
     return result;
