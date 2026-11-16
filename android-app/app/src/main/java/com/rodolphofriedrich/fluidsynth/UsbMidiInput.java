@@ -4,6 +4,7 @@ import android.content.Context;
 import android.media.midi.MidiDevice;
 import android.media.midi.MidiDeviceInfo;
 import android.media.midi.MidiManager;
+import android.media.midi.MidiOutputPort;
 import android.media.midi.MidiReceiver;
 import android.os.Handler;
 import android.os.Looper;
@@ -93,7 +94,7 @@ public final class UsbMidiInput implements AutoCloseable {
 
                 MidiReceiver receiver = new MidiStreamParser((status, d1, d2) ->
                         listener.onMidiMessage(status, d1, d2));
-                MidiDevice.MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
+                MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
                 if (output == null) {
                     device.close();
                     listener.onDeviceStatus("Porta MIDI USB indisponível");
@@ -132,8 +133,8 @@ public final class UsbMidiInput implements AutoCloseable {
 
     private static final class OpenDevice {
         final MidiDevice device;
-        final MidiDevice.MidiOutputPort output;
-        OpenDevice(MidiDevice device, MidiDevice.MidiOutputPort output) {
+        final MidiOutputPort output;
+        OpenDevice(MidiDevice device, MidiOutputPort output) {
             this.device = device;
             this.output = output;
         }
