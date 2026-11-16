@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(16, 20, 16, 20);
+        root.setPadding(16, 48, 16, 24);
         root.setBackgroundColor(BG);
 
         LinearLayout header = panel(root);
