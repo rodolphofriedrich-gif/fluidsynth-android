@@ -124,7 +124,7 @@ public final class UsbMidiInput implements AutoCloseable {
         OpenDevice opened = openDevices.remove(id);
         if (opened == null) return;
         try { opened.output.close(); } catch (IOException ignored) {}
-        try { opened.closeMidiDeviceQuietly(device); } catch (IOException ignored) {}
+        closeMidiDeviceQuietly(opened.device);
         // Release any notes that may have remained active after a cable/device removal.
         for (int channel = 0; channel < 16; channel++) {
             listener.onMidiMessage(0xB0 | channel, 123, 0);
