@@ -150,15 +150,22 @@ public class MainActivity extends Activity {
                 key.setText(noteName(note));
                 key.setTextSize(11);
                 line.addView(key, new LinearLayout.LayoutParams(0, 150, 1));
+                final int[] pressedChannel = {-1};
                 key.setOnTouchListener((v, event) -> {
-                    if (!initialized || !playing || !internalKeyboardSelected) return true;
+                    if (!initialized || !playing) return true;
                     int action = event.getActionMasked();
                     if (action == MotionEvent.ACTION_DOWN) {
-                        nativeNoteOnTrack(trackManager == null ? 0 : trackManager.getActiveChannel(), note, 100, true);
+                        if (!internalKeyboardSelected) return true;
+                        int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
+                        pressedChannel[0] = channel;
+                        nativeNoteOnTrack(channel, note, 100, true);
                         return true;
                     }
                     if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                        nativeNoteOnTrack(trackManager == null ? 0 : trackManager.getActiveChannel(), note, 0, false);
+                        if (pressedChannel[0] >= 0) {
+                            nativeNoteOnTrack(pressedChannel[0], note, 0, false);
+                            pressedChannel[0] = -1;
+                        }
                         return true;
                     }
                     return true;
