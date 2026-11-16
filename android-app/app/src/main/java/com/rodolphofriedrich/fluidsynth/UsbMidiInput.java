@@ -74,7 +74,7 @@ public final class UsbMidiInput implements AutoCloseable {
                 return;
             }
             if (!started) {
-                device.close();
+                closeMidiDeviceQuietly(device);
                 return;
             }
             int deviceId = info.getId();
@@ -88,7 +88,7 @@ public final class UsbMidiInput implements AutoCloseable {
                     }
                 }
                 if (selected == null) {
-                    device.close();
+                    closeMidiDeviceQuietly(device);
                     return;
                 }
 
@@ -96,7 +96,7 @@ public final class UsbMidiInput implements AutoCloseable {
                         listener.onMidiMessage(status, d1, d2));
                 MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
                 if (output == null) {
-                    device.close();
+                    closeMidiDeviceQuietly(device);
                     listener.onDeviceStatus("Porta MIDI USB indisponível");
                     return;
                 }
@@ -105,18 +105,26 @@ public final class UsbMidiInput implements AutoCloseable {
                 listener.onDeviceStatus("Controlador conectado: " + device.getInfo().getProperties()
                         .getString(MidiDeviceInfo.PROPERTY_NAME));
             } catch (Exception error) {
-                try { device.close(); } catch (IOException ignored) {}
+                closeMidiDeviceQuietly(device);
                 Log.e(TAG, "Falha ao abrir porta MIDI USB", error);
                 listener.onDeviceStatus("Falha ao abrir controlador USB");
             }
         }, mainHandler);
     }
 
+    private static void closeMidiDeviceQuietly(MidiDevice device) {
+        try {
+            device.close();
+        } catch (IOException error) {
+            Log.w(TAG, "Falha ao fechar dispositivo MIDI USB", error);
+        }
+    }
+
     private void closeDevice(int id) {
         OpenDevice opened = openDevices.remove(id);
         if (opened == null) return;
         try { opened.output.close(); } catch (IOException ignored) {}
-        try { opened.device.close(); } catch (IOException ignored) {}
+        try { opened.closeMidiDeviceQuietly(device); } catch (IOException ignored) {}
         // Release any notes that may have remained active after a cable/device removal.
         for (int channel = 0; channel < 16; channel++) {
             listener.onMidiMessage(0xB0 | channel, 123, 0);
