@@ -117,7 +117,7 @@ public class MainActivity extends Activity {
         root.addView(trackEnableButton);
 
         bleSearchButton = new Button(this);
-        bleSearchButton.setText("BUSCA BLE: LIGADA");
+        bleSearchButton.setText("BUSCA BLE: DESLIGADA");
         bleSearchButton.setOnClickListener(v -> {
             if (bleMidiInput == null) return;
             boolean enabled = !bleMidiInput.isScanningEnabled();
