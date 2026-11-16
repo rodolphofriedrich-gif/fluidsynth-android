@@ -68,6 +68,12 @@ public final class SoundFontManager {
         String saved = context.getSharedPreferences("soundfont_library_names", Context.MODE_PRIVATE)
                 .getString(soundFont.getName(), null);
         if (saved != null && !saved.trim().isEmpty()) return saved;
+        android.content.SharedPreferences tracks = context.getSharedPreferences("track_state", Context.MODE_PRIVATE);
+        for (int channel = 0; channel < 16; channel++) {
+            String path = tracks.getString("track_" + channel + "_path", null);
+            String name = tracks.getString("track_" + channel + "_name", null);
+            if (soundFont.getAbsolutePath().equals(path) && name != null && !name.trim().isEmpty()) return name;
+        }
         return soundFont.getName().replaceFirst("(?i)\\.sf2$", "");
     }
 }
