@@ -24,6 +24,7 @@ public class MainActivity extends Activity {
     private native boolean nativeInit();
     private native int nativeLoad(String path);
     private native void nativeNote(int note, int velocity, boolean on);
+    private native void nativeMidiEvent(int status, int data1, int data2);
     private native void nativeRender(float[] out, int frames);
     private native void nativeShutdown();
 
@@ -31,6 +32,8 @@ public class MainActivity extends Activity {
     private AudioTrack track;
     private Thread audioThread;
     private TextView status;
+    private TextView usbStatus;
+    private UsbMidiInput usbMidiInput;
     private Button choose;
     private boolean initialized;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
@@ -47,6 +50,9 @@ public class MainActivity extends Activity {
         status.setText("FluidSynth — selecione um arquivo SF2");
         status.setTextSize(18);
         root.addView(status);
+        usbStatus = new TextView(this);
+        usbStatus.setText("USB MIDI: aguardando controlador");
+        root.addView(usbStatus);
         choose = new Button(this);
         choose.setText("ESCOLHER SOUNDFONT (.sf2)");
         choose.setOnClickListener(v -> {
@@ -88,8 +94,20 @@ public class MainActivity extends Activity {
         }
         setContentView(root);
         initialized = nativeInit();
-        if (initialized) startAudio();
-        else status.setText("Falha ao iniciar o motor FluidSynth.");
+        if (initialized) {
+            startAudio();
+            usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
+                @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
+                    if (initialized) nativeMidiEvent(midiStatus, data1, data2);
+                }
+                @Override public void onDeviceStatus(String message) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) usbStatus.setText("USB MIDI: " + message);
+                    });
+                }
+            });
+            usbMidiInput.start();
+        } else status.setText("Falha ao iniciar o motor FluidSynth.");
     }
 
     private String noteName(int note) {
@@ -200,6 +218,10 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (usbMidiInput != null) {
+            usbMidiInput.close();
+            usbMidiInput = null;
+        }
         loader.shutdown();
         try { loader.awaitTermination(5, TimeUnit.SECONDS); }
         catch (InterruptedException error) { Thread.currentThread().interrupt(); }
