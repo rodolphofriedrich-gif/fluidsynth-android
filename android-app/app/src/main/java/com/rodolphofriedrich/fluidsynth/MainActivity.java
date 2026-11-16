@@ -378,6 +378,7 @@ public class MainActivity extends Activity {
             soundFontManager = new SoundFontManager(this);
             trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
+                @Override public boolean selectPreset(int channel, int bank, int program) { return nativeSelectTrackPreset(channel, bank, program); }
                 @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
             });
@@ -572,6 +573,8 @@ public class MainActivity extends Activity {
                             int loaded = nativeLoadTrack(channel, library.getAbsolutePath());
                             boolean selected = loaded >= 0 && nativeSelectTrackPreset(channel, bank, program);
                             if (selected) {
+                                trackManager.loadSoundFont(channel, library.getAbsolutePath(), library.getName());
+                                trackManager.updatePreset(channel, bank, program, fields[2]);
                                 operationStatus.setText("Instrumento selecionado: " + fields[2]);
                                 updateTrackControls();
                             } else operationStatus.setText("Não foi possível carregar o instrumento.");
@@ -612,7 +615,7 @@ public class MainActivity extends Activity {
         trackEnableButton.setText("CH " + (channel + 1) + (selected.isEnabled() ? " — ATIVA" : " — MUTADA"));
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
-            String state = item.hasSoundFont() ? compactTrackName(item.getSoundFontName()) : "SEM SF2";
+            String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : "SEM SF2";
             if (!item.isEnabled()) state += " • MUTE";
             String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);
