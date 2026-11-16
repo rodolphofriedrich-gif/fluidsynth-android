@@ -27,6 +27,20 @@ Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeLoadTrack(JNIEnv* env, 
     std::string value(chars); env->ReleaseStringUTFChars(path, chars);
     return SynthEngine::instance().loadSoundFontForChannel(value, channel);
 }
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeListPresets(JNIEnv* env, jobject, jstring path) {
+ if (!path) return nullptr; const char* chars=env->GetStringUTFChars(path,nullptr); if(!chars) return nullptr;
+ std::string value(chars); env->ReleaseStringUTFChars(path,chars); auto presets=SynthEngine::instance().listPresets(value);
+ jclass cls=env->FindClass("java/lang/String"); jobjectArray array=env->NewObjectArray((jsize)presets.size(),cls,nullptr);
+ for(jsize i=0;i<(jsize)presets.size();++i){ const auto& p=presets[(size_t)i];
+ std::string row=std::to_string(p.bank)+"|"+std::to_string(p.program)+"|"+p.name;
+ jstring item=env->NewStringUTF(row.c_str()); env->SetObjectArrayElement(array,i,item); env->DeleteLocalRef(item); }
+ return array;
+}
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeSelectTrackPreset(JNIEnv*, jobject, jint channel, jint bank, jint program) {
+ return SynthEngine::instance().selectPreset(channel,bank,program)?JNI_TRUE:JNI_FALSE;
+}
 extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeSetTrackEnabled(JNIEnv*, jobject, jint channel, jboolean enabled) {
     SynthEngine::instance().setTrackEnabled(channel, enabled == JNI_TRUE);
