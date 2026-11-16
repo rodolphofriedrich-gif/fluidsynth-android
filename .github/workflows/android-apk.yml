@@ -42,3 +42,5 @@ jobs:
           if-no-files-found: error
 
 # APK test build requested after the modular UI update.
+
+# Rebuild after track labels and persistence fixes.
