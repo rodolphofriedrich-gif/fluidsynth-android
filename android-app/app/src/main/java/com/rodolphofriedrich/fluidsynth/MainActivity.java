@@ -17,6 +17,7 @@ import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
 import android.widget.ScrollView;
+import android.widget.GridLayout;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +49,7 @@ public class MainActivity extends Activity {
     private Button choose;
     private Button trackEnableButton;
     private Button bleSearchButton;
-    private Spinner trackSelector;
+    private Button[] trackButtons = new Button[16];
     private Spinner deviceSelector;
     private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
     private TrackManager trackManager;
@@ -97,13 +98,31 @@ public class MainActivity extends Activity {
         root.addView(bleStatus);
 
         TextView trackLabel = new TextView(this);
-        trackLabel.setText("FAIXA MIDI ATIVA");
+        trackLabel.setText("16 FAIXAS MIDI — SELECIONE UMA FAIXA");
         root.addView(trackLabel);
-        trackSelector = new Spinner(this);
-        String[] trackNames = new String[16];
-        for (int i = 0; i < 16; i++) trackNames[i] = "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1);
-        trackSelector.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, trackNames));
-        root.addView(trackSelector);
+        GridLayout trackGrid = new GridLayout(this);
+        trackGrid.setColumnCount(4);
+        trackGrid.setRowCount(4);
+        for (int i = 0; i < 16; i++) {
+            final int channel = i;
+            Button trackButton = new Button(this);
+            trackButton.setText("CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\nVAZIA");
+            trackButton.setTextSize(11);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                    GridLayout.spec(i / 4, 1f), GridLayout.spec(i % 4, 1f));
+            params.width = 0;
+            params.height = 68;
+            params.setMargins(3, 3, 3, 3);
+            trackGrid.addView(trackButton, params);
+            trackButtons[i] = trackButton;
+            trackButton.setOnClickListener(v -> {
+                if (trackManager != null) {
+                    trackManager.select(channel);
+                    updateTrackControls();
+                }
+            });
+        }
+        root.addView(trackGrid);
 
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
@@ -184,13 +203,8 @@ public class MainActivity extends Activity {
                 @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
             });
-            trackSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
-                    if (trackManager != null) { trackManager.select(position); updateTrackControls(); }
-                }
-                @Override public void onNothingSelected(AdapterView<?> parent) {}
-            });
-            trackSelector.setSelection(0);
+            trackManager.select(0);
+            updateTrackControls();
             startAudio();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
@@ -331,6 +345,13 @@ public class MainActivity extends Activity {
         int channel = trackManager.getActiveChannel();
         Track selected = trackManager.get(channel);
         trackEnableButton.setText("CH " + (channel + 1) + (selected.isEnabled() ? " — ATIVA" : " — MUTADA"));
+        for (int i = 0; i < trackButtons.length; i++) {
+            Track item = trackManager.get(i);
+            String state = item.hasSoundFont() ? "SF2" : "VAZIA";
+            if (!item.isEnabled()) state += " • MUTE";
+            String prefix = i == channel ? "▶ " : "";
+            trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);
+        }
         choose.setText(selected.hasSoundFont() ? "TROCAR SF2 DA FAIXA" : "IMPORTAR SF2 PARA ESTA FAIXA");
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : "sem SoundFont";
         status.setText("CH " + (channel + 1) + ": " + soundFont);
