@@ -52,6 +52,31 @@ Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeNote(JNIEnv*, jobject, 
     else fluid_synth_noteoff(synth, 0, note);
 }
 
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeMidiEvent(
+        JNIEnv*, jobject, jint status, jint data1, jint data2) {
+    std::lock_guard<std::mutex> guard(synth_mutex);
+    if (!synth) return;
+    const int command = status & 0xF0;
+    const int channel = status & 0x0F;
+    const int value1 = std::clamp(static_cast<int>(data1), 0, 127);
+    const int value2 = std::clamp(static_cast<int>(data2), 0, 127);
+
+    if (command == 0x80) {
+        fluid_synth_noteoff(synth, channel, value1);
+    } else if (command == 0x90) {
+        if (value2 == 0) fluid_synth_noteoff(synth, channel, value1);
+        else fluid_synth_noteon(synth, channel, value1, value2);
+    } else if (command == 0xB0) {
+        fluid_synth_cc(synth, channel, value1, value2);
+    } else if (command == 0xC0) {
+        fluid_synth_program_change(synth, channel, value1);
+    } else if (command == 0xE0) {
+        fluid_synth_pitch_bend(synth, channel, value1 | (value2 << 7));
+    }
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeRender(JNIEnv* env, jobject, jfloatArray output, jint frames) {
     if (!output || frames <= 0 || env->GetArrayLength(output) < frames * 2) return;
