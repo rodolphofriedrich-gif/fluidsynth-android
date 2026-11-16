@@ -2,39 +2,26 @@ package com.rodolphofriedrich.fluidsynth;
 
 import android.Manifest;
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
-import android.content.Context;
 import android.content.pm.PackageManager;
-import android.media.midi.MidiDevice;
-import android.media.midi.MidiDeviceInfo;
-import android.media.midi.MidiManager;
-import android.media.midi.MidiReceiver;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.ParcelUuid;
 import android.util.Log;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-/** BLE-MIDI central/input. Scans for standard BLE-MIDI peripherals and routes their MIDI stream. */
+import jp.kshoji.blemidi.central.BleMidiCentralProvider;
+import jp.kshoji.blemidi.device.MidiInputDevice;
+import jp.kshoji.blemidi.device.MidiOutputDevice;
+import jp.kshoji.blemidi.listener.OnMidiDeviceAttachedListener;
+import jp.kshoji.blemidi.listener.OnMidiDeviceDetachedListener;
+import jp.kshoji.blemidi.listener.OnMidiInputEventListener;
+import jp.kshoji.blemidi.util.BleMidiTimestampCoordinator;
+
+/** BLE MIDI adapter using Kshoji for discovery, GATT transport and MIDI parsing. */
 public final class BleMidiInput implements AutoCloseable {
     private static final String TAG = "BleMidiInput";
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 8204;
-    private static final UUID BLE_MIDI_SERVICE =
-            UUID.fromString("03B80E5A-EDE8-4B33-A751-6CE34EC4C700");
+    private static final int LOW_LATENCY_SCHEDULE_AHEAD_MS = 40;
 
     public interface Listener {
         void onMidiMessage(int status, int data1, int data2);
@@ -43,47 +30,45 @@ public final class BleMidiInput implements AutoCloseable {
 
     private final Activity activity;
     private final Listener listener;
-    private final MidiManager midiManager;
-    private final BluetoothAdapter bluetoothAdapter;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final Map<String, OpenDevice> openDevices = new HashMap<>();
-    private final Set<String> openingAddresses = new HashSet<>();
-    private BluetoothLeScanner scanner;
-    private boolean started;
-    private boolean scanning;
+    private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
+    private volatile boolean started;
+    private volatile boolean closed;
+    private BleMidiCentralProvider provider;
 
     public BleMidiInput(Activity activity, Listener listener) {
         this.activity = activity;
         this.listener = listener;
-        this.midiManager = (MidiManager) activity.getSystemService(Context.MIDI_SERVICE);
-        BluetoothManager manager = (BluetoothManager)
-                activity.getSystemService(Context.BLUETOOTH_SERVICE);
-        this.bluetoothAdapter = manager == null ? null : manager.getAdapter();
     }
 
-    public void start() {
-        if (started) return;
+    public synchronized void start() {
+        if (started || closed) return;
         started = true;
-        if (Build.VERSION.SDK_INT < 23 || midiManager == null || bluetoothAdapter == null
-                || !activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            listener.onDeviceStatus("BLE MIDI indisponível neste aparelho");
+        if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            listener.onDeviceStatus("Este aparelho não oferece Bluetooth LE");
             return;
         }
         if (!hasPermissions()) {
             requestPermissions();
             return;
         }
-        startScan();
+        startProvider();
     }
 
     public void onPermissionResult(boolean granted) {
-        if (!started) return;
-        if (granted) startScan();
-        else listener.onDeviceStatus("Permissão Bluetooth negada");
+        if (!started || closed) return;
+        if (!granted) {
+            listener.onDeviceStatus("Permissão Bluetooth negada");
+            return;
+        }
+        startProvider();
+    }
+
+    public boolean handlesPermissionRequest(int requestCode) {
+        return requestCode == REQUEST_BLUETOOTH_PERMISSIONS;
     }
 
     private boolean hasPermissions() {
-        if (Build.VERSION.SDK_INT >= 31) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return activity.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN)
                     == PackageManager.PERMISSION_GRANTED
                     && activity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -94,7 +79,7 @@ public final class BleMidiInput implements AutoCloseable {
     }
 
     private void requestPermissions() {
-        if (Build.VERSION.SDK_INT >= 31) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             activity.requestPermissions(new String[] {
                     Manifest.permission.BLUETOOTH_SCAN,
                     Manifest.permission.BLUETOOTH_CONNECT
@@ -106,196 +91,145 @@ public final class BleMidiInput implements AutoCloseable {
         }
     }
 
-    public boolean handlesPermissionRequest(int requestCode) {
-        return requestCode == REQUEST_BLUETOOTH_PERMISSIONS;
-    }
-
-    private void startScan() {
-        if (!started || scanning) return;
+    private synchronized void startProvider() {
+        if (closed || provider != null) return;
         try {
-            if (!bluetoothAdapter.isEnabled()) {
-                listener.onDeviceStatus("Ative o Bluetooth para procurar dispositivos MIDI");
-                return;
-            }
-            scanner = bluetoothAdapter.getBluetoothLeScanner();
-            if (scanner == null) {
-                listener.onDeviceStatus("Scanner Bluetooth indisponível");
-                return;
-            }
-            ScanFilter filter = new ScanFilter.Builder()
-                    .setServiceUuid(new ParcelUuid(BLE_MIDI_SERVICE)).build();
-            ScanSettings settings = new ScanSettings.Builder()
-                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-            scanner.startScan(java.util.Collections.singletonList(filter), settings, scanCallback);
-            scanning = true;
+            provider = new BleMidiCentralProvider(activity);
+            provider.setAutoStartInputDevice(false);
+            provider.setOnMidiDeviceAttachedListener(new OnMidiDeviceAttachedListener() {
+                @Override
+                public void onMidiInputDeviceAttached(MidiInputDevice device) {
+                    attachInputDevice(device);
+                }
+                @Override
+                public void onMidiOutputDeviceAttached(MidiOutputDevice device) {
+                    // The app receives MIDI; BLE output endpoints are not used.
+                }
+            });
+            provider.setOnMidiDeviceDetachedListener(new OnMidiDeviceDetachedListener() {
+                @Override
+                public void onMidiInputDeviceDetached(MidiInputDevice device) {
+                    connectedDevices.remove(device);
+                    releaseAllNotes();
+                    listener.onDeviceStatus("Controlador desconectado: " + device.getDeviceName());
+                    restartScanIfNeeded();
+                }
+                @Override
+                public void onMidiOutputDeviceDetached(MidiOutputDevice device) {
+                    // No BLE MIDI output endpoint is opened by this app.
+                }
+            });
+            provider.startScanDevice(0);
             listener.onDeviceStatus("Procurando controladores BLE MIDI...");
-        } catch (SecurityException error) {
-            Log.e(TAG, "Permissão Bluetooth ausente durante a busca", error);
-            listener.onDeviceStatus("Permissão Bluetooth necessária");
+        } catch (SecurityException | UnsupportedOperationException error) {
+            Log.e(TAG, "Não foi possível iniciar o BLE MIDI", error);
+            provider = null;
+            listener.onDeviceStatus("Não foi possível iniciar BLE MIDI: " + safeMessage(error));
+        } catch (RuntimeException error) {
+            Log.e(TAG, "Falha ao iniciar o driver BLE MIDI", error);
+            provider = null;
+            listener.onDeviceStatus("Falha ao iniciar BLE MIDI");
         }
     }
 
-    private final ScanCallback scanCallback = new ScanCallback() {
-        @Override public void onScanResult(int callbackType, ScanResult result) {
-            BluetoothDevice device = result.getDevice();
-            String address;
-            try {
-                address = device.getAddress();
-            } catch (SecurityException error) {
-                return;
-            }
-            if (openDevices.containsKey(address) || !openingAddresses.add(address)) return;
-            stopScan();
-            listener.onDeviceStatus("Dispositivo BLE MIDI encontrado; conectando...");
-            midiManager.openBluetoothDevice(device, midiDevice -> {
-                openingAddresses.remove(address);
-                if (!started) {
-                    if (midiDevice != null) midiDevice.close();
-                    return;
-                }
-                if (midiDevice == null) {
-                    listener.onDeviceStatus("Não foi possível abrir o dispositivo BLE MIDI");
-                    startScan();
-                    return;
-                }
-                connectMidiDevice(address, midiDevice);
-            }, mainHandler);
+    private void attachInputDevice(MidiInputDevice device) {
+        if (closed) {
+            device.terminate();
+            return;
         }
-
-        @Override public void onScanFailed(int errorCode) {
-            scanning = false;
-            listener.onDeviceStatus("Falha na busca BLE (código " + errorCode + ")");
+        connectedDevices.add(device);
+        device.setTimestampSchedulingMode(BleMidiTimestampCoordinator.SchedulingMode.LOW_LATENCY);
+        device.setMaxScheduleAheadMs(LOW_LATENCY_SCHEDULE_AHEAD_MS);
+        device.setOnMidiInputEventListener(new OnMidiInputEventListener() {
+            @Override public void onMidiNoteOff(MidiInputDevice sender, int channel, int note, int velocity) {
+                send(0x80 | channel, note, velocity);
+            }
+            @Override public void onMidiNoteOn(MidiInputDevice sender, int channel, int note, int velocity) {
+                send(0x90 | channel, note, velocity);
+            }
+            @Override public void onMidiControlChange(MidiInputDevice sender, int channel, int function, int value) {
+                send(0xB0 | channel, function, value);
+            }
+            @Override public void onMidiProgramChange(MidiInputDevice sender, int channel, int program) {
+                send(0xC0 | channel, program, 0);
+            }
+            @Override public void onMidiPitchWheel(MidiInputDevice sender, int channel, int amount) {
+                send(0xE0 | channel, amount & 0x7F, (amount >> 7) & 0x7F);
+            }
+            @Override public void onMidiSystemExclusive(MidiInputDevice sender, byte[] data) {}
+            @Override public void onMidiPolyphonicAftertouch(MidiInputDevice sender, int channel, int note, int pressure) {}
+            @Override public void onMidiChannelAftertouch(MidiInputDevice sender, int channel, int pressure) {}
+            @Override public void onMidiTimeCodeQuarterFrame(MidiInputDevice sender, int timing) {}
+            @Override public void onMidiSongSelect(MidiInputDevice sender, int song) {}
+            @Override public void onMidiSongPositionPointer(MidiInputDevice sender, int position) {}
+            @Override public void onMidiTuneRequest(MidiInputDevice sender) {}
+            @Override public void onMidiTimingClock(MidiInputDevice sender) {}
+            @Override public void onMidiStart(MidiInputDevice sender) {}
+            @Override public void onMidiContinue(MidiInputDevice sender) {}
+            @Override public void onMidiStop(MidiInputDevice sender) {}
+            @Override public void onMidiActiveSensing(MidiInputDevice sender) {}
+            @Override public void onMidiReset(MidiInputDevice sender) {}
+            @Override public void onRPNMessage(MidiInputDevice sender, int channel, int function, int value) {}
+            @Override public void onNRPNMessage(MidiInputDevice sender, int channel, int function, int value) {}
+        });
+        device.start();
+        BleMidiCentralProvider current = provider;
+        if (current != null) {
+            try { current.stopScanDevice(); }
+            catch (RuntimeException error) {
+                Log.w(TAG, "Não foi possível encerrar a busca após conexão", error);
+            }
         }
-    };
-
-    private void connectMidiDevice(String address, MidiDevice device) {
-        try {
-            MidiDeviceInfo.PortInfo selected = null;
-            for (MidiDeviceInfo.PortInfo port : device.getInfo().getPorts()) {
-                if (port.getType() == MidiDeviceInfo.PortInfo.TYPE_OUTPUT) {
-                    selected = port;
-                    break;
-                }
-            }
-            if (selected == null) {
-                device.close();
-                listener.onDeviceStatus("Dispositivo BLE sem porta de entrada MIDI");
-                startScan();
-                return;
-            }
-            MidiReceiver receiver = new MidiStreamParser((status, d1, d2) ->
-                    listener.onMidiMessage(status, d1, d2));
-            MidiDevice.MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
-            if (output == null) {
-                device.close();
-                listener.onDeviceStatus("Porta BLE MIDI indisponível");
-                startScan();
-                return;
-            }
-            output.connect(receiver);
-            openDevices.put(address, new OpenDevice(device, output));
-            String name = "controlador BLE";
-            try {
-                String deviceName = device.getInfo().getProperties()
-                        .getString(MidiDeviceInfo.PROPERTY_NAME);
-                if (deviceName != null && !deviceName.isEmpty()) name = deviceName;
-            } catch (Exception ignored) {}
-            listener.onDeviceStatus("Conectado: " + name);
-        } catch (Exception error) {
-            try { device.close(); } catch (IOException ignored) {}
-            Log.e(TAG, "Falha ao conectar BLE MIDI", error);
-            listener.onDeviceStatus("Erro ao conectar BLE MIDI");
-            startScan();
-        }
+        listener.onDeviceStatus("Conectado: " + device.getDeviceName());
     }
 
-    private void stopScan() {
-        if (!scanning || scanner == null) return;
-        try { scanner.stopScan(scanCallback); }
-        catch (SecurityException error) { Log.w(TAG, "Não foi possível parar a busca BLE", error); }
-        scanning = false;
+    private void send(int status, int data1, int data2) {
+        if (!closed) listener.onMidiMessage(status, data1, data2);
+    }
+
+    private void restartScanIfNeeded() {
+        BleMidiCentralProvider current = provider;
+        if (!closed && connectedDevices.isEmpty() && current != null) {
+            try {
+                current.startScanDevice(0);
+                listener.onDeviceStatus("Procurando controlador BLE MIDI novamente...");
+            } catch (SecurityException | RuntimeException error) {
+                Log.w(TAG, "Falha ao reiniciar a busca BLE", error);
+                listener.onDeviceStatus("Não foi possível reiniciar a busca BLE MIDI");
+            }
+        }
     }
 
     private void releaseAllNotes() {
         for (int channel = 0; channel < 16; channel++) {
-            listener.onMidiMessage(0xB0 | channel, 123, 0);
-            listener.onMidiMessage(0xB0 | channel, 120, 0);
+            send(0xB0 | channel, 123, 0);
+            send(0xB0 | channel, 120, 0);
         }
     }
 
-    @Override public void close() {
-        if (!started) return;
+    private static String safeMessage(Exception error) {
+        String message = error.getMessage();
+        return message == null || message.trim().isEmpty()
+                ? error.getClass().getSimpleName() : message;
+    }
+
+    @Override public synchronized void close() {
+        if (closed) return;
+        closed = true;
         started = false;
-        stopScan();
-        for (OpenDevice opened : openDevices.values()) {
-            try { opened.output.close(); } catch (IOException ignored) {}
-            try { opened.device.close(); } catch (IOException ignored) {}
-        }
-        openDevices.clear();
-        openingAddresses.clear();
-        releaseAllNotes();
-    }
-
-    private static final class OpenDevice {
-        final MidiDevice device;
-        final MidiDevice.MidiOutputPort output;
-        OpenDevice(MidiDevice device, MidiDevice.MidiOutputPort output) {
-            this.device = device;
-            this.output = output;
-        }
-    }
-
-    private interface MessageSink { void accept(int status, int data1, int data2); }
-
-    /** Decodes BLE-MIDI payloads, including timestamp bytes and running-status messages. */
-    private static final class MidiStreamParser extends MidiReceiver {
-        private final MessageSink sink;
-        private int runningStatus = -1;
-        private int pendingStatus = -1;
-        private int expectedData;
-        private int dataCount;
-        private final int[] data = new int[2];
-
-        MidiStreamParser(MessageSink sink) { this.sink = sink; }
-
-        @Override public void onSend(byte[] msg, int offset, int count, long timestamp)
-                throws IOException {
-            int end = offset + count;
-            for (int i = offset; i < end; i++) {
-                int value = msg[i] & 0xFF;
-                // BLE-MIDI timestamp headers have bit 7 set and follow the packet header.
-                if ((value & 0x80) != 0) {
-                    if (value >= 0xF8) continue;
-                    if (value >= 0xF0) {
-                        runningStatus = -1;
-                        pendingStatus = -1;
-                        dataCount = 0;
-                        continue;
-                    }
-                    if (value >= 0x80 && value <= 0xEF) {
-                        runningStatus = value;
-                        beginMessage(value);
-                    }
-                    // Other high-bit bytes are BLE timestamp headers, not MIDI status.
-                    continue;
+        BleMidiCentralProvider current = provider;
+        provider = null;
+        if (current != null) {
+            try {
+                for (MidiInputDevice device : current.getMidiInputDevices()) {
+                    try { device.stop(); } catch (RuntimeException ignored) {}
                 }
-                if (pendingStatus < 0) {
-                    if (runningStatus < 0) continue;
-                    beginMessage(runningStatus);
-                }
-                if (dataCount < data.length) data[dataCount++] = value;
-                if (dataCount == expectedData) {
-                    sink.accept(pendingStatus, data[0], expectedData > 1 ? data[1] : 0);
-                    beginMessage(runningStatus);
-                }
+                current.terminate();
+            } catch (RuntimeException error) {
+                Log.w(TAG, "Erro ao encerrar o driver BLE MIDI", error);
             }
         }
-
-        private void beginMessage(int status) {
-            pendingStatus = status;
-            int command = status & 0xF0;
-            expectedData = (command == 0xC0 || command == 0xD0) ? 1 : 2;
-            dataCount = 0;
-        }
+        connectedDevices.clear();
+        releaseAllNotes();
     }
 }
