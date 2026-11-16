@@ -16,6 +16,7 @@ import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
+import android.widget.ScrollView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,7 @@ public class MainActivity extends Activity {
     private TrackManager trackManager;
     private SoundFontManager soundFontManager;
     private boolean initialized;
+    private boolean internalKeyboardSelected = true;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
     private static final int SAMPLE_RATE = 48000;
@@ -76,9 +78,13 @@ public class MainActivity extends Activity {
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
                 if (usbMidiInput == null) return;
-                if (position == 0) usbMidiInput.selectDevice(-1);
-                else if (position - 1 < availableMidiDevices.size())
+                if (position == 0) {
+                    internalKeyboardSelected = true;
+                    usbMidiInput.selectDevice(-1);
+                } else if (position - 1 < availableMidiDevices.size()) {
+                    internalKeyboardSelected = false;
                     usbMidiInput.selectDevice(availableMidiDevices.get(position - 1).getId());
+                }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
@@ -145,7 +151,7 @@ public class MainActivity extends Activity {
                 key.setTextSize(11);
                 line.addView(key, new LinearLayout.LayoutParams(0, 150, 1));
                 key.setOnTouchListener((v, event) -> {
-                    if (!initialized || !playing) return true;
+                    if (!initialized || !playing || !internalKeyboardSelected) return true;
                     int action = event.getActionMasked();
                     if (action == MotionEvent.ACTION_DOWN) {
                         nativeNoteOnTrack(trackManager == null ? 0 : trackManager.getActiveChannel(), note, 100, true);
@@ -159,7 +165,10 @@ public class MainActivity extends Activity {
                 });
             }
         }
-        setContentView(root);
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.addView(root);
+        setContentView(scrollView);
         initialized = nativeInit();
         if (initialized) {
             soundFontManager = new SoundFontManager(this);
@@ -294,7 +303,7 @@ public class MainActivity extends Activity {
         availableMidiDevices.clear();
         availableMidiDevices.addAll(devices);
         List<String> labels = new ArrayList<>();
-        labels.add("Selecione um controlador MIDI...");
+        labels.add("Teclado interno do aplicativo");
         for (MidiDeviceInfo info : devices) {
             String name = info.getProperties().getString(MidiDeviceInfo.PROPERTY_NAME);
             if (name == null || name.trim().isEmpty()) name = "Dispositivo MIDI " + info.getId();
