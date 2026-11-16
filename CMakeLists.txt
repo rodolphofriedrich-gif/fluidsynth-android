@@ -238,6 +238,7 @@ add_library ( libfluidsynth $<TARGET_OBJECTS:libfluidsynth-OBJ> )
 # FluidSynth's Android branch resolves source files from CMAKE_SOURCE_DIR.
 add_library(player SHARED
     ${CMAKE_SOURCE_DIR}/android-app/app/src/main/cpp/native_player.cpp
+    ${CMAKE_SOURCE_DIR}/android-app/app/src/main/cpp/synth_engine.cpp
 )
 target_include_directories(player PRIVATE
     ${CMAKE_SOURCE_DIR}/include
