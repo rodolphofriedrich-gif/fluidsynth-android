@@ -2,7 +2,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability' ]
+    branches: [ android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control' ]
     paths:
       - 'android-app/**'
       - 'src/**'
@@ -45,3 +45,5 @@ jobs:
 
 # Rebuild after track labels and persistence fixes.
 # Build Phase 1 multitrack stability changes.
+
+# Build the adjustable polyphony control.
