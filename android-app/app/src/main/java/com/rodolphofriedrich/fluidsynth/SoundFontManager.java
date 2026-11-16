@@ -16,6 +16,10 @@ public final class SoundFontManager {
     }
 
     public File importForTrack(Uri uri, int channel) throws Exception {
+        return importForTrack(uri, channel, null);
+    }
+
+    public File importForTrack(Uri uri, int channel, String displayName) throws Exception {
         if (uri == null || channel < 0 || channel >= 16)
             throw new IllegalArgumentException("Arquivo ou canal inválido");
 
@@ -52,6 +56,18 @@ public final class SoundFontManager {
             temp.delete();
             throw new IllegalStateException("Não foi possível concluir a importação do SF2");
         }
+        if (displayName != null && !displayName.trim().isEmpty()) {
+            context.getSharedPreferences("soundfont_library_names", Context.MODE_PRIVATE)
+                    .edit().putString(target.getName(), displayName.trim()).apply();
+        }
         return target;
+    }
+
+    public String getDisplayName(File soundFont) {
+        if (soundFont == null) return "SoundFont";
+        String saved = context.getSharedPreferences("soundfont_library_names", Context.MODE_PRIVATE)
+                .getString(soundFont.getName(), null);
+        if (saved != null && !saved.trim().isEmpty()) return saved;
+        return soundFont.getName().replaceFirst("(?i)\\.sf2$", "");
     }
 }
