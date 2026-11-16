@@ -290,6 +290,7 @@ public class MainActivity extends Activity {
 
     private void updateDeviceSelector(List<MidiDeviceInfo> devices) {
         if (deviceSelector == null || isFinishing() || isDestroyed()) return;
+        int previousId = usbMidiInput == null ? -1 : usbMidiInput.getSelectedDeviceId();
         availableMidiDevices.clear();
         availableMidiDevices.addAll(devices);
         List<String> labels = new ArrayList<>();
@@ -302,7 +303,11 @@ public class MainActivity extends Activity {
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, labels);
         deviceSelector.setAdapter(adapter);
-        deviceSelector.setSelection(0);
+        int selectedPosition = 0;
+        for (int i = 0; i < devices.size(); i++) {
+            if (devices.get(i).getId() == previousId) { selectedPosition = i + 1; break; }
+        }
+        deviceSelector.setSelection(selectedPosition);
     }
 
     private void updateTrackControls() {
