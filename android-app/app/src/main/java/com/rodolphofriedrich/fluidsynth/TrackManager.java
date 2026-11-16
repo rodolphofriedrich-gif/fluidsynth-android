@@ -32,7 +32,10 @@ public final class TrackManager {
     public synchronized boolean loadSoundFont(int channel, String path, String displayName) {
         checkChannel(channel);
         if (engine.loadSoundFont(channel, path) < 0) return false;
-        tracks[channel].setSoundFont(path, displayName); return true;
+        tracks[channel].setSoundFont(path, displayName);
+        tracks[channel].setEnabled(true);
+        engine.setEnabled(channel, true);
+        return true;
     }
     public synchronized void setEnabled(int channel, boolean enabled) {
         checkChannel(channel); tracks[channel].setEnabled(enabled); engine.setEnabled(channel, enabled);
