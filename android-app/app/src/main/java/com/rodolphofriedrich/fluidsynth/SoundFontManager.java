@@ -14,8 +14,9 @@ public final class SoundFontManager {
         if (uri == null || channel < 0 || channel >= 16) throw new IllegalArgumentException("Arquivo ou canal inválido");
         File directory = new File(context.getFilesDir(), "soundfonts");
         if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Não foi possível criar a pasta de SoundFonts");
-        File target = new File(directory, "channel-" + (channel + 1) + ".sf2");
-        File temp = new File(directory, "channel-" + (channel + 1) + ".sf2.tmp");
+        String revision = Long.toString(System.currentTimeMillis());
+        File target = new File(directory, "channel-" + (channel + 1) + "-" + revision + ".sf2");
+        File temp = new File(directory, "channel-" + (channel + 1) + "-" + revision + ".sf2.tmp");
         try (InputStream in = context.getContentResolver().openInputStream(uri); FileOutputStream out = new FileOutputStream(temp)) {
             if (in == null) throw new IllegalStateException("Não foi possível abrir o arquivo selecionado");
             byte[] buffer = new byte[65536]; int count;
