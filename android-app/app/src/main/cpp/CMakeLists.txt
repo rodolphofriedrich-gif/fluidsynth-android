@@ -11,7 +11,7 @@ set(CMAKE_SOURCE_DIR "${FLUIDSYNTH_ROOT}")
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 add_subdirectory("${FLUIDSYNTH_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/fluidsynth")
 
-add_library(player SHARED native_player.cpp)
+add_library(player SHARED native_player.cpp synth_engine.cpp)
 target_include_directories(player PRIVATE
     "${FLUIDSYNTH_ROOT}/include"
     "${CMAKE_CURRENT_BINARY_DIR}/fluidsynth/include"
