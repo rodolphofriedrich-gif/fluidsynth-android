@@ -7,6 +7,7 @@ import android.os.Build;
 import android.util.Log;
 
 import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jp.kshoji.blemidi.central.BleMidiCentralProvider;
@@ -31,6 +32,7 @@ public final class BleMidiInput implements AutoCloseable {
     private final Activity activity;
     private final Listener listener;
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
+    private final Map<MidiInputDevice, Set<Integer>> activeNotesByDevice = new ConcurrentHashMap<>();
     private volatile boolean started;
     private volatile boolean closed;
     private volatile boolean scanningEnabled = false;
@@ -130,8 +132,8 @@ public final class BleMidiInput implements AutoCloseable {
             provider.setOnMidiDeviceDetachedListener(new OnMidiDeviceDetachedListener() {
                 @Override
                 public void onMidiInputDeviceDetached(MidiInputDevice device) {
+                    releaseDeviceNotes(device);
                     connectedDevices.remove(device);
-                    releaseAllNotes();
                     listener.onDeviceStatus("Controlador desconectado: " + device.getDeviceName());
                     restartScanIfNeeded();
                 }
@@ -157,14 +159,25 @@ public final class BleMidiInput implements AutoCloseable {
             return;
         }
         connectedDevices.add(device);
+        activeNotesByDevice.putIfAbsent(device, ConcurrentHashMap.newKeySet());
         device.setTimestampSchedulingMode(BleMidiTimestampCoordinator.SchedulingMode.LOW_LATENCY);
         device.setMaxScheduleAheadMs(LOW_LATENCY_SCHEDULE_AHEAD_MS);
         device.setOnMidiInputEventListener(new OnMidiInputEventListener() {
             @Override public void onMidiNoteOff(MidiInputDevice sender, int channel, int note, int velocity) {
+                Set<Integer> active = activeNotesByDevice.get(sender);
+                if (active != null) active.remove(channel * 128 + note);
                 send(0x80 | channel, note, velocity);
             }
             @Override public void onMidiNoteOn(MidiInputDevice sender, int channel, int note, int velocity) {
-                send(0x90 | channel, note, velocity);
+                if (velocity <= 0) {
+                    Set<Integer> active = activeNotesByDevice.get(sender);
+                    if (active != null) active.remove(channel * 128 + note);
+                    send(0x80 | channel, note, 0);
+                } else {
+                    Set<Integer> active = activeNotesByDevice.get(sender);
+                    if (active != null) active.add(channel * 128 + note);
+                    send(0x90 | channel, note, velocity);
+                }
             }
             @Override public void onMidiControlChange(MidiInputDevice sender, int channel, int function, int value) {
                 send(0xB0 | channel, function, value);
@@ -219,10 +232,13 @@ public final class BleMidiInput implements AutoCloseable {
         }
     }
 
-    private void releaseAllNotes() {
-        for (int channel = 0; channel < 16; channel++) {
-            send(0xB0 | channel, 123, 0);
-            send(0xB0 | channel, 120, 0);
+    private void releaseDeviceNotes(MidiInputDevice device) {
+        Set<Integer> active = activeNotesByDevice.remove(device);
+        if (active == null) return;
+        for (Integer encoded : active) {
+            int channel = encoded / 128;
+            int note = encoded % 128;
+            send(0x80 | channel, note, 0);
         }
     }
 
@@ -234,7 +250,7 @@ public final class BleMidiInput implements AutoCloseable {
 
     @Override public synchronized void close() {
         if (closed) return;
-        releaseAllNotes();
+        for (MidiInputDevice device : connectedDevices) releaseDeviceNotes(device);
         closed = true;
         started = false;
         BleMidiCentralProvider current = provider;
@@ -250,5 +266,6 @@ public final class BleMidiInput implements AutoCloseable {
             }
         }
         connectedDevices.clear();
+        activeNotesByDevice.clear();
     }
 }
