@@ -6,6 +6,11 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeInit(JNIEnv*, jobject) {
     return SynthEngine::instance().initialize() ? JNI_TRUE : JNI_FALSE;
 }
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeSetPolyphony(JNIEnv*, jobject, jint voices) {
+    return SynthEngine::instance().setPolyphony(voices) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_rodolphofriedrich_fluidsynth_MainActivity_nativeLoad(JNIEnv* env, jobject, jstring path) {
     if (!path) return FLUID_FAILED;

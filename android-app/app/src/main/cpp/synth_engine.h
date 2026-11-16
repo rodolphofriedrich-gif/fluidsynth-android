@@ -9,6 +9,7 @@ class SynthEngine {
 public:
     static SynthEngine& instance();
     bool initialize();
+    bool setPolyphony(int voices);
     int loadSoundFontForChannel(const std::string& path, int channel);
     void setTrackEnabled(int channel, bool enabled);
     void setActiveChannel(int channel);

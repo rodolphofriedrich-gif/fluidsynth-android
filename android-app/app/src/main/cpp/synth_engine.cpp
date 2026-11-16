@@ -31,6 +31,13 @@ bool SynthEngine::initialize() {
     return true;
 }
 
+bool SynthEngine::setPolyphony(int voices) {
+    voices = std::clamp(((voices + 4) / 8) * 8, 8, 2048);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!synth_) return false;
+    return fluid_synth_set_polyphony(synth_, voices) == FLUID_OK;
+}
+
 int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     if (channel < 0 || channel >= 16 || path.empty()) return FLUID_FAILED;
     std::lock_guard<std::mutex> lock(mutex_);

@@ -21,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
 import android.widget.ScrollView;
 import android.widget.GridLayout;
+import android.widget.SeekBar;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends Activity {
     static { System.loadLibrary("player"); }
     private native boolean nativeInit();
+    private native boolean nativeSetPolyphony(int voices);
     private native int nativeLoad(String path);
     private native int nativeLoadTrack(int channel, String path);
     private native void nativeSetTrackEnabled(int channel, boolean enabled);
@@ -54,7 +56,10 @@ public class MainActivity extends Activity {
     private Button trackEnableButton;
     private Button bleSearchButton;
     private Button[] trackButtons = new Button[16];
+    private SeekBar polyphonySeekBar;
+    private TextView polyphonyValue;
     private Spinner deviceSelector;
+    private int currentPolyphony = 512;
     private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
     private TrackManager trackManager;
     private SoundFontManager soundFontManager;
@@ -220,6 +225,44 @@ public class MainActivity extends Activity {
         }
         tracksPanel.addView(trackGrid);
 
+        LinearLayout audioPanel = panel(root);
+        audioPanel.addView(sectionLabel("POLIFONIA"));
+        TextView polyphonyHint = new TextView(this);
+        polyphonyHint.setText("Limite máximo de vozes simultâneas do sintetizador");
+        polyphonyHint.setTextColor(MUTED);
+        polyphonyHint.setTextSize(12);
+        polyphonyHint.setPadding(0, 3, 0, 8);
+        audioPanel.addView(polyphonyHint);
+        polyphonyValue = new TextView(this);
+        polyphonyValue.setText("512 vozes");
+        polyphonyValue.setTextColor(TEXT);
+        polyphonyValue.setTextSize(16);
+        polyphonyValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        audioPanel.addView(polyphonyValue);
+        polyphonySeekBar = new SeekBar(this);
+        polyphonySeekBar.setMax(255);
+        polyphonySeekBar.setProgress((512 / 8) - 1);
+        polyphonySeekBar.setContentDescription("Polifonia, de 8 a 2048 vozes, em passos de 8");
+        audioPanel.addView(polyphonySeekBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int)(42 * getResources().getDisplayMetrics().density)));
+        polyphonySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int voices = (progress + 1) * 8;
+                currentPolyphony = voices;
+                polyphonyValue.setText(voices + " vozes");
+                if (fromUser && initialized) {
+                    boolean applied = nativeSetPolyphony(voices);
+                    if (!applied) operationStatus.setText("Não foi possível aplicar a polifonia.");
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                PolyphonySettingsStore.save(MainActivity.this, currentPolyphony);
+                operationStatus.setText("Polifonia definida para " + currentPolyphony + " vozes.");
+            }
+        });
+
         LinearLayout actionsPanel = panel(root);
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
@@ -324,6 +367,11 @@ public class MainActivity extends Activity {
 
         initialized = nativeInit();
         if (initialized) {
+            currentPolyphony = PolyphonySettingsStore.load(this);
+            polyphonySeekBar.setProgress((currentPolyphony / 8) - 1);
+            if (!nativeSetPolyphony(currentPolyphony)) {
+                operationStatus.setText("Não foi possível restaurar a polifonia salva.");
+            }
             soundFontManager = new SoundFontManager(this);
             trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
