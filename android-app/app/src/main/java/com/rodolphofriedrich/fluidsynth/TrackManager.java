@@ -12,6 +12,7 @@ import java.util.concurrent.Executor;
 public final class TrackManager {
     public interface Engine {
         int loadSoundFont(int channel, String path);
+        boolean selectPreset(int channel, int bank, int program);
         void setEnabled(int channel, boolean enabled);
         void setActiveChannel(int channel);
     }
@@ -36,13 +37,16 @@ public final class TrackManager {
             for (int channel = 0; channel < tracks.length; channel++) {
                 String path = preferences.getString("track_" + channel + "_path", null);
                 String name = preferences.getString("track_" + channel + "_name", null);
+                int bank = preferences.getInt("track_" + channel + "_bank", 0);
+                int program = preferences.getInt("track_" + channel + "_program", 0);
+                String presetName = preferences.getString("track_" + channel + "_preset_name", null);
                 boolean enabled = preferences.getBoolean("track_" + channel + "_enabled", true);
                 if (path != null && !path.isEmpty() && new File(path).isFile()) {
                     int loaded = engine.loadSoundFont(channel, path);
-                    if (loaded >= 0) {
+                    if (loaded >= 0 && engine.selectPreset(channel, bank, program)) {
                         synchronized (this) {
-                            tracks[channel].setSoundFont(path,
-                                    name == null ? new File(path).getName() : name);
+                            tracks[channel].setSoundFont(path, name == null ? new File(path).getName() : name);
+                            tracks[channel].setPreset(bank, program, presetName == null ? "Preset " + program : presetName);
                         }
                     }
                 }
@@ -95,17 +99,31 @@ public final class TrackManager {
         synchronized (this) {
             if (generation != loadGeneration[channel]) return false;
             tracks[channel].setSoundFont(path, displayName);
+            tracks[channel].setPreset(0, 0, null);
             tracks[channel].setEnabled(true);
             enabled = tracks[channel].isEnabled();
             preferences.edit()
                     .putString("track_" + channel + "_path", path)
                     .putString("track_" + channel + "_name", displayName)
+                    .putInt("track_" + channel + "_bank", 0)
+                    .putInt("track_" + channel + "_program", 0)
+                    .remove("track_" + channel + "_preset_name")
                     .putBoolean("track_" + channel + "_enabled", enabled)
                     .apply();
         }
         // loadSoundFontForChannel already enables the channel atomically with the new preset.
         // Do not issue a second native call here: it could race with a user mute operation.
         return true;
+    }
+
+    public void updatePreset(int channel, int bank, int program, String name) {
+        checkChannel(channel);
+        synchronized (this) {
+            tracks[channel].setPreset(bank, program, name);
+            preferences.edit().putInt("track_" + channel + "_bank", bank)
+                    .putInt("track_" + channel + "_program", program)
+                    .putString("track_" + channel + "_preset_name", name).apply();
+        }
     }
 
     public void setEnabled(int channel, boolean enabled) {

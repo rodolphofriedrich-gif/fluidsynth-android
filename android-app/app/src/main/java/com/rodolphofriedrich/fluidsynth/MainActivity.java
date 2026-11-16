@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
     private native boolean nativeSetPolyphony(int voices);
     private native int nativeLoad(String path);
     private native int nativeLoadTrack(int channel, String path);
+    private native String[] nativeListPresets(String path);
+    private native boolean nativeSelectTrackPreset(int channel, int bank, int program);
     private native void nativeSetTrackEnabled(int channel, boolean enabled);
     private native void nativeSetActiveTrack(int channel);
     private native void nativeNote(int note, int velocity, boolean on);
@@ -220,6 +222,7 @@ public class MainActivity extends Activity {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
+                    showSoundFontLibraryPicker(channel);
                 }
             });
         }
@@ -375,6 +378,7 @@ public class MainActivity extends Activity {
             soundFontManager = new SoundFontManager(this);
             trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
+                @Override public boolean selectPreset(int channel, int bank, int program) { return nativeSelectTrackPreset(channel, bank, program); }
                 @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
             });
@@ -512,7 +516,7 @@ public class MainActivity extends Activity {
             String message;
             try {
                 String displayName = getSoundFontDisplayName(uri);
-                File file = soundFontManager.importForTrack(uri, channel);
+                File file = soundFontManager.importForTrack(uri, channel, displayName);
                 boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), displayName);
                 message = loaded ? "CH " + (channel + 1) + " carregado: " + file.getName()
                         : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
@@ -526,6 +530,66 @@ public class MainActivity extends Activity {
                     choose.setEnabled(true);
                     updateTrackControls();
                 }
+            });
+        });
+    }
+
+    private void showSoundFontLibraryPicker(int channel) {
+        File directory = new File(getFilesDir(), "soundfonts");
+        File[] files = directory.listFiles((dir, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".sf2"));
+        if (files == null || files.length == 0) {
+            operationStatus.setText("Importe uma biblioteca SF2 primeiro.");
+            return;
+        }
+        java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
+        String[] names = new String[files.length];
+        for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
+        new android.app.AlertDialog.Builder(this).setTitle("Bibliotecas SoundFont")
+            .setItems(names, (dialog, which) -> showPresetPicker(channel, files[which]))
+            .setNegativeButton("Cancelar", null).show();
+    }
+
+    private void showPresetPicker(int channel, File library) {
+        operationStatus.setText("Lendo instrumentos...");
+        loader.execute(() -> {
+            String[] presets = nativeListPresets(library.getAbsolutePath());
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (presets == null || presets.length == 0) {
+                    operationStatus.setText("Nenhum instrumento encontrado.");
+                    return;
+                }
+                String[] labels = new String[presets.length];
+                for (int i = 0; i < presets.length; i++) {
+                    String[] fields = presets[i].split("\\|", 3);
+                    labels[i] = fields.length == 3 ? fields[2] + " (Banco " + fields[0] + ", Programa " + fields[1] + ")" : presets[i];
+                }
+                new android.app.AlertDialog.Builder(this).setTitle(library.getName())
+                    .setItems(labels, (dialog, which) -> {
+                        try {
+                            String[] fields = presets[which].split("\\|", 3);
+                            int bank = Integer.parseInt(fields[0]);
+                            int program = Integer.parseInt(fields[1]);
+                            String presetName = fields[2];
+                            loader.execute(() -> {
+                                boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
+                                        soundFontManager.getDisplayName(library));
+                                boolean selected = loaded && nativeSelectTrackPreset(channel, bank, program);
+                                runOnUiThread(() -> {
+                                    if (isFinishing() || isDestroyed()) return;
+                                    if (selected) {
+                                        trackManager.updatePreset(channel, bank, program, presetName);
+                                        operationStatus.setText("Instrumento selecionado: " + presetName);
+                                        updateTrackControls();
+                                    } else {
+                                        operationStatus.setText("Não foi possível carregar o instrumento.");
+                                    }
+                                });
+                            });
+                        } catch (Exception error) {
+                            operationStatus.setText("Erro ao selecionar instrumento: " + error.getMessage());
+                        }
+                    }).setNegativeButton("Voltar", (dialog, which) -> showSoundFontLibraryPicker(channel)).show();
             });
         });
     }
@@ -559,7 +623,7 @@ public class MainActivity extends Activity {
         trackEnableButton.setText("CH " + (channel + 1) + (selected.isEnabled() ? " — ATIVA" : " — MUTADA"));
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
-            String state = item.hasSoundFont() ? compactTrackName(item.getSoundFontName()) : "SEM SF2";
+            String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : "SEM SF2";
             if (!item.isEnabled()) state += " • MUTE";
             String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);

@@ -69,6 +69,36 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     return newId;
 }
 
+std::vector<SoundFontPreset> SynthEngine::listPresets(const std::string& path) {
+    std::vector<SoundFontPreset> result;
+    if (path.empty()) return result;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!synth_) return result;
+    int id = FLUID_FAILED;
+    bool temporary = false;
+    auto cached = pathToId_.find(path);
+    if (cached != pathToId_.end()) id = cached->second;
+    else { id = fluid_synth_sfload(synth_, path.c_str(), 0); if (id == FLUID_FAILED) return result; temporary = true; }
+    fluid_sfont_t* soundfont = fluid_synth_get_sfont_by_id(synth_, id);
+    if (soundfont) {
+        fluid_sfont_iteration_start(soundfont);
+        fluid_preset_t* preset = nullptr;
+        while ((preset = fluid_sfont_iteration_next(soundfont)) != nullptr) {
+            const char* name = fluid_preset_get_name(preset);
+            result.push_back({fluid_preset_get_banknum(preset), fluid_preset_get_num(preset), name ? name : "Preset sem nome"});
+        }
+    }
+    if (temporary) fluid_synth_sfunload(synth_, id, 1);
+    return result;
+}
+bool SynthEngine::selectPreset(int channel, int bank, int program) {
+    if (channel < 0 || channel >= 16 || bank < 0 || program < 0 || program > 127) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!synth_ || soundfontIds_[channel] < 0) return false;
+    if (fluid_synth_program_select(synth_, channel, soundfontIds_[channel], bank, program) != FLUID_OK) return false;
+    bankMsb_[channel] = (bank >> 7) & 0x7f; bankLsb_[channel] = bank & 0x7f; programs_[channel] = program;
+    return true;
+}
 void SynthEngine::releaseSoundFont(int id) {
     auto it = idReferences_.find(id);
     if (it == idReferences_.end()) return;
