@@ -130,6 +130,8 @@ public final class UsbMidiInput implements AutoCloseable {
         return result;
     }
 
+    public int getSelectedDeviceId() { return selectedDeviceId; }
+
     public void selectDevice(int deviceId) {
         selectedDeviceId = deviceId;
         for (Integer id : openDevices.keySet().toArray(new Integer[0])) closeDevice(id);
