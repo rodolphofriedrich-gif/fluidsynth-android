@@ -81,7 +81,7 @@ public final class UsbMidiInput implements AutoCloseable {
                 listener.onDeviceStatus("Não foi possível abrir o controlador USB");
                 return;
             }
-            if (!started) {
+            if (!started || selectedDeviceId != info.getId()) {
                 closeMidiDeviceQuietly(device);
                 return;
             }
