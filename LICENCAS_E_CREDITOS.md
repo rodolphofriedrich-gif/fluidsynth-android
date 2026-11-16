@@ -14,7 +14,11 @@ A LGPL-2.1 possui condições próprias para cópia, modificação, distribuiç�
 
 Referência oficial: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 
-## 2. Dependências Android de MIDI
+## 2. Código de integração Android deste repositório
+
+O arquivo `LICENSE` foi herdado do projeto FluidSynth e identifica a licença do código original do motor. Como este repositório também contém integração Android e alterações específicas, a titularidade e a licença aplicável a cada contribuição própria devem ser confirmadas pelo responsável pelo projeto antes de uma distribuição pública ou comercial. Não presuma que os termos de uma dependência de terceiros concedem direitos sobre o restante do aplicativo. Quando a autoria/licença de um arquivo não estiver clara, registre essa informação antes de redistribuí-lo.
+
+## 3. Dependências Android de MIDI
 
 A configuração Gradle declara:
 
@@ -28,23 +32,23 @@ Os dois projetos upstream identificam suas licenças como Apache License 2.0. O 
 - https://github.com/kshoji/BLE-MIDI-for-Android/blob/develop/LICENSE
 - https://github.com/kshoji/javax.sound.midi-for-Android
 
-## 3. APIs do Android
+## 4. APIs do Android
 
 O aplicativo utiliza APIs fornecidas pelo Android SDK, incluindo áudio, arquivos e MIDI. Essas APIs são componentes da plataforma Android; não são código incorporado do FluidSynth. Consulte os termos e avisos da distribuição Android/SDK aplicável.
 
-## 4. Arquivos SoundFont (SF2)
+## 5. Arquivos SoundFont (SF2)
 
 O aplicativo permite que o usuário importe bibliotecas SoundFont. Este repositório não concede licença sobre arquivos SF2 de terceiros nem inclui autorização para redistribuí-los.
 
 O usuário ou distribuidor deve verificar os direitos autorais e os termos de uso de cada SoundFont, especialmente antes de incluí-lo em um APK, pacote de instalação, demonstração ou distribuição comercial.
 
-## 5. Créditos e atribuição
+## 6. Créditos e atribuição
 
 - **FluidSynth:** projeto original e seus colaboradores, relacionados no arquivo [AUTHORS](AUTHORS).
 - **BLE MIDI for Android:** Kaoru Shoji (kshoji) e colaboradores, conforme os créditos do projeto upstream.
 - **javax.sound.midi for Android:** Kaoru Shoji (kshoji) e colaboradores, conforme os créditos do projeto upstream.
 
-## 6. Manutenção deste inventário
+## 7. Manutenção deste inventário
 
 Este inventário foi preparado a partir do arquivo LICENSE do repositório, das dependências declaradas em `android-app/app/build.gradle` e `android-app/settings.gradle`, e dos arquivos de licença dos projetos upstream.
 
