@@ -33,7 +33,9 @@ public class MainActivity extends Activity {
     private Thread audioThread;
     private TextView status;
     private TextView usbStatus;
+    private TextView bleStatus;
     private UsbMidiInput usbMidiInput;
+    private BleMidiInput bleMidiInput;
     private Button choose;
     private boolean initialized;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
@@ -53,6 +55,9 @@ public class MainActivity extends Activity {
         usbStatus = new TextView(this);
         usbStatus.setText("USB MIDI: aguardando controlador");
         root.addView(usbStatus);
+        bleStatus = new TextView(this);
+        bleStatus.setText("BLE MIDI: aguardando busca");
+        root.addView(bleStatus);
         choose = new Button(this);
         choose.setText("ESCOLHER SOUNDFONT (.sf2)");
         choose.setOnClickListener(v -> {
@@ -107,6 +112,20 @@ public class MainActivity extends Activity {
                 }
             });
             usbMidiInput.start();
+            bleMidiInput = new BleMidiInput(this, new BleMidiInput.Listener() {
+                @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
+                    if (initialized) nativeMidiEvent(midiStatus, data1, data2);
+                }
+                @Override public void onDeviceStatus(String message) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) bleStatus.setText("BLE MIDI: " + message);
+                    });
+                }
+                @Override public void requestPermissionResult(boolean granted) {
+                    // Permission results are forwarded directly by onRequestPermissionsResult.
+                }
+            });
+            bleMidiInput.start();
         } else status.setText("Falha ao iniciar o motor FluidSynth.");
     }
 
@@ -153,6 +172,15 @@ public class MainActivity extends Activity {
             if (candidate != null) candidate.release();
             track = null;
             status.setText("Falha na saída de áudio: " + error.getMessage());
+        }
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (bleMidiInput != null && bleMidiInput.handlesPermissionRequest(requestCode)) {
+            boolean granted = grantResults.length > 0;
+            for (int result : grantResults) granted &= result == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            bleMidiInput.onPermissionResult(granted);
         }
     }
 
@@ -218,6 +246,10 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (bleMidiInput != null) {
+            bleMidiInput.close();
+            bleMidiInput = null;
+        }
         if (usbMidiInput != null) {
             usbMidiInput.close();
             usbMidiInput = null;
