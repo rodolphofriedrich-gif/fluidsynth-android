@@ -136,7 +136,7 @@ public final class UsbMidiInput implements AutoCloseable {
         selectedDeviceId = deviceId;
         for (Integer id : openDevices.keySet().toArray(new Integer[0])) closeDevice(id);
         if (deviceId < 0) {
-            listener.onDeviceStatus("Nenhum controlador selecionado");
+            listener.onDeviceStatus("Teclado interno selecionado");
             return;
         }
         if (midiManager != null) {
