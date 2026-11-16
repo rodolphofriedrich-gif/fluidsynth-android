@@ -99,11 +99,15 @@ public final class TrackManager {
         synchronized (this) {
             if (generation != loadGeneration[channel]) return false;
             tracks[channel].setSoundFont(path, displayName);
+            tracks[channel].setPreset(0, 0, null);
             tracks[channel].setEnabled(true);
             enabled = tracks[channel].isEnabled();
             preferences.edit()
                     .putString("track_" + channel + "_path", path)
                     .putString("track_" + channel + "_name", displayName)
+                    .putInt("track_" + channel + "_bank", 0)
+                    .putInt("track_" + channel + "_program", 0)
+                    .remove("track_" + channel + "_preset_name")
                     .putBoolean("track_" + channel + "_enabled", enabled)
                     .apply();
         }
