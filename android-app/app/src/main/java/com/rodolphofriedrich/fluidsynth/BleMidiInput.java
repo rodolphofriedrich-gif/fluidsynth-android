@@ -45,8 +45,19 @@ public final class BleMidiInput implements AutoCloseable {
 
     public synchronized void setScanningEnabled(boolean enabled) {
         scanningEnabled = enabled;
+        if (closed) return;
         BleMidiCentralProvider current = provider;
-        if (current == null || closed) return;
+        if (enabled && started && current == null) {
+            if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                listener.onDeviceStatus("Este aparelho não oferece Bluetooth LE");
+            } else if (!hasPermissions()) {
+                requestPermissions();
+            } else {
+                startProvider();
+            }
+            return;
+        }
+        if (current == null) return;
         try {
             if (enabled && connectedDevices.isEmpty()) {
                 current.startScanDevice(0);
@@ -66,6 +77,10 @@ public final class BleMidiInput implements AutoCloseable {
     public synchronized void start() {
         if (started || closed) return;
         started = true;
+        if (!scanningEnabled) {
+            listener.onDeviceStatus("Busca BLE desativada");
+            return;
+        }
         if (!activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             listener.onDeviceStatus("Este aparelho não oferece Bluetooth LE");
             return;
