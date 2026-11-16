@@ -39,7 +39,6 @@ public final class BleMidiInput implements AutoCloseable {
     public interface Listener {
         void onMidiMessage(int status, int data1, int data2);
         void onDeviceStatus(String message);
-        void requestPermissionResult(boolean granted);
     }
 
     private final Activity activity;
