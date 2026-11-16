@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private AudioTrack track;
     private Thread audioThread;
     private TextView status;
+    private TextView operationStatus;
     private TextView usbStatus;
     private TextView bleStatus;
     private UsbMidiInput usbMidiInput;
@@ -139,6 +140,12 @@ public class MainActivity extends Activity {
         status.setTextSize(13);
         status.setPadding(0, 5, 0, 0);
         header.addView(status);
+        operationStatus = new TextView(this);
+        operationStatus.setText("");
+        operationStatus.setTextColor(MUTED);
+        operationStatus.setTextSize(12);
+        operationStatus.setPadding(0, 4, 0, 0);
+        header.addView(operationStatus);
 
         LinearLayout controllerPanel = panel(root);
         controllerPanel.addView(sectionLabel("CONTROLADOR MIDI"));
@@ -149,12 +156,12 @@ public class MainActivity extends Activity {
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
                 if (usbMidiInput == null) return;
-                if (position == 0) {
-                    internalKeyboardSelected = true;
-                    usbMidiInput.selectDevice(-1);
-                } else if (position - 1 < availableMidiDevices.size()) {
-                    internalKeyboardSelected = false;
-                    usbMidiInput.selectDevice(availableMidiDevices.get(position - 1).getId());
+                int targetId = position == 0 ? -1
+                        : (position - 1 < availableMidiDevices.size()
+                            ? availableMidiDevices.get(position - 1).getId() : -1);
+                internalKeyboardSelected = targetId == -1;
+                if (usbMidiInput.getSelectedDeviceId() != targetId) {
+                    usbMidiInput.selectDevice(targetId);
                 }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
@@ -323,8 +330,13 @@ public class MainActivity extends Activity {
                 @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
             });
-            trackManager.select(0);
             updateTrackControls();
+            trackManager.restoreAsync(loader, () -> runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    updateTrackControls();
+                    operationStatus.setText("Configurações das faixas restauradas.");
+                }
+            }));
             startAudio();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
@@ -434,6 +446,7 @@ public class MainActivity extends Activity {
             boolean granted = grantResults.length > 0;
             for (int result : grantResults) granted &= result == android.content.pm.PackageManager.PERMISSION_GRANTED;
             bleMidiInput.onPermissionResult(granted);
+            updateBleSearchButton();
         }
     }
 
@@ -442,7 +455,7 @@ public class MainActivity extends Activity {
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         choose.setEnabled(false);
         final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
-        status.setText("Importando SF2 para CH " + (channel + 1) + "...");
+        operationStatus.setText("Importando SF2 para CH " + (channel + 1) + "...");
         final android.net.Uri uri = data.getData();
         loader.execute(() -> {
             String message;
@@ -458,7 +471,7 @@ public class MainActivity extends Activity {
             final String result = message;
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
-                    status.setText(result);
+                    operationStatus.setText(result);
                     choose.setEnabled(true);
                     updateTrackControls();
                 }
@@ -485,7 +498,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < devices.size(); i++) {
             if (devices.get(i).getId() == previousId) { selectedPosition = i + 1; break; }
         }
-        deviceSelector.setSelection(selectedPosition);
+        deviceSelector.setSelection(selectedPosition, false);
     }
 
     private void updateTrackControls() {

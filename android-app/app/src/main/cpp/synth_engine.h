@@ -25,6 +25,9 @@ private:
     fluid_synth_t* synth_ = nullptr;
     std::array<int,16> soundfontIds_{};
     std::array<bool,16> enabled_{};
+    std::array<int,16> bankMsb_{};
+    std::array<int,16> bankLsb_{};
+    std::array<int,16> programs_{};
     int activeChannel_ = 0;
     std::unordered_map<std::string,int> pathToId_;
     std::unordered_map<int,int> idReferences_;

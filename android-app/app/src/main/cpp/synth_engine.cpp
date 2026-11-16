@@ -12,6 +12,9 @@ bool SynthEngine::initialize() {
     if (synth_) return true;
     soundfontIds_.fill(FLUID_FAILED);
     enabled_.fill(true);
+    bankMsb_.fill(0);
+    bankLsb_.fill(0);
+    programs_.fill(0);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -51,6 +54,9 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     }
     const int oldId = soundfontIds_[channel];
     soundfontIds_[channel] = newId;
+    bankMsb_[channel] = 0;
+    bankLsb_[channel] = 0;
+    programs_[channel] = 0;
     if (oldId >= 0) releaseSoundFont(oldId);
     enabled_[channel] = true;
     return newId;
@@ -86,9 +92,12 @@ void SynthEngine::setActiveChannel(int channel) {
 void SynthEngine::note(int channel, int noteNumber, int velocity, bool on) {
     if (channel < 0 || channel >= 16 || noteNumber < 0 || noteNumber > 127) return;
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!synth_ || !enabled_[channel]) return;
-    if (on) fluid_synth_noteon(synth_, channel, noteNumber, std::clamp(velocity, 1, 127));
-    else fluid_synth_noteoff(synth_, channel, noteNumber);
+    if (!synth_) return;
+    if (on) {
+        if (enabled_[channel]) fluid_synth_noteon(synth_, channel, noteNumber, std::clamp(velocity, 1, 127));
+    } else {
+        fluid_synth_noteoff(synth_, channel, noteNumber);
+    }
 }
 
 void SynthEngine::midiEvent(int status, int data1, int data2) {
@@ -101,15 +110,40 @@ void SynthEngine::midiEvent(int status, int data1, int data2) {
     if (!enabled_[channel]) {
         if (command == 0x80 || (command == 0x90 && b == 0))
             fluid_synth_noteoff(synth_, channel, a);
+        else if (command == 0xB0 && a == 64 && b < 64)
+            fluid_synth_cc(synth_, channel, a, b);
         return;
     }
     switch (command) {
-        case 0x80: fluid_synth_noteoff(synth_, channel, a); break;
-        case 0x90: if (b == 0) fluid_synth_noteoff(synth_, channel, a); else fluid_synth_noteon(synth_, channel, a, b); break;
-        case 0xB0: fluid_synth_cc(synth_, channel, a, b); break;
-        case 0xC0: fluid_synth_program_change(synth_, channel, a); break;
-        case 0xE0: fluid_synth_pitch_bend(synth_, channel, a | (b << 7)); break;
-        default: break;
+        case 0x80:
+            fluid_synth_noteoff(synth_, channel, a);
+            break;
+        case 0x90:
+            if (b == 0) fluid_synth_noteoff(synth_, channel, a);
+            else fluid_synth_noteon(synth_, channel, a, b);
+            break;
+        case 0xB0:
+            fluid_synth_cc(synth_, channel, a, b);
+            if (a == 0) bankMsb_[channel] = b;
+            else if (a == 32) bankLsb_[channel] = b;
+            else break;
+            if (soundfontIds_[channel] >= 0) {
+                const int bank = (bankMsb_[channel] << 7) | bankLsb_[channel];
+                fluid_synth_program_select(synth_, channel, soundfontIds_[channel], bank, programs_[channel]);
+            }
+            break;
+        case 0xC0:
+            if (soundfontIds_[channel] >= 0 &&
+                fluid_synth_program_select(synth_, channel, soundfontIds_[channel],
+                    (bankMsb_[channel] << 7) | bankLsb_[channel], a) == FLUID_OK) {
+                programs_[channel] = a;
+            }
+            break;
+        case 0xE0:
+            fluid_synth_pitch_bend(synth_, channel, a | (b << 7));
+            break;
+        default:
+            break;
     }
 }
 
@@ -126,6 +160,9 @@ void SynthEngine::shutdown() {
     if (settings_) { delete_fluid_settings(settings_); settings_ = nullptr; }
     soundfontIds_.fill(FLUID_FAILED);
     enabled_.fill(true);
+    bankMsb_.fill(0);
+    bankLsb_.fill(0);
+    programs_.fill(0);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;

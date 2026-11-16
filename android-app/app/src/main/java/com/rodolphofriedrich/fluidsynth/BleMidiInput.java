@@ -33,6 +33,7 @@ public final class BleMidiInput implements AutoCloseable {
     private final Listener listener;
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
     private final Map<MidiInputDevice, Set<Integer>> activeNotesByDevice = new ConcurrentHashMap<>();
+    private final Map<MidiInputDevice, Set<Integer>> sustainChannelsByDevice = new ConcurrentHashMap<>();
     private volatile boolean started;
     private volatile boolean closed;
     private volatile boolean scanningEnabled = false;
@@ -177,6 +178,7 @@ public final class BleMidiInput implements AutoCloseable {
         }
         connectedDevices.add(device);
         activeNotesByDevice.putIfAbsent(device, ConcurrentHashMap.newKeySet());
+        sustainChannelsByDevice.putIfAbsent(device, ConcurrentHashMap.newKeySet());
         device.setTimestampSchedulingMode(BleMidiTimestampCoordinator.SchedulingMode.LOW_LATENCY);
         device.setMaxScheduleAheadMs(LOW_LATENCY_SCHEDULE_AHEAD_MS);
         device.setOnMidiInputEventListener(new OnMidiInputEventListener() {
@@ -197,6 +199,13 @@ public final class BleMidiInput implements AutoCloseable {
                 }
             }
             @Override public void onMidiControlChange(MidiInputDevice sender, int channel, int function, int value) {
+                if (function == 64) {
+                    Set<Integer> sustain = sustainChannelsByDevice.get(sender);
+                    if (sustain != null) {
+                        if (value >= 64) sustain.add(channel);
+                        else sustain.remove(channel);
+                    }
+                }
                 send(0xB0 | channel, function, value);
             }
             @Override public void onMidiProgramChange(MidiInputDevice sender, int channel, int program) {
@@ -250,12 +259,17 @@ public final class BleMidiInput implements AutoCloseable {
     }
 
     private void releaseDeviceNotes(MidiInputDevice device) {
+        Set<Integer> sustain = sustainChannelsByDevice.remove(device);
+        if (sustain != null) {
+            for (Integer channel : sustain) send(0xB0 | channel, 64, 0);
+        }
         Set<Integer> active = activeNotesByDevice.remove(device);
-        if (active == null) return;
-        for (Integer encoded : active) {
-            int channel = encoded / 128;
-            int note = encoded % 128;
-            send(0x80 | channel, note, 0);
+        if (active != null) {
+            for (Integer encoded : active) {
+                int channel = encoded / 128;
+                int note = encoded % 128;
+                send(0x80 | channel, note, 0);
+            }
         }
     }
 
@@ -284,5 +298,6 @@ public final class BleMidiInput implements AutoCloseable {
         }
         connectedDevices.clear();
         activeNotesByDevice.clear();
+        sustainChannelsByDevice.clear();
     }
 }

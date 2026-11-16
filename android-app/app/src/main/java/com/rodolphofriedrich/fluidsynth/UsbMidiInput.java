@@ -43,9 +43,11 @@ public final class UsbMidiInput implements AutoCloseable {
         }
 
         @Override public void onDeviceRemoved(MidiDeviceInfo info) {
+            boolean wasSelected = info.getId() == selectedDeviceId;
             closeDevice(info.getId());
+            if (wasSelected) selectedDeviceId = -1;
             publishDevices();
-            listener.onDeviceStatus("Controlador desconectado");
+            if (wasSelected) listener.onDeviceStatus("Controlador desconectado");
         }
     };
 
@@ -100,8 +102,9 @@ public final class UsbMidiInput implements AutoCloseable {
                     return;
                 }
 
-                MidiReceiver receiver = new MidiStreamParser((status, d1, d2) ->
+                MidiStreamParser parser = new MidiStreamParser((status, d1, d2) ->
                         listener.onMidiMessage(status, d1, d2));
+                MidiReceiver receiver = parser;
                 MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
                 if (output == null) {
                     closeMidiDeviceQuietly(device);
@@ -109,7 +112,7 @@ public final class UsbMidiInput implements AutoCloseable {
                     return;
                 }
                 output.connect(receiver);
-                openDevices.put(deviceId, new OpenDevice(device, output));
+                openDevices.put(deviceId, new OpenDevice(device, output, parser));
                 listener.onDeviceStatus("Controlador conectado: " + device.getInfo().getProperties()
                         .getString(MidiDeviceInfo.PROPERTY_NAME));
             } catch (Exception error) {
@@ -133,6 +136,7 @@ public final class UsbMidiInput implements AutoCloseable {
     public int getSelectedDeviceId() { return selectedDeviceId; }
 
     public void selectDevice(int deviceId) {
+        if (selectedDeviceId == deviceId) return;
         selectedDeviceId = deviceId;
         for (Integer id : openDevices.keySet().toArray(new Integer[0])) closeDevice(id);
         if (deviceId < 0) {
@@ -162,6 +166,7 @@ public final class UsbMidiInput implements AutoCloseable {
     private void closeDevice(int id) {
         OpenDevice opened = openDevices.remove(id);
         if (opened == null) return;
+        opened.parser.releaseActiveNotes();
         try { opened.output.close(); } catch (IOException ignored) {}
         closeMidiDeviceQuietly(opened.device);
         // Device-specific note cleanup is handled by the MIDI source parser; do not
@@ -178,9 +183,11 @@ public final class UsbMidiInput implements AutoCloseable {
     private static final class OpenDevice {
         final MidiDevice device;
         final MidiOutputPort output;
-        OpenDevice(MidiDevice device, MidiOutputPort output) {
+        final MidiStreamParser parser;
+        OpenDevice(MidiDevice device, MidiOutputPort output, MidiStreamParser parser) {
             this.device = device;
             this.output = output;
+            this.parser = parser;
         }
     }
 
@@ -196,8 +203,34 @@ public final class UsbMidiInput implements AutoCloseable {
         private int expectedData;
         private int dataCount;
         private final int[] data = new int[2];
+        private final boolean[][] activeNotes = new boolean[16][128];
+        private final boolean[] sustainActive = new boolean[16];
 
         MidiStreamParser(MessageSink sink) { this.sink = sink; }
+
+        void releaseActiveNotes() {
+            for (int channel = 0; channel < 16; channel++) {
+                if (sustainActive[channel]) {
+                    sink.accept(0xB0 | channel, 64, 0);
+                    sustainActive[channel] = false;
+                }
+                for (int note = 0; note < 128; note++) {
+                    if (activeNotes[channel][note]) {
+                        sink.accept(0x80 | channel, note, 0);
+                        activeNotes[channel][note] = false;
+                    }
+                }
+            }
+        }
+
+        private void dispatch(int status, int d1, int d2) {
+            int command = status & 0xF0;
+            int channel = status & 0x0F;
+            if (command == 0x90 && d2 > 0) activeNotes[channel][d1] = true;
+            else if (command == 0x80 || (command == 0x90 && d2 == 0)) activeNotes[channel][d1] = false;
+            else if (command == 0xB0 && d1 == 64) sustainActive[channel] = d2 >= 64;
+            sink.accept(status, d1, d2);
+        }
 
         @Override public void onSend(byte[] msg, int offset, int count, long timestamp)
                 throws IOException {
@@ -221,7 +254,7 @@ public final class UsbMidiInput implements AutoCloseable {
                     }
                     if (dataCount < data.length) data[dataCount++] = value;
                     if (dataCount == expectedData) {
-                        sink.accept(pendingStatus, data[0], expectedData > 1 ? data[1] : 0);
+                        dispatch(pendingStatus, data[0], expectedData > 1 ? data[1] : 0);
                         beginMessage(runningStatus);
                     }
                 }
