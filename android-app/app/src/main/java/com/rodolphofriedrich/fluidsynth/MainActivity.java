@@ -318,7 +318,7 @@ public class MainActivity extends Activity {
         initialized = nativeInit();
         if (initialized) {
             soundFontManager = new SoundFontManager(this);
-            trackManager = new TrackManager(new TrackManager.Engine() {
+            trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
                 @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
@@ -353,6 +353,33 @@ public class MainActivity extends Activity {
             bleMidiInput.start();
             updateBleSearchButton();
         } else status.setText("Falha ao iniciar o motor FluidSynth.");
+    }
+
+
+    private String compactTrackName(String name) {
+        if (name == null || name.trim().isEmpty()) return "SF2 CARREGADO";
+        String clean = name.replaceFirst("(?i)\\.sf2$", "").trim();
+        return clean.length() > 17 ? clean.substring(0, 16) + "…" : clean;
+    }
+
+    private String getSoundFontDisplayName(android.net.Uri uri) {
+        android.database.Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri,
+                    new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) {
+                    String name = cursor.getString(index);
+                    if (name != null && !name.trim().isEmpty()) return name;
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        String fallback = uri.getLastPathSegment();
+        return fallback == null || fallback.trim().isEmpty() ? "SoundFont.sf2" : fallback;
     }
 
     private String noteName(int note) {
@@ -420,8 +447,9 @@ public class MainActivity extends Activity {
         loader.execute(() -> {
             String message;
             try {
+                String displayName = getSoundFontDisplayName(uri);
                 File file = soundFontManager.importForTrack(uri, channel);
-                boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), file.getName());
+                boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), displayName);
                 message = loaded ? "CH " + (channel + 1) + " carregado: " + file.getName()
                         : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
             } catch (Exception error) {
@@ -467,10 +495,12 @@ public class MainActivity extends Activity {
         trackEnableButton.setText("CH " + (channel + 1) + (selected.isEnabled() ? " — ATIVA" : " — MUTADA"));
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
-            String state = item.hasSoundFont() ? "SF2" : "VAZIA";
+            String state = item.hasSoundFont() ? compactTrackName(item.getSoundFontName()) : "SEM SF2";
             if (!item.isEnabled()) state += " • MUTE";
             String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);
+            trackButtons[i].setMaxLines(2);
+            trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
             trackButtons[i].setTextColor(TEXT);
             trackButtons[i].setBackground(rounded(i == channel ? ACCENT : CONTROL, 10,
                     i == channel ? ACCENT : Color.rgb(55, 69, 94)));
