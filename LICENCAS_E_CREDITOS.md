@@ -23,7 +23,7 @@ A configuração Gradle declara:
 | `jp.kshoji:ble-midi` | `0.0.21` | Apache License 2.0 | [BLE-MIDI-for-Android](https://github.com/kshoji/BLE-MIDI-for-Android) |
 | `javax.sound.midi-for-Android` | Dependência transitiva da biblioteca BLE MIDI; versão resolvida pelo metadado publicado | Apache License 2.0 | [javax.sound.midi-for-Android](https://github.com/kshoji/javax.sound.midi-for-Android) |
 
-Os projetos upstream identificam suas licenças como Apache License 2.0. Consulte os arquivos LICENSE dos respectivos repositórios para o texto integral e eventuais avisos adicionais.
+Os dois projetos upstream identificam suas licenças como Apache License 2.0. O texto integral dessa licença foi incluído em [android-app/licenses/Apache-2.0.txt](android-app/licenses/Apache-2.0.txt). Os avisos e créditos específicos de cada biblioteca devem ser preservados conforme as respectivas distribuições.
 
 - https://github.com/kshoji/BLE-MIDI-for-Android/blob/develop/LICENSE
 - https://github.com/kshoji/javax.sound.midi-for-Android
@@ -46,7 +46,7 @@ O usuário ou distribuidor deve verificar os direitos autorais e os termos de us
 
 ## 6. Manutenção deste inventário
 
-Este inventário foi preparado a partir do arquivo LICENSE do repositório e das dependências declaradas em `android-app/app/build.gradle` e `android-app/settings.gradle`.
+Este inventário foi preparado a partir do arquivo LICENSE do repositório, das dependências declaradas em `android-app/app/build.gradle` e `android-app/settings.gradle`, e dos arquivos de licença dos projetos upstream.
 
 Quando uma dependência for adicionada, removida ou atualizada:
 
