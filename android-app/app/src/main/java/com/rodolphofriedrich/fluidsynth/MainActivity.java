@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
+import android.media.midi.MidiDeviceInfo;
 import android.os.Bundle;
 import android.os.Process;
 import android.view.Gravity;
@@ -16,6 +17,8 @@ import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +48,8 @@ public class MainActivity extends Activity {
     private Button trackEnableButton;
     private Button bleSearchButton;
     private Spinner trackSelector;
+    private Spinner deviceSelector;
+    private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
     private TrackManager trackManager;
     private SoundFontManager soundFontManager;
     private boolean initialized;
@@ -62,8 +67,24 @@ public class MainActivity extends Activity {
         status.setText("FluidSynth — selecione um arquivo SF2");
         status.setTextSize(18);
         root.addView(status);
+        TextView deviceLabel = new TextView(this);
+        deviceLabel.setText("CONTROLADOR USB / MIDI INTERNO");
+        root.addView(deviceLabel);
+        deviceSelector = new Spinner(this);
+        deviceSelector.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Nenhum controlador selecionado"}));
+        deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                if (usbMidiInput == null) return;
+                if (position == 0) usbMidiInput.selectDevice(-1);
+                else if (position - 1 < availableMidiDevices.size())
+                    usbMidiInput.selectDevice(availableMidiDevices.get(position - 1).getId());
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        root.addView(deviceSelector);
         usbStatus = new TextView(this);
-        usbStatus.setText("USB MIDI: aguardando controlador");
+        usbStatus.setText("MIDI: aguardando controlador");
         root.addView(usbStatus);
         bleStatus = new TextView(this);
         bleStatus.setText("BLE MIDI: aguardando busca");
@@ -161,8 +182,11 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) usbStatus.setText("USB MIDI: " + message);
+                        if (!isFinishing() && !isDestroyed()) usbStatus.setText("MIDI: " + message);
                     });
+                }
+                @Override public void onDevicesChanged(List<MidiDeviceInfo> devices) {
+                    runOnUiThread(() -> updateDeviceSelector(devices));
                 }
             });
             usbMidiInput.start();
@@ -262,6 +286,23 @@ public class MainActivity extends Activity {
                 }
             });
         });
+    }
+
+    private void updateDeviceSelector(List<MidiDeviceInfo> devices) {
+        if (deviceSelector == null || isFinishing() || isDestroyed()) return;
+        availableMidiDevices.clear();
+        availableMidiDevices.addAll(devices);
+        List<String> labels = new ArrayList<>();
+        labels.add("Selecione um controlador MIDI...");
+        for (MidiDeviceInfo info : devices) {
+            String name = info.getProperties().getString(MidiDeviceInfo.PROPERTY_NAME);
+            if (name == null || name.trim().isEmpty()) name = "Dispositivo MIDI " + info.getId();
+            String type = info.getType() == MidiDeviceInfo.TYPE_USB ? "USB" : "Interno/virtual";
+            labels.add(type + " — " + name);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, labels);
+        deviceSelector.setAdapter(adapter);
+        deviceSelector.setSelection(0);
     }
 
     private void updateTrackControls() {
