@@ -33,12 +33,33 @@ public final class BleMidiInput implements AutoCloseable {
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
     private volatile boolean started;
     private volatile boolean closed;
+    private volatile boolean scanningEnabled = true;
     private BleMidiCentralProvider provider;
 
     public BleMidiInput(Activity activity, Listener listener) {
         this.activity = activity;
         this.listener = listener;
     }
+
+    public synchronized void setScanningEnabled(boolean enabled) {
+        scanningEnabled = enabled;
+        BleMidiCentralProvider current = provider;
+        if (current == null || closed) return;
+        try {
+            if (enabled && connectedDevices.isEmpty()) {
+                current.startScanDevice(0);
+                listener.onDeviceStatus("Procurando controladores BLE MIDI...");
+            } else if (!enabled) {
+                current.stopScanDevice();
+                listener.onDeviceStatus("Busca BLE pausada");
+            }
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Falha ao alterar busca BLE", error);
+            listener.onDeviceStatus("Não foi possível alterar a busca BLE MIDI");
+        }
+    }
+
+    public boolean isScanningEnabled() { return scanningEnabled; }
 
     public synchronized void start() {
         if (started || closed) return;
@@ -119,8 +140,10 @@ public final class BleMidiInput implements AutoCloseable {
                     // No BLE MIDI output endpoint is opened by this app.
                 }
             });
-            provider.startScanDevice(0);
-            listener.onDeviceStatus("Procurando controladores BLE MIDI...");
+            if (scanningEnabled) {
+                provider.startScanDevice(0);
+                listener.onDeviceStatus("Procurando controladores BLE MIDI...");
+            } else listener.onDeviceStatus("Busca BLE desativada");
         } catch (RuntimeException error) {
             Log.e(TAG, "Não foi possível iniciar o driver BLE MIDI", error);
             provider = null;
@@ -185,7 +208,7 @@ public final class BleMidiInput implements AutoCloseable {
 
     private void restartScanIfNeeded() {
         BleMidiCentralProvider current = provider;
-        if (!closed && connectedDevices.isEmpty() && current != null) {
+        if (!closed && scanningEnabled && connectedDevices.isEmpty() && current != null) {
             try {
                 current.startScanDevice(0);
                 listener.onDeviceStatus("Procurando controlador BLE MIDI novamente...");
