@@ -217,8 +217,12 @@ public final class BleMidiInput implements AutoCloseable {
                 send(sender, 0xE0 | channel, amount & 0x7F, (amount >> 7) & 0x7F);
             }
             @Override public void onMidiSystemExclusive(MidiInputDevice sender, byte[] data) {}
-            @Override public void onMidiPolyphonicAftertouch(MidiInputDevice sender, int channel, int note, int pressure) {}
-            @Override public void onMidiChannelAftertouch(MidiInputDevice sender, int channel, int pressure) {}
+            @Override public void onMidiPolyphonicAftertouch(MidiInputDevice sender, int channel, int note, int pressure) {
+                send(sender, 0xA0 | channel, note, pressure);
+            }
+            @Override public void onMidiChannelAftertouch(MidiInputDevice sender, int channel, int pressure) {
+                send(sender, 0xD0 | channel, pressure, 0);
+            }
             @Override public void onMidiTimeCodeQuarterFrame(MidiInputDevice sender, int timing) {}
             @Override public void onMidiSongSelect(MidiInputDevice sender, int song) {}
             @Override public void onMidiSongPositionPointer(MidiInputDevice sender, int position) {}
