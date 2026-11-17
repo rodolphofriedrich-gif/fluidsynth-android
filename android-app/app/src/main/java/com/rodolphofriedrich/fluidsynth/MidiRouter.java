@@ -11,7 +11,12 @@ import java.util.Map;
  * cannot leave notes held in the shared FluidSynth instance.
  */
 public final class MidiRouter implements AutoCloseable {
+    public interface Listener {
+        void onProgramChange(int channel, int bank, int program);
+    }
+
     private final NativeBridge nativeBridge;
+    private final Listener listener;
     private final Map<Object, SourceState> sources = new IdentityHashMap<>();
     private final int[][] noteOwners = new int[16][128];
     @SuppressWarnings("unchecked")
@@ -20,10 +25,15 @@ public final class MidiRouter implements AutoCloseable {
     private boolean closed;
 
     public MidiRouter(NativeBridge nativeBridge) {
+        this(nativeBridge, null);
+    }
+
+    public MidiRouter(NativeBridge nativeBridge, Listener listener) {
         if (nativeBridge == null) {
             throw new IllegalArgumentException("NativeBridge nulo");
         }
         this.nativeBridge = nativeBridge;
+        this.listener = listener;
         for (int channel = 0; channel < sustainOwners.length; channel++) {
             sustainOwners[channel] = new IdentityHashMap<>();
         }
@@ -77,6 +87,14 @@ public final class MidiRouter implements AutoCloseable {
         if (command == 0xB0 && first == 121) {
             clearChannelSustain(channel);
             nativeBridge.nativeMidiEvent(status, first, second);
+            return;
+        }
+
+        if (command == 0xC0) {
+            boolean applied = nativeBridge.nativeMidiEvent(status, first, second);
+            if (applied && listener != null) {
+                listener.onProgramChange(channel, nativeBridge.nativeGetTrackBank(channel), first);
+            }
             return;
         }
 
