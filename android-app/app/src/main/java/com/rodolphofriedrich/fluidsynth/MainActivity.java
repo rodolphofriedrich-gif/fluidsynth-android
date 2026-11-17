@@ -60,6 +60,9 @@ public class MainActivity extends Activity {
     private Button[] trackButtons = new Button[16];
     private SeekBar polyphonySeekBar;
     private TextView polyphonyValue;
+    private SeekBar velocitySeekBar;
+    private TextView velocityValue;
+    private int currentVelocity = 100;
     private Spinner deviceSelector;
     private int currentPolyphony = 512;
     private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
@@ -133,6 +136,10 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(16, 48, 16, 24);
         root.setBackgroundColor(BG);
+        LinearLayout settingsRoot = new LinearLayout(this);
+        settingsRoot.setOrientation(LinearLayout.VERTICAL);
+        settingsRoot.setPadding(16, 24, 16, 24);
+        settingsRoot.setBackgroundColor(BG);
 
         LinearLayout header = panel(root);
         TextView title = new TextView(this);
@@ -154,7 +161,7 @@ public class MainActivity extends Activity {
         operationStatus.setPadding(0, 4, 0, 0);
         header.addView(operationStatus);
 
-        LinearLayout controllerPanel = panel(root);
+        LinearLayout controllerPanel = panel(settingsRoot);
         controllerPanel.addView(sectionLabel("CONTROLADOR MIDI"));
         deviceSelector = new Spinner(this);
         deviceSelector.setPadding(4, 4, 4, 4);
@@ -228,7 +235,7 @@ public class MainActivity extends Activity {
         }
         tracksPanel.addView(trackGrid);
 
-        LinearLayout audioPanel = panel(root);
+        LinearLayout audioPanel = panel(settingsRoot);
         audioPanel.addView(sectionLabel("POLIFONIA"));
         TextView polyphonyHint = new TextView(this);
         polyphonyHint.setText("Limite máximo de vozes simultâneas do sintetizador");
@@ -266,7 +273,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        LinearLayout actionsPanel = panel(root);
+        LinearLayout actionsPanel = panel(settingsRoot);
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
         styleButton(trackEnableButton, CONTROL, TEXT, 48, 14);
@@ -313,6 +320,33 @@ public class MainActivity extends Activity {
         keyboardHint.setTextSize(12);
         keyboardHint.setPadding(0, 3, 0, 8);
         keyboardPanel.addView(keyboardHint);
+        LinearLayout velocityPanel = panel(keyboardPanel);
+        velocityPanel.addView(sectionLabel("VELOCITY"));
+        velocityValue = new TextView(this);
+        velocityValue.setText("Intensidade: " + currentVelocity);
+        velocityValue.setTextColor(TEXT);
+        velocityValue.setTextSize(15);
+        velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        velocityPanel.addView(velocityValue);
+        velocitySeekBar = new SeekBar(this);
+        velocitySeekBar.setMax(126);
+        velocitySeekBar.setProgress(Math.max(0, currentVelocity - 1));
+        velocitySeekBar.setContentDescription("Velocity MIDI, de 1 a 127");
+        velocityPanel.addView(velocitySeekBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int)(42 * getResources().getDisplayMetrics().density)));
+        velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                currentVelocity = progress + 1;
+                velocityValue.setText("Intensidade: " + currentVelocity);
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                VelocitySettingsStore.save(MainActivity.this, currentVelocity);
+                operationStatus.setText("Velocity definida para " + currentVelocity + ".");
+            }
+        });
+
         int[] notes = {60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79};
         for (int row = 0; row < 2; row++) {
             LinearLayout line = new LinearLayout(this);
@@ -344,7 +378,7 @@ public class MainActivity extends Activity {
                         if (!internalKeyboardSelected) return true;
                         int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
                         pressedChannel[0] = channel;
-                        nativeNoteOnTrack(channel, note, 100, true);
+                        nativeNoteOnTrack(channel, note, currentVelocity, true);
                         v.setBackground(rounded(ACCENT, 10, 0));
                         return true;
                     }
@@ -361,17 +395,63 @@ public class MainActivity extends Activity {
             }
         }
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
-        scrollView.setClipToPadding(false);
-        scrollView.setPadding(0, 0, 0, 0);
-        scrollView.addView(root);
-        setContentView(scrollView);
+        ScrollView midiScroll = new ScrollView(this);
+        midiScroll.setFillViewport(true);
+        midiScroll.setClipToPadding(false);
+        midiScroll.addView(root);
+        ScrollView settingsScroll = new ScrollView(this);
+        settingsScroll.setFillViewport(true);
+        settingsScroll.setClipToPadding(false);
+        settingsScroll.addView(settingsRoot);
+        settingsScroll.setVisibility(View.GONE);
+
+        LinearLayout screenHost = new LinearLayout(this);
+        screenHost.setOrientation(LinearLayout.VERTICAL);
+        screenHost.setBackgroundColor(BG);
+        screenHost.addView(midiScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        LinearLayout navigation = new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        navigation.setPadding(12, 8, 12, 8);
+        navigation.setBackground(rounded(PANEL, 14, Color.rgb(42, 54, 75)));
+        Button midiTab = new Button(this);
+        midiTab.setText("MIDI");
+        midiTab.setAllCaps(false);
+        midiTab.setTextColor(Color.WHITE);
+        midiTab.setBackground(rounded(ACCENT, 10, 0));
+        Button settingsTab = new Button(this);
+        settingsTab.setText("CONFIGURAÇÕES");
+        settingsTab.setAllCaps(false);
+        settingsTab.setTextColor(TEXT);
+        settingsTab.setBackground(rounded(CONTROL, 10, 0));
+        LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
+                (int)(48 * getResources().getDisplayMetrics().density), 1f);
+        tabParams.setMargins(4, 0, 4, 0);
+        navigation.addView(midiTab, tabParams);
+        navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
+        midiTab.setOnClickListener(v -> {
+            ScreenNavigator.show(midiScroll, settingsScroll, false);
+            midiTab.setBackground(rounded(ACCENT, 10, 0));
+            settingsTab.setBackground(rounded(CONTROL, 10, 0));
+        });
+        settingsTab.setOnClickListener(v -> {
+            ScreenNavigator.show(midiScroll, settingsScroll, true);
+            settingsTab.setBackground(rounded(ACCENT, 10, 0));
+            midiTab.setBackground(rounded(CONTROL, 10, 0));
+        });
+        screenHost.addView(navigation, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        setContentView(screenHost);
 
         initialized = nativeInit();
         if (initialized) {
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / 8) - 1);
+            currentVelocity = VelocitySettingsStore.load(this);
+            velocitySeekBar.setProgress(currentVelocity - 1);
+            velocityValue.setText("Intensidade: " + currentVelocity);
             if (!nativeSetPolyphony(currentPolyphony)) {
                 operationStatus.setText("Não foi possível restaurar a polifonia salva.");
             }
