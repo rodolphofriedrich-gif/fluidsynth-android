@@ -155,11 +155,16 @@ public final class MidiRouter implements AutoCloseable {
         return Math.max(0, Math.min(127, value));
     }
 
+    /** Sends Note Off and releases sustain for every source without closing the router. */
+    public synchronized void panic() {
+        Object[] activeSources = sources.keySet().toArray();
+        for (Object source : activeSources) releaseSource(source);
+    }
+
     @Override
     public synchronized void close() {
         if (closed) return;
-        Object[] activeSources = sources.keySet().toArray();
-        for (Object source : activeSources) releaseSource(source);
+        panic();
         closed = true;
     }
 
