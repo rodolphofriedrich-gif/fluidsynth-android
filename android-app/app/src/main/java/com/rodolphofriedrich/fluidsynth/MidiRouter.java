@@ -162,7 +162,7 @@ public final class MidiRouter implements AutoCloseable {
     private void clearChannelNotes(int channel) {
         for (SourceState state : sources.values()) {
             for (int note = 0; note < 128; note++) {
-                state.activeNotes[channel][note] = false;
+                state.activeNotes[channel][note] = 0;
             }
         }
         for (int note = 0; note < 128; note++) {
