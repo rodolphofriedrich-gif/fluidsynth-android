@@ -1,5 +1,6 @@
 #include <jni.h>
 #include "synth_engine.h"
+#include "jni_string_utils.h"
 #include <string>
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -29,13 +30,43 @@ Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeLoadTrack(JNIEnv* env, 
 }
 extern "C" JNIEXPORT jobjectArray JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeListPresets(JNIEnv* env, jobject, jstring path) {
- if (!path) return nullptr; const char* chars=env->GetStringUTFChars(path,nullptr); if(!chars) return nullptr;
- std::string value(chars); env->ReleaseStringUTFChars(path,chars); auto presets=SynthEngine::instance().listPresets(value);
- jclass cls=env->FindClass("java/lang/String"); jobjectArray array=env->NewObjectArray((jsize)presets.size(),cls,nullptr);
- for(jsize i=0;i<(jsize)presets.size();++i){ const auto& p=presets[(size_t)i];
- std::string row=std::to_string(p.bank)+"|"+std::to_string(p.program)+"|"+p.name;
- jstring item=env->NewStringUTF(row.c_str()); env->SetObjectArrayElement(array,i,item); env->DeleteLocalRef(item); }
- return array;
+    if (!path) return nullptr;
+
+    const char* chars = env->GetStringUTFChars(path, nullptr);
+    if (!chars) return nullptr;
+    std::string value(chars);
+    env->ReleaseStringUTFChars(path, chars);
+
+    const auto presets = SynthEngine::instance().listPresets(value);
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (!stringClass) return nullptr;
+
+    jobjectArray array = env->NewObjectArray(
+            static_cast<jsize>(presets.size()), stringClass, nullptr);
+    if (!array) {
+        env->DeleteLocalRef(stringClass);
+        return nullptr;
+    }
+
+    for (jsize i = 0; i < static_cast<jsize>(presets.size()); ++i) {
+        const auto& preset = presets[static_cast<size_t>(i)];
+        const std::string row = std::to_string(preset.bank) + "|"
+                + std::to_string(preset.program) + "|" + preset.name;
+        jstring item = newJStringFromUtf8(env, row);
+        if (!item) {
+            env->DeleteLocalRef(stringClass);
+            return nullptr;
+        }
+        env->SetObjectArrayElement(array, i, item);
+        env->DeleteLocalRef(item);
+        if (env->ExceptionCheck()) {
+            env->DeleteLocalRef(stringClass);
+            return nullptr;
+        }
+    }
+
+    env->DeleteLocalRef(stringClass);
+    return array;
 }
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSelectTrackPreset(JNIEnv*, jobject, jint channel, jint bank, jint program) {
