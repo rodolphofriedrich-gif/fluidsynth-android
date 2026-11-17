@@ -494,7 +494,17 @@ public class MainActivity extends Activity {
 
         initialized = NativeEngineLifecycle.acquire(createNativeEngineBridge());
         if (initialized) {
-            midiRouter = new MidiRouter(nativeBridge);
+            midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && trackManager != null) {
+                            Track track = trackManager.get(channel);
+                            if (track.hasSoundFont()) {
+                                trackManager.updatePreset(channel, bank, program,
+                                        "Programa MIDI " + (program + 1));
+                                updateTrackControls();
+                            }
+                        }
+                    }));
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
             if (nativeBridge.nativeSetPolyphony(currentPolyphony)) {
