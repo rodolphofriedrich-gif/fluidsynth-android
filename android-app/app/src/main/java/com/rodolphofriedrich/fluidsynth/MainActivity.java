@@ -90,6 +90,13 @@ public class MainActivity extends Activity {
     private static final int TEXT = Color.rgb(239, 244, 255);
     private static final int MUTED = Color.rgb(164, 178, 201);
 
+    private NativeEngineLifecycle.Bridge createNativeEngineBridge() {
+        return new NativeEngineLifecycle.Bridge() {
+            @Override public boolean initialize() { return nativeInit(); }
+            @Override public void shutdown() { nativeShutdown(); }
+        };
+    }
+
     private GradientDrawable rounded(int color, int radiusDp, int strokeColor) {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(color);
@@ -496,7 +503,7 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         setContentView(screenHost);
 
-        initialized = nativeInit();
+        initialized = NativeEngineLifecycle.acquire(createNativeEngineBridge());
         if (initialized) {
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
@@ -599,7 +606,7 @@ public class MainActivity extends Activity {
     private void startAudio() {
         int min = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
         if (min <= 0) {
-            status.setText("Dispositivo não oferece saída PCM float.");
+            operationStatus.setText("Dispositivo não oferece saída PCM float.");
             return;
         }
         int bufferBytes = Math.max(min, FRAMES * 2 * 4 * 4);
@@ -643,7 +650,7 @@ public class MainActivity extends Activity {
                 if (outputFailed) {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && status != null) {
-                            status.setText("A saída de áudio foi interrompida. Verifique o dispositivo de áudio.");
+                            operationStatus.setText("A saída de áudio foi interrompida. Verifique o dispositivo de áudio.");
                         }
                     });
                 }
@@ -652,7 +659,7 @@ public class MainActivity extends Activity {
         } catch (Exception error) {
             if (candidate != null) candidate.release();
             track = null;
-            status.setText("Falha na saída de áudio: " + error.getMessage());
+            operationStatus.setText("Falha na saída de áudio: " + error.getMessage());
         }
     }
 
@@ -880,6 +887,9 @@ public class MainActivity extends Activity {
             if (devices.get(i).getId() == previousId) { selectedPosition = i + 1; break; }
         }
         deviceSelector.setSelection(selectedPosition, false);
+        // setSelection(..., false) suppresses the listener. Keep keyboard routing
+        // synchronized when a selected USB device disappears from the list.
+        internalKeyboardSelected = selectedPosition == 0;
     }
 
     private void updateTrackControls() {
@@ -953,7 +963,7 @@ public class MainActivity extends Activity {
         loader.shutdown();
         final Thread pendingAudioThread = audioThread;
         final AudioTrack pendingAudioTrack = track;
-        final boolean shutdownEngine = initialized;
+        final boolean releaseEngine = initialized;
         initialized = false;
 
         Thread cleanup = new Thread(() -> {
@@ -980,7 +990,7 @@ public class MainActivity extends Activity {
                 }
                 audioThread = null;
                 track = null;
-                if (shutdownEngine) nativeShutdown();
+                if (releaseEngine) NativeEngineLifecycle.release(createNativeEngineBridge());
             } finally {
                 if (interrupted) Thread.currentThread().interrupt();
             }
