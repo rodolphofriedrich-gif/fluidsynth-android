@@ -61,7 +61,11 @@ public final class AudioEngine {
                     .setBufferSizeInBytes(bufferBytes)
                     .setTransferMode(AudioTrack.MODE_STREAM);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY);
+                try {
+                    builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY);
+                } catch (RuntimeException ignored) {
+                    // Keep the standard AudioTrack configuration if the device rejects the hint.
+                }
             }
             candidate = builder.build();
 
@@ -92,6 +96,7 @@ public final class AudioEngine {
         float[] buffer = new float[FRAMES_PER_BLOCK * 2];
         boolean outputFailed = false;
         int lastReportedUnderruns = 0;
+        int blocksSinceUnderrunCheck = 0;
 
         while (playing) {
             try {
@@ -108,12 +113,18 @@ public final class AudioEngine {
                     offset += written;
                 }
                 if (outputFailed) break;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    int underruns = activeTrack.getUnderrunCount();
-                    if (underruns > lastReportedUnderruns
-                            && (lastReportedUnderruns == 0 || underruns - lastReportedUnderruns >= 10)) {
-                        lastReportedUnderruns = underruns;
-                        reportUnderruns(underruns);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                        && ++blocksSinceUnderrunCheck >= 20) {
+                    blocksSinceUnderrunCheck = 0;
+                    try {
+                        int underruns = activeTrack.getUnderrunCount();
+                        if (underruns > lastReportedUnderruns
+                                && (lastReportedUnderruns == 0 || underruns - lastReportedUnderruns >= 10)) {
+                            lastReportedUnderruns = underruns;
+                            reportUnderruns(underruns);
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Diagnostics must never interrupt the audio render loop.
                     }
                 }
             } catch (Throwable error) {
@@ -186,7 +197,12 @@ public final class AudioEngine {
         synchronized (this) {
             current = outputTrack;
         }
-        return current == null ? -1 : current.getUnderrunCount();
+        if (current == null) return -1;
+        try {
+            return current.getUnderrunCount();
+        } catch (RuntimeException ignored) {
+            return -1;
+        }
     }
 
     private void reportUnderruns(int totalUnderruns) {
