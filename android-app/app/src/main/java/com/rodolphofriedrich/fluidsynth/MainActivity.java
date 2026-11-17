@@ -494,7 +494,11 @@ public class MainActivity extends Activity {
                 if (!isFinishing() && !isDestroyed()) {
                     updateTrackControls();
                     setTrackControlsEnabled(true);
-                    operationStatus.setText("Configurações das faixas restauradas.");
+                    int restoreFailures = trackManager.getRestoreFailureCount();
+                    operationStatus.setText(restoreFailures == 0
+                            ? "Configurações das faixas restauradas."
+                            : "Restauração concluída com " + restoreFailures
+                                    + " falha(s). Verifique os canais com SoundFont ausente ou inválido.");
                 }
             }));
             startAudio();
@@ -641,7 +645,7 @@ public class MainActivity extends Activity {
                 String displayName = getSoundFontDisplayName(uri);
                 File file = soundFontManager.importForTrack(uri, channel, displayName);
                 boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), displayName);
-                message = loaded ? "CH " + (channel + 1) + " carregado: " + file.getName()
+                message = loaded ? "CH " + (channel + 1) + " carregado: " + displayName
                         : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
             } catch (Exception error) {
                 message = "Erro ao importar SF2: " + error.getMessage();
