@@ -181,6 +181,21 @@ public final class TrackManager {
         }
     }
 
+    /** Updates persisted track state only when an external Program Change was applied. */
+    public synchronized boolean updatePresetFromMidi(int channel, int bank, int program, String name) {
+        checkChannel(channel);
+        Track track = tracks[channel];
+        if (!track.hasSoundFont()
+                || (track.getBank() == bank && track.getProgram() == program)) {
+            return false;
+        }
+        track.setPreset(bank, program, name);
+        preferences.edit().putInt("track_" + channel + "_bank", bank)
+                .putInt("track_" + channel + "_program", program)
+                .putString("track_" + channel + "_preset_name", name).apply();
+        return true;
+    }
+
     public void setEnabled(int channel, boolean enabled) {
         checkChannel(channel);
         synchronized (this) {
