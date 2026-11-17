@@ -336,7 +336,7 @@ public class MainActivity extends Activity {
         LinearLayout velocityPanel = panel(keyboardPanel);
         velocityPanel.addView(sectionLabel("VELOCITY"));
         velocityValue = new TextView(this);
-        velocityValue.setText("Intensidade: " + currentVelocity);
+        velocityValue.setText("Velocity: " + currentVelocity);
         velocityValue.setTextColor(TEXT);
         velocityValue.setTextSize(15);
         velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
@@ -668,7 +668,9 @@ public class MainActivity extends Activity {
             operationStatus.setText("Importe uma biblioteca SF2 primeiro.");
             return;
         }
-        java.util.Arrays.sort(files, java.util.Comparator.comparing(File::getName));
+        java.util.Arrays.sort(files, java.util.Comparator.comparing(
+                file -> soundFontManager.getDisplayName(file),
+                String.CASE_INSENSITIVE_ORDER));
         String[] names = new String[files.length];
         for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
         new android.app.AlertDialog.Builder(this).setTitle("Bibliotecas SoundFont")
