@@ -13,7 +13,7 @@ public:
  int loadSoundFontForChannel(const std::string& path,int channel);
  std::vector<SoundFontPreset> listPresets(const std::string& path);
  bool selectPreset(int channel,int bank,int program);
- void setTrackEnabled(int channel,bool enabled); void setActiveChannel(int channel);
+ void setTrackEnabled(int channel,bool enabled); void setActiveChannel(int channel); int getTrackBank(int channel);
  void note(int channel,int note,int velocity,bool on); void midiEvent(int status,int data1,int data2);
  void render(float* output,int frames); void shutdown();
 private:
