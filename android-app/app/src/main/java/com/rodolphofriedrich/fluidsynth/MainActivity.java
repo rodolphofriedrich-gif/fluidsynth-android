@@ -280,6 +280,7 @@ public class MainActivity extends Activity {
         LinearLayout channelActionsPanel = panel(root);
         selectInstrumentButton = new Button(this);
         selectInstrumentButton.setText("ESCOLHER INSTRUMENTO");
+        selectInstrumentButton.setContentDescription("Escolher ou trocar o instrumento do canal MIDI ativo");
         styleButton(selectInstrumentButton, CONTROL, TEXT, 48, 14);
         selectInstrumentButton.setOnClickListener(v -> {
             if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
@@ -768,6 +769,7 @@ public class MainActivity extends Activity {
 
     private void setTrackControlsEnabled(boolean enabled) {
         if (choose != null) choose.setEnabled(enabled);
+        if (selectInstrumentButton != null) selectInstrumentButton.setEnabled(enabled);
         if (trackEnableButton != null) trackEnableButton.setEnabled(enabled);
         if (trackButtons != null) {
             for (Button button : trackButtons) {
