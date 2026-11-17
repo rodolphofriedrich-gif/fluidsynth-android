@@ -2,16 +2,17 @@
 
 #include <jni.h>
 #include <cstdint>
+#include <cstddef>
 #include <string>
 
 inline std::u16string decodeUtf8ForJni(const std::string& input) {
     std::u16string output;
     output.reserve(input.size());
 
-    for (size_t i = 0; i < input.size();) {
+    for (std::size_t i = 0; i < input.size();) {
         const unsigned char first = static_cast<unsigned char>(input[i]);
         uint32_t codePoint = first;
-        size_t length = 1;
+        std::size_t length = 1;
         bool valid = true;
 
         if (first <= 0x7F) {
