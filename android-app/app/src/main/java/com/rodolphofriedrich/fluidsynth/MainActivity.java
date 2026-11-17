@@ -274,6 +274,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        LinearLayout channelActionsPanel = panel(root);
         LinearLayout actionsPanel = panel(settingsRoot);
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
@@ -285,7 +286,7 @@ public class MainActivity extends Activity {
             trackManager.setEnabled(channel, enabled);
             updateTrackControls();
         });
-        actionsPanel.addView(trackEnableButton);
+        channelActionsPanel.addView(trackEnableButton);
         bleSearchButton = new Button(this);
         bleSearchButton.setText("Ativar busca BLE");
         styleButton(bleSearchButton, CONTROL, TEXT, 48, 14);
