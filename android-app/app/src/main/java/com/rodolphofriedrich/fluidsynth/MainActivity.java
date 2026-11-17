@@ -402,7 +402,7 @@ public class MainActivity extends Activity {
                 line.addView(key, keyLp);
                 final int[] pressedChannel = {-1};
                 key.setOnTouchListener((v, event) -> {
-                    if (!initialized || !playing) return true;
+                    if (!initialized || audioEngine == null || !audioEngine.isPlaying()) return true;
                     int action = event.getActionMasked();
                     if (action == MotionEvent.ACTION_DOWN) {
                         if (!internalKeyboardSelected) return true;
@@ -877,7 +877,6 @@ public class MainActivity extends Activity {
         audioEngine = null;
         final boolean releaseEngine = initialized;
         initialized = false;
-
         Thread cleanup = new Thread(() -> {
             boolean interrupted = false;
             try {
