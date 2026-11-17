@@ -1,6 +1,7 @@
 package com.rodolphofriedrich.fluidsynth;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,6 +12,10 @@ import java.security.MessageDigest;
 
 /** Imports SoundFonts into private storage and deduplicates identical files across tracks. */
 public final class SoundFontManager {
+    public interface ProgressListener {
+        void onProgress(long copiedBytes, long totalBytes);
+    }
+
     private final Context context;
 
     public SoundFontManager(Context context) {
@@ -22,6 +27,11 @@ public final class SoundFontManager {
     }
 
     public File importForTrack(Uri uri, int channel, String displayName) throws Exception {
+        return importForTrack(uri, channel, displayName, null);
+    }
+
+    public File importForTrack(Uri uri, int channel, String displayName,
+                               ProgressListener progressListener) throws Exception {
         if (uri == null || channel < 0 || channel >= 16)
             throw new IllegalArgumentException("Arquivo ou canal inválido");
 
@@ -32,6 +42,10 @@ public final class SoundFontManager {
         String nonce = channel + "-" + System.nanoTime();
         File temp = new File(directory, "import-" + nonce + ".tmp");
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        long totalBytes = getContentLength(uri);
+        long copiedBytes = 0;
+        long lastReportedBytes = 0;
+        if (progressListener != null) progressListener.onProgress(0, totalBytes);
 
         try (InputStream in = context.getContentResolver().openInputStream(uri);
              FileOutputStream out = new FileOutputStream(temp)) {
@@ -41,8 +55,18 @@ public final class SoundFontManager {
             while ((count = in.read(buffer)) != -1) {
                 digest.update(buffer, 0, count);
                 out.write(buffer, 0, count);
+                copiedBytes += count;
+                if (progressListener != null
+                        && (copiedBytes - lastReportedBytes >= 262144
+                            || (totalBytes > 0 && copiedBytes >= totalBytes))) {
+                    progressListener.onProgress(copiedBytes, totalBytes);
+                    lastReportedBytes = copiedBytes;
+                }
             }
             out.getFD().sync();
+            if (progressListener != null && lastReportedBytes != copiedBytes) {
+                progressListener.onProgress(copiedBytes, totalBytes);
+            }
         } catch (Exception error) {
             temp.delete();
             throw error;
@@ -70,6 +94,15 @@ public final class SoundFontManager {
                     .edit().putString(target.getName(), displayName.trim()).apply();
         }
         return target;
+    }
+
+    private long getContentLength(Uri uri) {
+        try (AssetFileDescriptor descriptor =
+                     context.getContentResolver().openAssetFileDescriptor(uri, "r")) {
+            return descriptor == null ? -1 : descriptor.getLength();
+        } catch (Exception ignored) {
+            return -1;
+        }
     }
 
     /** Rejects unrelated files before they are registered as SoundFonts. */
