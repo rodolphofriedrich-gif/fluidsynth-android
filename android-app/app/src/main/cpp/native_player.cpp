@@ -88,9 +88,14 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeNoteOnTrack(JNIEnv*, jobject, jint channel, jint note, jint velocity, jboolean on) {
     SynthEngine::instance().note(channel, note, velocity, on == JNI_TRUE);
 }
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeMidiEvent(JNIEnv*, jobject, jint status, jint data1, jint data2) {
-    SynthEngine::instance().midiEvent(status, data1, data2);
+    return SynthEngine::instance().midiEvent(status, data1, data2) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeGetTrackBank(JNIEnv*, jobject, jint channel) {
+    return SynthEngine::instance().getTrackBank(channel);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeRender(JNIEnv* env, jobject, jfloatArray output, jint frames) {
