@@ -578,18 +578,36 @@ public class MainActivity extends Activity {
             audioThread = new Thread(() -> {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
                 float[] data = new float[FRAMES * 2];
+                boolean outputFailed = false;
                 while (playing) {
                     try {
                         nativeRender(data, FRAMES);
                         AudioTrack current = track;
                         if (current == null) break;
-                        int written = current.write(data, 0, data.length, AudioTrack.WRITE_BLOCKING);
-                        if (written < 0) break;
+                        int offset = 0;
+                        while (playing && offset < data.length) {
+                            int written = current.write(data, offset, data.length - offset,
+                                    AudioTrack.WRITE_BLOCKING);
+                            if (written <= 0) {
+                                outputFailed = true;
+                                break;
+                            }
+                            offset += written;
+                        }
+                        if (outputFailed) break;
                     } catch (Throwable error) {
+                        outputFailed = true;
                         break;
                     }
                 }
                 playing = false;
+                if (outputFailed) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && status != null) {
+                            status.setText("A saída de áudio foi interrompida. Verifique o dispositivo de áudio.");
+                        }
+                    });
+                }
             }, "FluidSynth-Audio");
             audioThread.start();
         } catch (Exception error) {
@@ -764,6 +782,7 @@ public class MainActivity extends Activity {
         bleSearchButton.setText(enabled ? "BUSCA BLE: LIGADA" : "BUSCA BLE: DESLIGADA");
     }
 
+    /** Requests audio shutdown without blocking the Android main thread. */
     private void stopAudio() {
         playing = false;
         AudioTrack current = track;
@@ -772,14 +791,6 @@ public class MainActivity extends Activity {
             try { current.flush(); } catch (IllegalStateException ignored) {}
             try { current.stop(); } catch (IllegalStateException ignored) {}
         }
-        Thread thread = audioThread;
-        if (thread != null && thread != Thread.currentThread()) {
-            try { thread.join(2000); } catch (InterruptedException error) { Thread.currentThread().interrupt(); }
-        }
-        if (thread != null && thread.isAlive()) return;
-        audioThread = null;
-        track = null;
-        if (current != null) current.release();
     }
 
     @Override protected void onDestroy() {
@@ -791,14 +802,45 @@ public class MainActivity extends Activity {
             usbMidiInput.close();
             usbMidiInput = null;
         }
-        loader.shutdown();
-        try { loader.awaitTermination(5, TimeUnit.SECONDS); }
-        catch (InterruptedException error) { Thread.currentThread().interrupt(); }
+
+        // Stop audio immediately; wait for native workers away from the UI thread.
         stopAudio();
-        if (audioThread == null) {
-            if (initialized) nativeShutdown();
-            initialized = false;
-        }
+        loader.shutdown();
+        final Thread pendingAudioThread = audioThread;
+        final AudioTrack pendingAudioTrack = track;
+        final boolean shutdownEngine = initialized;
+        initialized = false;
+
+        Thread cleanup = new Thread(() -> {
+            boolean interrupted = false;
+            try {
+                while (!loader.isTerminated()) {
+                    try {
+                        loader.awaitTermination(1, TimeUnit.DAYS);
+                    } catch (InterruptedException error) {
+                        interrupted = true;
+                    }
+                }
+                if (pendingAudioThread != null && pendingAudioThread != Thread.currentThread()) {
+                    while (pendingAudioThread.isAlive()) {
+                        try {
+                            pendingAudioThread.join();
+                        } catch (InterruptedException error) {
+                            interrupted = true;
+                        }
+                    }
+                }
+                if (pendingAudioTrack != null) {
+                    try { pendingAudioTrack.release(); } catch (RuntimeException ignored) {}
+                }
+                audioThread = null;
+                track = null;
+                if (shutdownEngine) nativeShutdown();
+            } finally {
+                if (interrupted) Thread.currentThread().interrupt();
+            }
+        }, "FluidSynth-Shutdown");
+        cleanup.start();
         super.onDestroy();
     }
 }
