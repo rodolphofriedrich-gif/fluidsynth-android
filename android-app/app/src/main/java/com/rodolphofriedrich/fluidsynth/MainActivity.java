@@ -496,14 +496,10 @@ public class MainActivity extends Activity {
         if (initialized) {
             midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed() && trackManager != null) {
-                            Track track = trackManager.get(channel);
-                            if (track.hasSoundFont()
-                                    && (track.getBank() != bank || track.getProgram() != program)) {
-                                trackManager.updatePreset(channel, bank, program,
-                                        "Programa MIDI " + (program + 1));
-                                updateTrackControls();
-                            }
+                        if (!isFinishing() && !isDestroyed() && trackManager != null
+                                && trackManager.updatePresetFromMidi(channel, bank, program,
+                                        "Programa MIDI " + (program + 1))) {
+                            updateTrackControls();
                         }
                     }));
             currentPolyphony = PolyphonySettingsStore.load(this);
