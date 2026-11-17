@@ -33,6 +33,7 @@ public class MainActivity extends Activity {
     private MidiRouter midiRouter;
     private AudioEngine audioEngine;
     private TextView status;
+    private TextView audioDiagnostics;
     private TextView operationStatus;
     private TextView usbStatus;
     private TextView bleStatus;
@@ -149,6 +150,12 @@ public class MainActivity extends Activity {
         status.setTextSize(13);
         status.setPadding(0, 5, 0, 0);
         header.addView(status);
+        audioDiagnostics = new TextView(this);
+        audioDiagnostics.setText("Áudio: inicializando saída");
+        audioDiagnostics.setTextColor(MUTED);
+        audioDiagnostics.setTextSize(11);
+        audioDiagnostics.setPadding(0, 3, 0, 0);
+        header.addView(audioDiagnostics);
         operationStatus = new TextView(this);
         operationStatus.setText("");
         operationStatus.setTextColor(MUTED);
@@ -525,13 +532,27 @@ public class MainActivity extends Activity {
                                     + " falha(s). Verifique os canais com SoundFont ausente ou inválido.");
                 }
             }));
-            audioEngine = new AudioEngine(nativeBridge, message -> runOnUiThread(() -> {
-                if (!isFinishing() && !isDestroyed() && operationStatus != null) {
-                    if (midiRouter != null) midiRouter.panic();
-                    operationStatus.setText(message);
+            audioEngine = new AudioEngine(nativeBridge, new AudioEngine.Listener() {
+                @Override public void onAudioError(String message) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && operationStatus != null) {
+                            if (midiRouter != null) midiRouter.panic();
+                            audioDiagnostics.setText("Áudio: falha na saída");
+                            operationStatus.setText(message);
+                        }
+                    });
                 }
-            }));
+
+                @Override public void onAudioUnderruns(int totalUnderruns) {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && audioDiagnostics != null) {
+                            audioDiagnostics.setText("Áudio: " + totalUnderruns + " underruns");
+                        }
+                    });
+                }
+            });
             audioEngine.start();
+            if (audioEngine.isPlaying()) audioDiagnostics.setText("Áudio: saída ativa");
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(Object source, int midiStatus, int data1, int data2) {
                     if (initialized && midiRouter != null) midiRouter.send(source, midiStatus, data1, data2);
