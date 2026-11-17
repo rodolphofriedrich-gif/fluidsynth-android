@@ -22,6 +22,7 @@ public final class TrackManager {
     private final SharedPreferences preferences;
     private final int[] loadGeneration = new int[16];
     private int activeChannel;
+    private volatile int restoreFailureCount;
 
     public TrackManager(Context context, Engine engine) {
         this.engine = engine;
@@ -31,33 +32,64 @@ public final class TrackManager {
         activeChannel = Math.max(0, Math.min(15, preferences.getInt("active_channel", 0)));
     }
 
-    /** Restores persisted SoundFonts away from the UI thread. */
+    /** Restores persisted SoundFonts away from the UI thread and always completes. */
     public void restoreAsync(Executor executor, Runnable completion) {
         executor.execute(() -> {
-            for (int channel = 0; channel < tracks.length; channel++) {
-                String path = preferences.getString("track_" + channel + "_path", null);
-                String name = preferences.getString("track_" + channel + "_name", null);
-                int bank = preferences.getInt("track_" + channel + "_bank", 0);
-                int program = preferences.getInt("track_" + channel + "_program", 0);
-                String presetName = preferences.getString("track_" + channel + "_preset_name", null);
-                boolean enabled = preferences.getBoolean("track_" + channel + "_enabled", true);
-                if (path != null && !path.isEmpty() && new File(path).isFile()) {
-                    int loaded = engine.loadSoundFont(channel, path);
-                    if (loaded >= 0 && engine.selectPreset(channel, bank, program)) {
-                        synchronized (this) {
-                            tracks[channel].setSoundFont(path, name == null ? new File(path).getName() : name);
-                            tracks[channel].setPreset(bank, program, presetName == null ? "Preset " + program : presetName);
+            int failures = 0;
+            try {
+                for (int channel = 0; channel < tracks.length; channel++) {
+                    String path = preferences.getString("track_" + channel + "_path", null);
+                    String name = preferences.getString("track_" + channel + "_name", null);
+                    int bank = preferences.getInt("track_" + channel + "_bank", 0);
+                    int program = preferences.getInt("track_" + channel + "_program", 0);
+                    String presetName = preferences.getString("track_" + channel + "_preset_name", null);
+                    boolean enabled = preferences.getBoolean("track_" + channel + "_enabled", true);
+
+                    if (path != null && !path.isEmpty()) {
+                        try {
+                            if (new File(path).isFile()) {
+                                int loaded = engine.loadSoundFont(channel, path);
+                                if (loaded >= 0 && engine.selectPreset(channel, bank, program)) {
+                                    synchronized (this) {
+                                        tracks[channel].setSoundFont(path,
+                                                name == null ? new File(path).getName() : name);
+                                        tracks[channel].setPreset(bank, program,
+                                                presetName == null ? "Preset " + program : presetName);
+                                    }
+                                } else {
+                                    failures++;
+                                }
+                            } else {
+                                failures++;
+                            }
+                        } catch (RuntimeException error) {
+                            failures++;
                         }
                     }
+
+                    synchronized (this) {
+                        tracks[channel].setEnabled(enabled);
+                    }
+                    try {
+                        engine.setEnabled(channel, enabled);
+                    } catch (RuntimeException error) {
+                        failures++;
+                    }
                 }
-                synchronized (this) {
-                    tracks[channel].setEnabled(enabled);
+            } finally {
+                try {
+                    engine.setActiveChannel(getActiveChannel());
+                } catch (RuntimeException error) {
+                    failures++;
                 }
-                engine.setEnabled(channel, enabled);
+                restoreFailureCount = failures;
+                if (completion != null) completion.run();
             }
-            engine.setActiveChannel(getActiveChannel());
-            if (completion != null) completion.run();
         });
+    }
+
+    public int getRestoreFailureCount() {
+        return restoreFailureCount;
     }
 
     public synchronized Track get(int channel) {
