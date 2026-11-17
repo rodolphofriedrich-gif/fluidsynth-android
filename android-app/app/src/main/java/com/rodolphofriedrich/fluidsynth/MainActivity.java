@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
     private final NativeBridge nativeBridge = new NativeBridge();
+    private final Object keyboardMidiSource = new Object();
+    private MidiRouter midiRouter;
     private AudioEngine audioEngine;
     private TextView status;
     private TextView operationStatus;
@@ -408,13 +410,15 @@ public class MainActivity extends Activity {
                         if (!internalKeyboardSelected) return true;
                         int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
                         pressedChannel[0] = channel;
-                        nativeBridge.nativeNoteOnTrack(channel, note, currentVelocity, true);
+                        if (midiRouter != null) midiRouter.send(keyboardMidiSource,
+                                0x90 | channel, note, currentVelocity);
                         v.setBackground(rounded(ACCENT, 10, 0));
                         return true;
                     }
                     if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                         if (pressedChannel[0] >= 0) {
-                            nativeBridge.nativeNoteOnTrack(pressedChannel[0], note, 0, false);
+                            if (midiRouter != null) midiRouter.send(keyboardMidiSource,
+                                    0x80 | pressedChannel[0], note, 0);
                             pressedChannel[0] = -1;
                         }
                         v.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
@@ -483,6 +487,7 @@ public class MainActivity extends Activity {
 
         initialized = NativeEngineLifecycle.acquire(createNativeEngineBridge());
         if (initialized) {
+            midiRouter = new MidiRouter(nativeBridge);
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
             if (nativeBridge.nativeSetPolyphony(currentPolyphony)) {
@@ -527,8 +532,11 @@ public class MainActivity extends Activity {
             }));
             audioEngine.start();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
-                @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
-                    if (initialized) nativeBridge.nativeMidiEvent(midiStatus, data1, data2);
+                @Override public void onMidiMessage(Object source, int midiStatus, int data1, int data2) {
+                    if (initialized && midiRouter != null) midiRouter.send(source, midiStatus, data1, data2);
+                }
+                @Override public void onSourceDisconnected(Object source) {
+                    if (midiRouter != null) midiRouter.releaseSource(source);
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
@@ -541,8 +549,11 @@ public class MainActivity extends Activity {
             });
             usbMidiInput.start();
             bleMidiInput = new BleMidiInput(this, new BleMidiInput.Listener() {
-                @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
-                    if (initialized) nativeBridge.nativeMidiEvent(midiStatus, data1, data2);
+                @Override public void onMidiMessage(Object source, int midiStatus, int data1, int data2) {
+                    if (initialized && midiRouter != null) midiRouter.send(source, midiStatus, data1, data2);
+                }
+                @Override public void onSourceDisconnected(Object source) {
+                    if (midiRouter != null) midiRouter.releaseSource(source);
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
@@ -868,6 +879,12 @@ public class MainActivity extends Activity {
         if (usbMidiInput != null) {
             usbMidiInput.close();
             usbMidiInput = null;
+        }
+
+        if (midiRouter != null) {
+            midiRouter.releaseSource(keyboardMidiSource);
+            midiRouter.close();
+            midiRouter = null;
         }
 
         // Stop audio immediately; wait for native workers away from the UI thread.
