@@ -4,6 +4,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
 import android.os.Process;
+import android.os.Build;
 
 /**
  * Owns Android audio output and its render thread.
@@ -14,6 +15,7 @@ import android.os.Process;
 public final class AudioEngine {
     public interface Listener {
         void onAudioError(String message);
+        void onAudioUnderruns(int totalUnderruns);
     }
 
     private static final int SAMPLE_RATE = 48000;
@@ -46,7 +48,7 @@ public final class AudioEngine {
         int bufferBytes = Math.max(minimumBuffer, FRAMES_PER_BLOCK * 2 * 4 * 4);
         AudioTrack candidate = null;
         try {
-            candidate = new AudioTrack.Builder()
+            AudioTrack.Builder builder = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -57,8 +59,11 @@ public final class AudioEngine {
                             .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                             .build())
                     .setBufferSizeInBytes(bufferBytes)
-                    .setTransferMode(AudioTrack.MODE_STREAM)
-                    .build();
+                    .setTransferMode(AudioTrack.MODE_STREAM);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY);
+            }
+            candidate = builder.build();
 
             if (candidate.getState() != AudioTrack.STATE_INITIALIZED) {
                 throw new IllegalStateException("AudioTrack não inicializado");
@@ -86,6 +91,7 @@ public final class AudioEngine {
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
         float[] buffer = new float[FRAMES_PER_BLOCK * 2];
         boolean outputFailed = false;
+        int lastReportedUnderruns = 0;
 
         while (playing) {
             try {
@@ -102,6 +108,14 @@ public final class AudioEngine {
                     offset += written;
                 }
                 if (outputFailed) break;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    int underruns = activeTrack.getUnderrunCount();
+                    if (underruns > lastReportedUnderruns
+                            && (lastReportedUnderruns == 0 || underruns - lastReportedUnderruns >= 10)) {
+                        lastReportedUnderruns = underruns;
+                        reportUnderruns(underruns);
+                    }
+                }
             } catch (Throwable error) {
                 outputFailed = true;
                 break;
@@ -163,6 +177,20 @@ public final class AudioEngine {
         }
 
         if (interrupted) Thread.currentThread().interrupt();
+    }
+
+    /** Returns AudioTrack underruns, or -1 on Android versions without this metric. */
+    public int getUnderrunCount() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return -1;
+        AudioTrack current;
+        synchronized (this) {
+            current = outputTrack;
+        }
+        return current == null ? -1 : current.getUnderrunCount();
+    }
+
+    private void reportUnderruns(int totalUnderruns) {
+        if (listener != null) listener.onAudioUnderruns(totalUnderruns);
     }
 
     private void reportError(String message) {
