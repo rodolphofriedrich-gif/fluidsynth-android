@@ -160,54 +160,69 @@ void SynthEngine::note(int channel, int noteNumber, int velocity, bool on) {
     }
 }
 
-void SynthEngine::midiEvent(int status, int data1, int data2) {
+bool SynthEngine::midiEvent(int status, int data1, int data2) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!synth_) return;
+    if (!synth_) return false;
+
     const int command = status & 0xF0;
     const int channel = status & 0x0F;
     const int a = std::clamp(data1, 0, 127);
     const int b = std::clamp(data2, 0, 127);
+
     if (!enabled_[channel]) {
-        if (command == 0x80 || (command == 0x90 && b == 0))
+        if (command == 0x80 || (command == 0x90 && b == 0)) {
             fluid_synth_noteoff(synth_, channel, a);
-        else if (command == 0xB0 && a == 64 && b < 64)
+            return true;
+        }
+        if (command == 0xB0 && a == 64 && b < 64) {
             fluid_synth_cc(synth_, channel, a, b);
-        return;
+            return true;
+        }
+        return false;
     }
+
     switch (command) {
         case 0x80:
             fluid_synth_noteoff(synth_, channel, a);
-            break;
+            return true;
         case 0x90:
             if (b == 0) fluid_synth_noteoff(synth_, channel, a);
             else fluid_synth_noteon(synth_, channel, a, b);
-            break;
+            return true;
         case 0xB0:
             fluid_synth_cc(synth_, channel, a, b);
             if (a == 0) bankMsb_[channel] = b;
             else if (a == 32) bankLsb_[channel] = b;
             // Bank Select is preparatory. Apply the selected bank once when
             // the following Program Change arrives, not on every CC message.
-            break;
+            return true;
         case 0xC0:
             if (soundfontIds_[channel] >= 0 &&
                 fluid_synth_program_select(synth_, channel, soundfontIds_[channel],
                     (bankMsb_[channel] << 7) | bankLsb_[channel], a) == FLUID_OK) {
                 programs_[channel] = a;
+                return true;
             }
-            break;
+            return false;
         case 0xA0:
             fluid_synth_key_pressure(synth_, channel, a, b);
-            break;
+            return true;
         case 0xD0:
             fluid_synth_channel_pressure(synth_, channel, a);
-            break;
+            return true;
         case 0xE0:
             fluid_synth_pitch_bend(synth_, channel, a | (b << 7));
-            break;
+            return true;
         default:
-            break;
+            return false;
     }
+}
+
+int SynthEngine::getTrackBank(int channel) {
+    if (channel < 0 || channel >= 16) return -1;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!synth_) return -1;
+    return (bankMsb_[channel] << 7) | bankLsb_[channel];
 }
 
 void SynthEngine::render(float* output, int frames) {
