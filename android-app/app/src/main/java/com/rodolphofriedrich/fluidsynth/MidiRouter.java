@@ -36,7 +36,11 @@ public final class MidiRouter implements AutoCloseable {
         int channel = status & 0x0F;
         int first = clampMidiValue(data1);
         int second = clampMidiValue(data2);
-        SourceState state = sources.computeIfAbsent(source, ignored -> new SourceState());
+        SourceState state = sources.get(source);
+        if (state == null) {
+            state = new SourceState();
+            sources.put(source, state);
+        }
 
         if (command == 0x90 && second > 0) {
             state.activeNotes[channel][first]++;
