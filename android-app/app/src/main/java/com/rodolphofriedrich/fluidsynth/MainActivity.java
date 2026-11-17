@@ -22,6 +22,8 @@ import android.widget.AdapterView;
 import android.widget.ScrollView;
 import android.widget.GridLayout;
 import android.widget.SeekBar;
+import android.widget.ProgressBar;
+import android.widget.Switch;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,12 +66,16 @@ public class MainActivity extends Activity {
     private SeekBar velocitySeekBar;
     private TextView velocityValue;
     private int currentVelocity = 100;
+    private ProgressBar importProgressBar;
+    private TextView importProgressText;
+    private LinearLayout libraryListContainer;
     private Spinner deviceSelector;
     private int currentPolyphony = 512;
     private int appliedPolyphony = 512;
     private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
     private TrackManager trackManager;
     private SoundFontManager soundFontManager;
+    private SoundFontLibraryStore soundFontLibraryStore;
     private boolean initialized;
     private boolean internalKeyboardSelected = true;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
@@ -324,6 +330,32 @@ public class MainActivity extends Activity {
             startActivityForResult(intent, PICK_SF2);
         });
         actionsPanel.addView(choose);
+        importProgressText = new TextView(this);
+        importProgressText.setTextColor(MUTED);
+        importProgressText.setTextSize(12);
+        importProgressText.setPadding(0, 8, 0, 2);
+        importProgressText.setVisibility(View.GONE);
+        actionsPanel.addView(importProgressText);
+        importProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        importProgressBar.setMax(1000);
+        importProgressBar.setProgress(0);
+        importProgressBar.setIndeterminate(false);
+        importProgressBar.setVisibility(View.GONE);
+        actionsPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (int)(8 * getResources().getDisplayMetrics().density)));
+
+        LinearLayout librariesPanel = panel(settingsRoot);
+        librariesPanel.addView(sectionLabel("BIBLIOTECAS IMPORTADAS"));
+        TextView librariesHint = new TextView(this);
+        librariesHint.setText("Desativar oculta a biblioteca ao escolher instrumentos. Canais que já a utilizam não são alterados.");
+        librariesHint.setTextColor(MUTED);
+        librariesHint.setTextSize(12);
+        librariesHint.setPadding(0, 3, 0, 8);
+        librariesPanel.addView(librariesHint);
+        libraryListContainer = new LinearLayout(this);
+        libraryListContainer.setOrientation(LinearLayout.VERTICAL);
+        librariesPanel.addView(libraryListContainer);
 
         LinearLayout keyboardPanel = panel(root);
         keyboardPanel.addView(sectionLabel("TECLADO VIRTUAL"));
@@ -481,6 +513,8 @@ public class MainActivity extends Activity {
             velocitySeekBar.setProgress(currentVelocity - 1);
             velocityValue.setText("Intensidade: " + currentVelocity);
             soundFontManager = new SoundFontManager(this);
+            soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
+            refreshSoundFontLibraryList();
             trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
                 @Override public boolean selectPreset(int channel, int bank, int program) { return nativeSelectTrackPreset(channel, bank, program); }
@@ -632,10 +666,46 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showImportProgress() {
+        if (importProgressBar == null || importProgressText == null) return;
+        importProgressBar.setIndeterminate(true);
+        importProgressBar.setProgress(0);
+        importProgressBar.setVisibility(View.VISIBLE);
+        importProgressText.setText("Preparando importação...");
+        importProgressText.setVisibility(View.VISIBLE);
+    }
+
+    private void updateImportProgress(long copiedBytes, long totalBytes) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed() || importProgressBar == null) return;
+            if (totalBytes > 0) {
+                int percent = (int)Math.min(100, (copiedBytes * 100.0) / totalBytes);
+                importProgressBar.setIndeterminate(false);
+                importProgressBar.setProgress(percent * 10);
+                importProgressText.setText("Importando biblioteca: " + percent + "% ("
+                        + android.text.format.Formatter.formatShortFileSize(this, copiedBytes)
+                        + " de " + android.text.format.Formatter.formatShortFileSize(this, totalBytes) + ")");
+            } else {
+                importProgressBar.setIndeterminate(true);
+                importProgressText.setText("Importando biblioteca — "
+                        + android.text.format.Formatter.formatShortFileSize(this, copiedBytes) + " copiados");
+            }
+        });
+    }
+
+    private void hideImportProgress() {
+        if (importProgressBar == null || importProgressText == null) return;
+        importProgressBar.setIndeterminate(false);
+        importProgressBar.setProgress(0);
+        importProgressBar.setVisibility(View.GONE);
+        importProgressText.setVisibility(View.GONE);
+    }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         choose.setEnabled(false);
+        showImportProgress();
         final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
         operationStatus.setText("Importando SF2 para CH " + (channel + 1) + "...");
         final android.net.Uri uri = data.getData();
@@ -643,10 +713,17 @@ public class MainActivity extends Activity {
             String message;
             try {
                 String displayName = getSoundFontDisplayName(uri);
-                File file = soundFontManager.importForTrack(uri, channel, displayName);
+                File file = soundFontManager.importForTrack(uri, channel, displayName,
+                        (copiedBytes, totalBytes) -> updateImportProgress(copiedBytes, totalBytes));
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed() && importProgressText != null) {
+                        importProgressText.setText("Biblioteca importada. Carregando instrumento...");
+                        importProgressBar.setIndeterminate(true);
+                    }
+                });
                 boolean loaded = trackManager.loadSoundFont(channel, file.getAbsolutePath(), displayName);
                 message = loaded ? "CH " + (channel + 1) + " carregado: " + displayName
-                        : "Falha ao carregar SF2. O instrumento anterior foi preservado.";
+                        : "Biblioteca importada, mas não foi possível carregá-la. O instrumento anterior foi preservado.";
             } catch (Exception error) {
                 message = "Erro ao importar SF2: " + error.getMessage();
             }
@@ -655,22 +732,82 @@ public class MainActivity extends Activity {
                 if (!isFinishing() && !isDestroyed()) {
                     operationStatus.setText(result);
                     choose.setEnabled(true);
+                    hideImportProgress();
+                    refreshSoundFontLibraryList();
                     updateTrackControls();
                 }
             });
         });
     }
 
-    private void showSoundFontLibraryPicker(int channel) {
-        File directory = new File(getFilesDir(), "soundfonts");
-        File[] files = directory.listFiles((dir, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".sf2"));
-        if (files == null || files.length == 0) {
-            operationStatus.setText("Importe uma biblioteca SF2 primeiro.");
+    private void refreshSoundFontLibraryList() {
+        if (libraryListContainer == null || soundFontLibraryStore == null) return;
+        libraryListContainer.removeAllViews();
+        List<File> libraries = soundFontLibraryStore.getLibraries();
+        if (libraries.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("Nenhuma biblioteca SF2 importada.");
+            empty.setTextColor(MUTED);
+            empty.setTextSize(13);
+            empty.setPadding(0, 8, 0, 8);
+            libraryListContainer.addView(empty);
             return;
         }
-        java.util.Arrays.sort(files, java.util.Comparator.comparing(
-                file -> soundFontManager.getDisplayName(file),
-                String.CASE_INSENSITIVE_ORDER));
+
+        for (int i = 0; i < libraries.size(); i++) {
+            File library = libraries.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, 8, 0, 8);
+
+            TextView name = new TextView(this);
+            name.setText(soundFontManager.getDisplayName(library));
+            name.setTextColor(TEXT);
+            name.setTextSize(14);
+            name.setMaxLines(2);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.addView(name, new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            Switch enabledSwitch = new Switch(this);
+            boolean enabled = soundFontLibraryStore.isEnabled(library);
+            enabledSwitch.setText(enabled ? "Ativa" : "Desativada");
+            enabledSwitch.setTextColor(enabled ? TEXT : MUTED);
+            enabledSwitch.setChecked(enabled);
+            enabledSwitch.setOnCheckedChangeListener((button, checked) -> {
+                soundFontLibraryStore.setEnabled(library, checked);
+                button.setText(checked ? "Ativa" : "Desativada");
+                button.setTextColor(checked ? TEXT : MUTED);
+                operationStatus.setText(checked
+                        ? "Biblioteca ativada para novas seleções."
+                        : "Biblioteca desativada para novas seleções. Canais em uso foram preservados.");
+            });
+            row.addView(enabledSwitch, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            libraryListContainer.addView(row);
+
+            if (i < libraries.size() - 1) {
+                View divider = new View(this);
+                divider.setBackgroundColor(Color.rgb(55, 69, 94));
+                libraryListContainer.addView(divider, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        (int)(1 * getResources().getDisplayMetrics().density)));
+            }
+        }
+    }
+
+    private void showSoundFontLibraryPicker(int channel) {
+        if (soundFontLibraryStore == null) return;
+        List<File> availableLibraries = new ArrayList<>();
+        for (File library : soundFontLibraryStore.getLibraries()) {
+            if (soundFontLibraryStore.isEnabled(library)) availableLibraries.add(library);
+        }
+        if (availableLibraries.isEmpty()) {
+            operationStatus.setText("Não há bibliotecas ativas. Ative uma biblioteca nas Configurações ou importe uma nova.");
+            return;
+        }
+        File[] files = availableLibraries.toArray(new File[0]);
         String[] names = new String[files.length];
         for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
         new android.app.AlertDialog.Builder(this).setTitle("Bibliotecas SoundFont")
