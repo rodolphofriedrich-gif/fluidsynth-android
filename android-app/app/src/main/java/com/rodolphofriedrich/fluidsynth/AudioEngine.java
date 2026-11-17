@@ -114,6 +114,11 @@ public final class AudioEngine {
         }
     }
 
+    /** Returns whether the audio render loop is currently active. */
+    public boolean isPlaying() {
+        return playing;
+    }
+
     /** Requests an immediate stop without waiting on the calling thread. */
     public void stop() {
         playing = false;
