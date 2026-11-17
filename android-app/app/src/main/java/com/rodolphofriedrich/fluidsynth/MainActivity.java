@@ -5,12 +5,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.AudioFormat;
-import android.media.AudioTrack;
 import android.media.midi.MidiDeviceInfo;
 import android.os.Bundle;
-import android.os.Process;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.widget.Button;
@@ -33,9 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
     private final NativeBridge nativeBridge = new NativeBridge();
-    private volatile boolean playing;
-    private AudioTrack track;
-    private Thread audioThread;
+    private AudioEngine audioEngine;
     private TextView status;
     private TextView operationStatus;
     private TextView usbStatus;
@@ -66,8 +60,6 @@ public class MainActivity extends Activity {
     private boolean internalKeyboardSelected = true;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
-    private static final int SAMPLE_RATE = 48000;
-    private static final int FRAMES = 256;
 
     private static final int BG = Color.rgb(13, 17, 27);
     private static final int PANEL = Color.rgb(23, 30, 45);
@@ -528,7 +520,12 @@ public class MainActivity extends Activity {
                                     + " falha(s). Verifique os canais com SoundFont ausente ou inválido.");
                 }
             }));
-            startAudio();
+            audioEngine = new AudioEngine(nativeBridge, message -> runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed() && operationStatus != null) {
+                    operationStatus.setText(message);
+                }
+            }));
+            audioEngine.start();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
                     if (initialized) nativeBridge.nativeMidiEvent(midiStatus, data1, data2);
@@ -587,66 +584,6 @@ public class MainActivity extends Activity {
 
     private String noteName(int note) {
         return new String[]{"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"}[note % 12] + (note / 12 - 1);
-    }
-
-    private void startAudio() {
-        int min = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
-        if (min <= 0) {
-            operationStatus.setText("Dispositivo não oferece saída PCM float.");
-            return;
-        }
-        int bufferBytes = Math.max(min, FRAMES * 2 * 4 * 4);
-        AudioTrack candidate = null;
-        try {
-            candidate = new AudioTrack.Builder()
-                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setAudioFormat(new AudioFormat.Builder().setSampleRate(SAMPLE_RATE).setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
-                .setBufferSizeInBytes(bufferBytes)
-                .setTransferMode(AudioTrack.MODE_STREAM).build();
-            if (candidate.getState() != AudioTrack.STATE_INITIALIZED) throw new IllegalStateException("AudioTrack não inicializado");
-            track = candidate;
-            playing = true;
-            track.play();
-            audioThread = new Thread(() -> {
-                Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
-                float[] data = new float[FRAMES * 2];
-                boolean outputFailed = false;
-                while (playing) {
-                    try {
-                        nativeBridge.nativeRender(data, FRAMES);
-                        AudioTrack current = track;
-                        if (current == null) break;
-                        int offset = 0;
-                        while (playing && offset < data.length) {
-                            int written = current.write(data, offset, data.length - offset,
-                                    AudioTrack.WRITE_BLOCKING);
-                            if (written <= 0) {
-                                outputFailed = true;
-                                break;
-                            }
-                            offset += written;
-                        }
-                        if (outputFailed) break;
-                    } catch (Throwable error) {
-                        outputFailed = true;
-                        break;
-                    }
-                }
-                playing = false;
-                if (outputFailed) {
-                    runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed() && status != null) {
-                            operationStatus.setText("A saída de áudio foi interrompida. Verifique o dispositivo de áudio.");
-                        }
-                    });
-                }
-            }, "FluidSynth-Audio");
-            audioThread.start();
-        } catch (Exception error) {
-            if (candidate != null) candidate.release();
-            track = null;
-            operationStatus.setText("Falha na saída de áudio: " + error.getMessage());
-        }
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -923,17 +860,6 @@ public class MainActivity extends Activity {
         bleSearchButton.setText(enabled ? "BUSCA BLE: LIGADA" : "BUSCA BLE: DESLIGADA");
     }
 
-    /** Requests audio shutdown without blocking the Android main thread. */
-    private void stopAudio() {
-        playing = false;
-        AudioTrack current = track;
-        if (current != null) {
-            try { current.pause(); } catch (IllegalStateException ignored) {}
-            try { current.flush(); } catch (IllegalStateException ignored) {}
-            try { current.stop(); } catch (IllegalStateException ignored) {}
-        }
-    }
-
     @Override protected void onDestroy() {
         if (bleMidiInput != null) {
             bleMidiInput.close();
@@ -945,10 +871,10 @@ public class MainActivity extends Activity {
         }
 
         // Stop audio immediately; wait for native workers away from the UI thread.
-        stopAudio();
+        if (audioEngine != null) audioEngine.stop();
         loader.shutdown();
-        final Thread pendingAudioThread = audioThread;
-        final AudioTrack pendingAudioTrack = track;
+        final AudioEngine pendingAudioEngine = audioEngine;
+        audioEngine = null;
         final boolean releaseEngine = initialized;
         initialized = false;
 
@@ -962,20 +888,9 @@ public class MainActivity extends Activity {
                         interrupted = true;
                     }
                 }
-                if (pendingAudioThread != null && pendingAudioThread != Thread.currentThread()) {
-                    while (pendingAudioThread.isAlive()) {
-                        try {
-                            pendingAudioThread.join();
-                        } catch (InterruptedException error) {
-                            interrupted = true;
-                        }
-                    }
+                if (pendingAudioEngine != null) {
+                    pendingAudioEngine.awaitStoppedAndRelease();
                 }
-                if (pendingAudioTrack != null) {
-                    try { pendingAudioTrack.release(); } catch (RuntimeException ignored) {}
-                }
-                audioThread = null;
-                track = null;
                 if (releaseEngine) NativeEngineLifecycle.release(createNativeEngineBridge());
             } finally {
                 if (interrupted) Thread.currentThread().interrupt();
