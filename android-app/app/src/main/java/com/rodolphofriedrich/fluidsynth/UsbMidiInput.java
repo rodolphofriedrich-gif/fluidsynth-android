@@ -213,12 +213,12 @@ public final class UsbMidiInput implements AutoCloseable {
         synchronized void releaseActiveNotes() {
             for (int channel = 0; channel < 16; channel++) {
                 if (sustainActive[channel]) {
-                    sink.accept(0xB0 | channel, 64, 0);
+                    sink.accept(this, 0xB0 | channel, 64, 0);
                     sustainActive[channel] = false;
                 }
                 for (int note = 0; note < 128; note++) {
                     if (activeNotes[channel][note]) {
-                        sink.accept(0x80 | channel, note, 0);
+                        sink.accept(this, 0x80 | channel, note, 0);
                         activeNotes[channel][note] = false;
                     }
                 }
