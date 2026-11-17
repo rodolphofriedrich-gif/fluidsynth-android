@@ -21,7 +21,8 @@ public final class NativeBridge {
     native void nativeSetActiveTrack(int channel);
     native void nativeNote(int note, int velocity, boolean on);
     native void nativeNoteOnTrack(int channel, int note, int velocity, boolean on);
-    native void nativeMidiEvent(int status, int data1, int data2);
+    native boolean nativeMidiEvent(int status, int data1, int data2);
+    native int nativeGetTrackBank(int channel);
     native void nativeRender(float[] out, int frames);
     native void nativeShutdown();
 }
