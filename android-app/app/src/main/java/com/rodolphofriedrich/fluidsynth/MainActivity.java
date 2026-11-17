@@ -527,6 +527,7 @@ public class MainActivity extends Activity {
             }));
             audioEngine = new AudioEngine(nativeBridge, message -> runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed() && operationStatus != null) {
+                    if (midiRouter != null) midiRouter.panic();
                     operationStatus.setText(message);
                 }
             }));
