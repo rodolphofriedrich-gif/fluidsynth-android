@@ -159,7 +159,6 @@ public class MainActivity extends Activity {
         operationStatus.setTextColor(MUTED);
         operationStatus.setTextSize(12);
         operationStatus.setPadding(0, 4, 0, 0);
-        header.addView(operationStatus);
 
         LinearLayout controllerPanel = panel(settingsRoot);
         controllerPanel.addView(sectionLabel("CONTROLADOR MIDI"));
@@ -193,6 +192,8 @@ public class MainActivity extends Activity {
         bleStatus.setTextSize(12);
         bleStatus.setPadding(0, 3, 0, 0);
         controllerPanel.addView(bleStatus);
+        operationStatus.setPadding(0, 6, 0, 0);
+        controllerPanel.addView(operationStatus);
 
         LinearLayout tracksPanel = panel(root);
         TextView trackLabel = sectionLabel("16 FAIXAS MIDI");
