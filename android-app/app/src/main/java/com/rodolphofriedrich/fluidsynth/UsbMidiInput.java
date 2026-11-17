@@ -24,7 +24,8 @@ public final class UsbMidiInput implements AutoCloseable {
     private static final String TAG = "UsbMidiInput";
 
     public interface Listener {
-        void onMidiMessage(int status, int data1, int data2);
+        void onMidiMessage(Object source, int status, int data1, int data2);
+        void onSourceDisconnected(Object source);
         void onDeviceStatus(String message);
         void onDevicesChanged(List<MidiDeviceInfo> devices);
     }
@@ -102,8 +103,8 @@ public final class UsbMidiInput implements AutoCloseable {
                     return;
                 }
 
-                MidiStreamParser parser = new MidiStreamParser((status, d1, d2) ->
-                        listener.onMidiMessage(status, d1, d2));
+                MidiStreamParser parser = new MidiStreamParser((source, status, d1, d2) ->
+                        listener.onMidiMessage(source, status, d1, d2));
                 MidiReceiver receiver = parser;
                 MidiOutputPort output = device.openOutputPort(selected.getPortNumber());
                 if (output == null) {
@@ -167,6 +168,7 @@ public final class UsbMidiInput implements AutoCloseable {
         OpenDevice opened = openDevices.remove(id);
         if (opened == null) return;
         opened.parser.releaseActiveNotes();
+        listener.onSourceDisconnected(opened.parser);
         try { opened.output.close(); } catch (IOException ignored) {}
         closeMidiDeviceQuietly(opened.device);
         // Device-specific note cleanup is handled by the MIDI source parser; do not
@@ -192,7 +194,7 @@ public final class UsbMidiInput implements AutoCloseable {
     }
 
     private interface MessageSink {
-        void accept(int status, int data1, int data2);
+        void accept(Object source, int status, int data1, int data2);
     }
 
     /** Handles MIDI channel messages, including running status and messages split across USB packets. */
@@ -229,7 +231,7 @@ public final class UsbMidiInput implements AutoCloseable {
             if (command == 0x90 && d2 > 0) activeNotes[channel][d1] = true;
             else if (command == 0x80 || (command == 0x90 && d2 == 0)) activeNotes[channel][d1] = false;
             else if (command == 0xB0 && d1 == 64) sustainActive[channel] = d2 >= 64;
-            sink.accept(status, d1, d2);
+            sink.accept(this, status, d1, d2);
         }
 
         @Override public void onSend(byte[] msg, int offset, int count, long timestamp)
