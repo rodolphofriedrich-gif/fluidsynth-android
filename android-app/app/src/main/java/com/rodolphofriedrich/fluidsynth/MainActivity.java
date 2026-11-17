@@ -32,21 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
-    static { System.loadLibrary("player"); }
-    private native boolean nativeInit();
-    private native boolean nativeSetPolyphony(int voices);
-    private native int nativeLoad(String path);
-    private native int nativeLoadTrack(int channel, String path);
-    private native String[] nativeListPresets(String path);
-    private native boolean nativeSelectTrackPreset(int channel, int bank, int program);
-    private native void nativeSetTrackEnabled(int channel, boolean enabled);
-    private native void nativeSetActiveTrack(int channel);
-    private native void nativeNote(int note, int velocity, boolean on);
-    private native void nativeNoteOnTrack(int channel, int note, int velocity, boolean on);
-    private native void nativeMidiEvent(int status, int data1, int data2);
-    private native void nativeRender(float[] out, int frames);
-    private native void nativeShutdown();
-
+    private final NativeBridge nativeBridge = new NativeBridge();
     private volatile boolean playing;
     private AudioTrack track;
     private Thread audioThread;
@@ -92,8 +78,8 @@ public class MainActivity extends Activity {
 
     private NativeEngineLifecycle.Bridge createNativeEngineBridge() {
         return new NativeEngineLifecycle.Bridge() {
-            @Override public boolean initialize() { return nativeInit(); }
-            @Override public void shutdown() { nativeShutdown(); }
+            @Override public boolean initialize() { return nativeBridge.nativeInit(); }
+            @Override public void shutdown() { nativeBridge.nativeShutdown(); }
         };
     }
 
@@ -277,7 +263,7 @@ public class MainActivity extends Activity {
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
-                if (initialized && !nativeSetPolyphony(currentPolyphony)) {
+                if (initialized && !nativeBridge.nativeSetPolyphony(currentPolyphony)) {
                     currentPolyphony = appliedPolyphony;
                     polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
                     polyphonyValue.setText(appliedPolyphony + " vozes");
@@ -430,13 +416,13 @@ public class MainActivity extends Activity {
                         if (!internalKeyboardSelected) return true;
                         int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
                         pressedChannel[0] = channel;
-                        nativeNoteOnTrack(channel, note, currentVelocity, true);
+                        nativeBridge.nativeNoteOnTrack(channel, note, currentVelocity, true);
                         v.setBackground(rounded(ACCENT, 10, 0));
                         return true;
                     }
                     if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                         if (pressedChannel[0] >= 0) {
-                            nativeNoteOnTrack(pressedChannel[0], note, 0, false);
+                            nativeBridge.nativeNoteOnTrack(pressedChannel[0], note, 0, false);
                             pressedChannel[0] = -1;
                         }
                         v.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
@@ -507,7 +493,7 @@ public class MainActivity extends Activity {
         if (initialized) {
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
-            if (nativeSetPolyphony(currentPolyphony)) {
+            if (nativeBridge.nativeSetPolyphony(currentPolyphony)) {
                 appliedPolyphony = currentPolyphony;
             } else {
                 currentPolyphony = PolyphonySettingsStore.DEFAULT;
@@ -523,10 +509,10 @@ public class MainActivity extends Activity {
             soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
             refreshSoundFontLibraryList();
             trackManager = new TrackManager(this, new TrackManager.Engine() {
-                @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
-                @Override public boolean selectPreset(int channel, int bank, int program) { return nativeSelectTrackPreset(channel, bank, program); }
-                @Override public void setEnabled(int channel, boolean enabled) { nativeSetTrackEnabled(channel, enabled); }
-                @Override public void setActiveChannel(int channel) { nativeSetActiveTrack(channel); }
+                @Override public int loadSoundFont(int channel, String path) { return nativeBridge.nativeLoadTrack(channel, path); }
+                @Override public boolean selectPreset(int channel, int bank, int program) { return nativeBridge.nativeSelectTrackPreset(channel, bank, program); }
+                @Override public void setEnabled(int channel, boolean enabled) { nativeBridge.nativeSetTrackEnabled(channel, enabled); }
+                @Override public void setActiveChannel(int channel) { nativeBridge.nativeSetActiveTrack(channel); }
             });
             updateTrackControls();
             setTrackControlsEnabled(false);
@@ -545,7 +531,7 @@ public class MainActivity extends Activity {
             startAudio();
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
-                    if (initialized) nativeMidiEvent(midiStatus, data1, data2);
+                    if (initialized) nativeBridge.nativeMidiEvent(midiStatus, data1, data2);
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
@@ -559,7 +545,7 @@ public class MainActivity extends Activity {
             usbMidiInput.start();
             bleMidiInput = new BleMidiInput(this, new BleMidiInput.Listener() {
                 @Override public void onMidiMessage(int midiStatus, int data1, int data2) {
-                    if (initialized) nativeMidiEvent(midiStatus, data1, data2);
+                    if (initialized) nativeBridge.nativeMidiEvent(midiStatus, data1, data2);
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
@@ -627,7 +613,7 @@ public class MainActivity extends Activity {
                 boolean outputFailed = false;
                 while (playing) {
                     try {
-                        nativeRender(data, FRAMES);
+                        nativeBridge.nativeRender(data, FRAMES);
                         AudioTrack current = track;
                         if (current == null) break;
                         int offset = 0;
@@ -825,7 +811,7 @@ public class MainActivity extends Activity {
     private void showPresetPicker(int channel, File library) {
         operationStatus.setText("Lendo instrumentos...");
         loader.execute(() -> {
-            String[] presets = nativeListPresets(library.getAbsolutePath());
+            String[] presets = nativeBridge.nativeListPresets(library.getAbsolutePath());
             runOnUiThread(() -> {
                 if (isFinishing() || isDestroyed()) return;
                 if (presets == null || presets.length == 0) {
@@ -847,7 +833,7 @@ public class MainActivity extends Activity {
                             loader.execute(() -> {
                                 boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
                                         soundFontManager.getDisplayName(library));
-                                boolean selected = loaded && nativeSelectTrackPreset(channel, bank, program);
+                                boolean selected = loaded && nativeBridge.nativeSelectTrackPreset(channel, bank, program);
                                 runOnUiThread(() -> {
                                     if (isFinishing() || isDestroyed()) return;
                                     if (selected) {
