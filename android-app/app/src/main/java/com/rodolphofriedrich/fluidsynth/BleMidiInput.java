@@ -25,7 +25,8 @@ public final class BleMidiInput implements AutoCloseable {
     private static final int LOW_LATENCY_SCHEDULE_AHEAD_MS = 40;
 
     public interface Listener {
-        void onMidiMessage(int status, int data1, int data2);
+        void onMidiMessage(Object source, int status, int data1, int data2);
+        void onSourceDisconnected(Object source);
         void onDeviceStatus(String message);
     }
 
@@ -151,6 +152,7 @@ public final class BleMidiInput implements AutoCloseable {
                 public void onMidiInputDeviceDetached(MidiInputDevice device) {
                     releaseDeviceNotes(device);
                     connectedDevices.remove(device);
+                    listener.onSourceDisconnected(device);
                     listener.onDeviceStatus("Controlador desconectado: " + device.getDeviceName());
                     restartScanIfNeeded();
                 }
@@ -185,17 +187,17 @@ public final class BleMidiInput implements AutoCloseable {
             @Override public void onMidiNoteOff(MidiInputDevice sender, int channel, int note, int velocity) {
                 Set<Integer> active = activeNotesByDevice.get(sender);
                 if (active != null) active.remove(channel * 128 + note);
-                send(0x80 | channel, note, velocity);
+                send(sender, 0x80 | channel, note, velocity);
             }
             @Override public void onMidiNoteOn(MidiInputDevice sender, int channel, int note, int velocity) {
                 if (velocity <= 0) {
                     Set<Integer> active = activeNotesByDevice.get(sender);
                     if (active != null) active.remove(channel * 128 + note);
-                    send(0x80 | channel, note, 0);
+                    send(sender, 0x80 | channel, note, 0);
                 } else {
                     Set<Integer> active = activeNotesByDevice.get(sender);
                     if (active != null) active.add(channel * 128 + note);
-                    send(0x90 | channel, note, velocity);
+                    send(sender, 0x90 | channel, note, velocity);
                 }
             }
             @Override public void onMidiControlChange(MidiInputDevice sender, int channel, int function, int value) {
@@ -206,13 +208,13 @@ public final class BleMidiInput implements AutoCloseable {
                         else sustain.remove(channel);
                     }
                 }
-                send(0xB0 | channel, function, value);
+                send(sender, 0xB0 | channel, function, value);
             }
             @Override public void onMidiProgramChange(MidiInputDevice sender, int channel, int program) {
-                send(0xC0 | channel, program, 0);
+                send(sender, 0xC0 | channel, program, 0);
             }
             @Override public void onMidiPitchWheel(MidiInputDevice sender, int channel, int amount) {
-                send(0xE0 | channel, amount & 0x7F, (amount >> 7) & 0x7F);
+                send(sender, 0xE0 | channel, amount & 0x7F, (amount >> 7) & 0x7F);
             }
             @Override public void onMidiSystemExclusive(MidiInputDevice sender, byte[] data) {}
             @Override public void onMidiPolyphonicAftertouch(MidiInputDevice sender, int channel, int note, int pressure) {}
@@ -241,8 +243,8 @@ public final class BleMidiInput implements AutoCloseable {
         listener.onDeviceStatus("Conectado: " + device.getDeviceName());
     }
 
-    private void send(int status, int data1, int data2) {
-        if (!closed) listener.onMidiMessage(status, data1, data2);
+    private void send(MidiInputDevice source, int status, int data1, int data2) {
+        if (!closed) listener.onMidiMessage(source, status, data1, data2);
     }
 
     private void restartScanIfNeeded() {
@@ -261,14 +263,14 @@ public final class BleMidiInput implements AutoCloseable {
     private void releaseDeviceNotes(MidiInputDevice device) {
         Set<Integer> sustain = sustainChannelsByDevice.remove(device);
         if (sustain != null) {
-            for (Integer channel : sustain) send(0xB0 | channel, 64, 0);
+            for (Integer channel : sustain) send(device, 0xB0 | channel, 64, 0);
         }
         Set<Integer> active = activeNotesByDevice.remove(device);
         if (active != null) {
             for (Integer encoded : active) {
                 int channel = encoded / 128;
                 int note = encoded % 128;
-                send(0x80 | channel, note, 0);
+                send(device, 0x80 | channel, note, 0);
             }
         }
     }
@@ -281,7 +283,10 @@ public final class BleMidiInput implements AutoCloseable {
 
     @Override public synchronized void close() {
         if (closed) return;
-        for (MidiInputDevice device : connectedDevices) releaseDeviceNotes(device);
+        for (MidiInputDevice device : connectedDevices) {
+            releaseDeviceNotes(device);
+            listener.onSourceDisconnected(device);
+        }
         closed = true;
         started = false;
         BleMidiCentralProvider current = provider;
