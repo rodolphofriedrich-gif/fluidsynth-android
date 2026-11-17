@@ -498,7 +498,8 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && trackManager != null) {
                             Track track = trackManager.get(channel);
-                            if (track.hasSoundFont()) {
+                            if (track.hasSoundFont()
+                                    && (track.getBank() != bank || track.getProgram() != program)) {
                                 trackManager.updatePreset(channel, bank, program,
                                         "Programa MIDI " + (program + 1));
                                 updateTrackControls();
