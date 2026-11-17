@@ -19,6 +19,7 @@ public final class MidiRouter implements AutoCloseable {
     private final Listener listener;
     private final Map<Object, SourceState> sources = new IdentityHashMap<>();
     private final int[][] noteOwners = new int[16][128];
+    private final int[][] pendingNoteOffs = new int[16][128];
     @SuppressWarnings("unchecked")
     private final IdentityHashMap<Object, Boolean>[] sustainOwners =
             new IdentityHashMap[16];
@@ -54,21 +55,18 @@ public final class MidiRouter implements AutoCloseable {
         }
 
         if (command == 0x90 && second > 0) {
-            if (!state.activeNotes[channel][first]) {
-                state.activeNotes[channel][first] = true;
-                if (noteOwners[channel][first]++ == 0) {
-                    nativeBridge.nativeMidiEvent(status, first, second);
-                }
-            }
+            state.activeNotes[channel][first]++;
+            noteOwners[channel][first]++;
+            nativeBridge.nativeMidiEvent(status, first, second);
             return;
         }
 
         if (command == 0x80 || (command == 0x90 && second == 0)) {
-            if (state.activeNotes[channel][first]) {
-                state.activeNotes[channel][first] = false;
-                if (noteOwners[channel][first] > 0 && --noteOwners[channel][first] == 0) {
-                    nativeBridge.nativeMidiEvent(status, first, second);
-                }
+            if (state.activeNotes[channel][first] > 0) {
+                state.activeNotes[channel][first]--;
+                if (noteOwners[channel][first] > 0) noteOwners[channel][first]--;
+                pendingNoteOffs[channel][first]++;
+                flushPendingNoteOffs(channel, first);
             }
             return;
         }
@@ -141,13 +139,23 @@ public final class MidiRouter implements AutoCloseable {
             }
 
             for (int note = 0; note < 128; note++) {
-                if (state.activeNotes[channel][note]) {
-                    state.activeNotes[channel][note] = false;
-                    if (noteOwners[channel][note] > 0 && --noteOwners[channel][note] == 0) {
-                        nativeBridge.nativeMidiEvent(0x80 | channel, note, 0);
-                    }
+                int pending = state.activeNotes[channel][note];
+                if (pending > 0) {
+                    state.activeNotes[channel][note] = 0;
+                    noteOwners[channel][note] = Math.max(0, noteOwners[channel][note] - pending);
+                    pendingNoteOffs[channel][note] += pending;
+                    flushPendingNoteOffs(channel, note);
                 }
             }
+        }
+    }
+
+    private void flushPendingNoteOffs(int channel, int note) {
+        if (noteOwners[channel][note] != 0) return;
+        int pending = pendingNoteOffs[channel][note];
+        pendingNoteOffs[channel][note] = 0;
+        while (pending-- > 0) {
+            nativeBridge.nativeMidiEvent(0x80 | channel, note, 0);
         }
     }
 
@@ -159,6 +167,7 @@ public final class MidiRouter implements AutoCloseable {
         }
         for (int note = 0; note < 128; note++) {
             noteOwners[channel][note] = 0;
+            pendingNoteOffs[channel][note] = 0;
         }
     }
 
@@ -187,7 +196,7 @@ public final class MidiRouter implements AutoCloseable {
     }
 
     private static final class SourceState {
-        final boolean[][] activeNotes = new boolean[16][128];
+        final int[][] activeNotes = new int[16][128];
         final boolean[] sustain = new boolean[16];
     }
 }
