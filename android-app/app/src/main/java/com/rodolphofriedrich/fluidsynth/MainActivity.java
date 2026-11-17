@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
     private BleMidiInput bleMidiInput;
     private Button choose;
     private Button trackEnableButton;
+    private Button selectInstrumentButton;
     private Button bleSearchButton;
     private Button[] trackButtons = new Button[16];
     private SeekBar polyphonySeekBar;
@@ -65,6 +66,7 @@ public class MainActivity extends Activity {
     private int currentVelocity = 100;
     private Spinner deviceSelector;
     private int currentPolyphony = 512;
+    private int appliedPolyphony = 512;
     private final List<MidiDeviceInfo> availableMidiDevices = new ArrayList<>();
     private TrackManager trackManager;
     private SoundFontManager soundFontManager;
@@ -193,7 +195,6 @@ public class MainActivity extends Activity {
         bleStatus.setPadding(0, 3, 0, 0);
         controllerPanel.addView(bleStatus);
         operationStatus.setPadding(0, 6, 0, 0);
-        controllerPanel.addView(operationStatus);
 
         LinearLayout tracksPanel = panel(root);
         TextView trackLabel = sectionLabel("16 FAIXAS MIDI");
@@ -230,7 +231,6 @@ public class MainActivity extends Activity {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
-                    showSoundFontLibraryPicker(channel);
                 }
             });
         }
@@ -259,22 +259,32 @@ public class MainActivity extends Activity {
                 (int)(42 * getResources().getDisplayMetrics().density)));
         polyphonySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int voices = (progress + 1) * 8;
-                currentPolyphony = voices;
-                polyphonyValue.setText(voices + " vozes");
-                if (fromUser && initialized) {
-                    boolean applied = nativeSetPolyphony(voices);
-                    if (!applied) operationStatus.setText("Não foi possível aplicar a polifonia.");
-                }
+                currentPolyphony = (progress + 1) * PolyphonySettingsStore.STEP;
+                polyphonyValue.setText(currentPolyphony + " vozes");
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                if (initialized && !nativeSetPolyphony(currentPolyphony)) {
+                    currentPolyphony = appliedPolyphony;
+                    polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
+                    polyphonyValue.setText(appliedPolyphony + " vozes");
+                    operationStatus.setText("Não foi possível aplicar a polifonia. O valor anterior foi mantido.");
+                    return;
+                }
+                appliedPolyphony = currentPolyphony;
                 PolyphonySettingsStore.save(MainActivity.this, currentPolyphony);
                 operationStatus.setText("Polifonia definida para " + currentPolyphony + " vozes.");
             }
         });
 
         LinearLayout channelActionsPanel = panel(root);
+        selectInstrumentButton = new Button(this);
+        selectInstrumentButton.setText("ESCOLHER INSTRUMENTO");
+        styleButton(selectInstrumentButton, CONTROL, TEXT, 48, 14);
+        selectInstrumentButton.setOnClickListener(v -> {
+            if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
+        });
+        channelActionsPanel.addView(selectInstrumentButton);
         LinearLayout actionsPanel = panel(settingsRoot);
         trackEnableButton = new Button(this);
         trackEnableButton.setText("FAIXA ATIVA");
@@ -414,6 +424,12 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        operationStatus.setPadding(16, 8, 16, 8);
+        operationStatus.setBackground(rounded(PANEL, 10, Color.rgb(42, 54, 75)));
+        LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        operationStatusParams.setMargins(16, 4, 16, 8);
+        screenHost.addView(operationStatus, operationStatusParams);
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         navigation.setPadding(12, 8, 12, 8);
@@ -450,13 +466,19 @@ public class MainActivity extends Activity {
         initialized = nativeInit();
         if (initialized) {
             currentPolyphony = PolyphonySettingsStore.load(this);
-            polyphonySeekBar.setProgress((currentPolyphony / 8) - 1);
+            polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
+            if (nativeSetPolyphony(currentPolyphony)) {
+                appliedPolyphony = currentPolyphony;
+            } else {
+                currentPolyphony = PolyphonySettingsStore.DEFAULT;
+                appliedPolyphony = PolyphonySettingsStore.DEFAULT;
+                polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
+                polyphonyValue.setText(appliedPolyphony + " vozes");
+                operationStatus.setText("Não foi possível restaurar a polifonia salva. Usando o padrão.");
+            }
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
             velocityValue.setText("Intensidade: " + currentVelocity);
-            if (!nativeSetPolyphony(currentPolyphony)) {
-                operationStatus.setText("Não foi possível restaurar a polifonia salva.");
-            }
             soundFontManager = new SoundFontManager(this);
             trackManager = new TrackManager(this, new TrackManager.Engine() {
                 @Override public int loadSoundFont(int channel, String path) { return nativeLoadTrack(channel, path); }
@@ -646,7 +668,7 @@ public class MainActivity extends Activity {
                     String[] fields = presets[i].split("\\|", 3);
                     labels[i] = fields.length == 3 ? fields[2] + " (Banco " + fields[0] + ", Programa " + fields[1] + ")" : presets[i];
                 }
-                new android.app.AlertDialog.Builder(this).setTitle(library.getName())
+                new android.app.AlertDialog.Builder(this).setTitle(soundFontManager.getDisplayName(library))
                     .setItems(labels, (dialog, which) -> {
                         try {
                             String[] fields = presets[which].split("\\|", 3);
@@ -717,7 +739,13 @@ public class MainActivity extends Activity {
         }
         choose.setText(selected.hasSoundFont() ? "TROCAR SF2 DA FAIXA" : "IMPORTAR SF2 PARA ESTA FAIXA");
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : "sem SoundFont";
-        status.setText("CH " + (channel + 1) + ": " + soundFont);
+        String preset = selected.getPresetName();
+        String instrument = preset == null || preset.trim().isEmpty()
+                ? soundFont : preset + " — " + soundFont;
+        status.setText("CH " + (channel + 1) + ": " + instrument);
+        if (selectInstrumentButton != null) {
+            selectInstrumentButton.setText(selected.hasSoundFont() ? "TROCAR INSTRUMENTO" : "ESCOLHER INSTRUMENTO");
+        }
     }
 
     private void setTrackControlsEnabled(boolean enabled) {
