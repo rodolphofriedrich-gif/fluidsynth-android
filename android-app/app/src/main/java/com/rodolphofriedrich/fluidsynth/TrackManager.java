@@ -49,12 +49,35 @@ public final class TrackManager {
                         try {
                             if (new File(path).isFile()) {
                                 int loaded = engine.loadSoundFont(channel, path);
-                                if (loaded >= 0 && engine.selectPreset(channel, bank, program)) {
-                                    synchronized (this) {
-                                        tracks[channel].setSoundFont(path,
-                                                name == null ? new File(path).getName() : name);
-                                        tracks[channel].setPreset(bank, program,
-                                                presetName == null ? "Preset " + program : presetName);
+                                if (loaded >= 0) {
+                                    boolean presetSelected = engine.selectPreset(channel, bank, program);
+                                    if (!presetSelected) {
+                                        // The SF2 is already loaded with its default preset.
+                                        // Fall back to that known-good state instead of leaving
+                                        // native and Java track state out of sync.
+                                        presetSelected = engine.selectPreset(channel, 0, 0);
+                                        if (presetSelected) {
+                                            bank = 0;
+                                            program = 0;
+                                            presetName = "Preset padrão";
+                                            preferences.edit()
+                                                    .putInt("track_" + channel + "_bank", bank)
+                                                    .putInt("track_" + channel + "_program", program)
+                                                    .putString("track_" + channel + "_preset_name", presetName)
+                                                    .apply();
+                                            failures++;
+                                        }
+                                    }
+
+                                    if (presetSelected) {
+                                        synchronized (this) {
+                                            tracks[channel].setSoundFont(path,
+                                                    name == null ? new File(path).getName() : name);
+                                            tracks[channel].setPreset(bank, program,
+                                                    presetName == null ? "Preset " + program : presetName);
+                                        }
+                                    } else {
+                                        failures++;
                                     }
                                 } else {
                                     failures++;
