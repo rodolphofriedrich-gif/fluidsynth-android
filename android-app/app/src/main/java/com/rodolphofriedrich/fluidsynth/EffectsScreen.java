@@ -49,7 +49,8 @@ public final class EffectsScreen {
             TextView label=new TextView(context);label.setText(s.format(s.def));label.setTextColor(AppUi.TEXT);label.setTextSize(14);label.setTypeface(android.graphics.Typeface.DEFAULT,1);cell.addView(label);
             values[e][p]=s.def;knobs[e][p]=k;labels[e][p]=label;GridLayout.LayoutParams gp=new GridLayout.LayoutParams(GridLayout.spec(p/2,1f),GridLayout.spec(p%2,1f));gp.width=0;grid.addView(cell,gp);}
         page.addView(grid);Button reset=new Button(context);reset.setText("Restaurar padrão");AppUi.styleButton(context,reset,AppUi.CONTROL,AppUi.TEXT,48,14);reset.setOnClickListener(v->{for(int p=0;p<4;p++)setParam(e,p,SPECS[e][p].def);if(listener!=null)listener.onParamChanged(e,-1,0);});page.addView(reset);}
-    private void onKnob(int e,int p,float t,boolean tracking){float v=SPECS[e][p].toValue(t);labels[e][p].setText(SPECS[e][p].format(v));if(v==values[e][p])return;values[e][p]=v;
+    private void onKnob(int e,int p,float t,boolean tracking){float v=SPECS[e][p].toValue(t);labels[e][p].setText(SPECS[e][p].format(v));boolean changed=v!=values[e][p];values[e][p]=v;
+        if(tracking&&!changed)return;
         long now=SystemClock.uptimeMillis();if(tracking&&now-lastSend<30)return;lastSend=now;if(listener!=null)listener.onParamChanged(e,p,v);}
     private void selectTab(int selected){for(int i=0;i<2;i++){boolean on=i==selected;pages[i].setVisibility(on?View.VISIBLE:View.GONE);tabs[i].setBackground(AppUi.rounded(context,on?AppUi.ACCENT:AppUi.CONTROL,12,0));tabs[i].setTextColor(on?Color.WHITE:AppUi.TEXT);}}
     private int dp(float v){return Math.round(v*context.getResources().getDisplayMetrics().density);}
