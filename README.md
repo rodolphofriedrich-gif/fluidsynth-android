@@ -84,6 +84,8 @@ O módulo Android configura os ABIs `arm64-v8a`, `armeabi-v7a` e `x86_64`.
 
 - `android-app/`: aplicativo Android, interface, integração JNI, áudio, MIDI, SoundFonts e canais.
 - `android-app/app/src/main/java/`: módulos Java do aplicativo.
+- `MidiScreen.java` e `SettingsScreen.java`: construção independente das interfaces das abas MIDI e Configurações.
+- `AppUi.java`: estilos e componentes visuais compartilhados; `MainActivity.java` coordena as telas e integra os recursos do aplicativo.
 - `android-app/app/src/main/cpp/`: bridge JNI e integração nativa com o FluidSynth.
 - `src/` e `include/`: código e cabeçalhos do motor FluidSynth.
 - `android/`: arquivos de suporte à compilação Android do motor.
