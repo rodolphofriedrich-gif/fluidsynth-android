@@ -35,7 +35,10 @@ O `MidiRouter` centraliza os eventos das diferentes origens. Ele rastreia notas 
 
 | Arquivo ou módulo | Responsabilidade atual |
 |---|---|
-| `MainActivity.java` | Ciclo de vida da Activity, composição programática das telas e integração dos módulos da aplicação |
+| `MainActivity.java` | Ciclo de vida da Activity, coordenação das telas e integração dos módulos da aplicação |
+| `MidiScreen.java` | Construção da interface da aba MIDI: canais, seleção de instrumento e teclado virtual |
+| `SettingsScreen.java` | Construção da interface da aba Configurações: dispositivos MIDI, polifonia, BLE e bibliotecas SF2 |
+| `AppUi.java` | Componentes visuais compartilhados, estilos, cores e painéis |
 | `ScreenNavigator.java` | Navegação entre as telas MIDI e Configurações, preservando o estado dos controles |
 | `Track.java` / `TrackManager.java` | Estado dos 16 canais, SoundFont/preset por canal, ativação e restauração persistente |
 | `SoundFontManager.java` | Importação, validação, carregamento, listagem de presets e descarregamento de SF2 |
@@ -66,7 +69,7 @@ Os arquivos Java ficam em `android-app/app/src/main/java/com/rodolphofriedrich/f
 
 ## Limites conhecidos da organização atual
 
-A interface ainda é construída programaticamente em `MainActivity.java`. A separação de JNI, saída de áudio, roteamento MIDI, estado dos canais e gerenciamento de SoundFonts já foi avançada, mas isso não significa que a Activity tenha sido totalmente eliminada da coordenação da interface. Não há uma arquitetura MVVM completa nem uma camada de serviço Android dedicada.
+A interface é construída programaticamente em classes próprias: `MidiScreen.java` e `SettingsScreen.java` montam cada tela, enquanto `AppUi.java` centraliza estilos e componentes visuais compartilhados. `MainActivity.java` coordena as telas e conecta os controles à lógica do aplicativo. A separação da construção visual não equivale a uma arquitetura MVVM completa nem a uma camada de serviço Android dedicada.
 
 Essas separações podem evoluir em etapas posteriores, desde que não provoquem alterações desnecessárias no motor ou regressões nos recursos já validados.
 
