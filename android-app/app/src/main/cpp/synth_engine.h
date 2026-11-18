@@ -10,6 +10,9 @@ class SynthEngine {
 public:
  static SynthEngine& instance();
  bool initialize(); bool setPolyphony(int voices);
+ void setReverb(double roomSize, double damping, double width, double level);
+ void setChorus(int voices, double level, double speed, double depthMs);
+ void setReverbActive(bool active); void setChorusActive(bool active);
  int loadSoundFontForChannel(const std::string& path,int channel);
  std::vector<SoundFontPreset> listPresets(const std::string& path);
  bool selectPreset(int channel,int bank,int program);
