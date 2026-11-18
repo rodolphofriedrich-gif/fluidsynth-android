@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 public final class EffectsSettingsStore {
     private static final String PREFS="audio_effects";
     private static final String[] NAMES={"reverb","chorus"};
-    private static final float[][] DEFAULTS={{.20f,0f,100f,.90f},{3f,2f,.3f,8f}};
+    private static final float[][] DEFAULTS={{.20f,0f,.5f,.90f},{3f,2f,.3f,8f}};
     private EffectsSettingsStore(){}
     public static float[] defaults(int effect){return DEFAULTS[effect].clone();}
     private static SharedPreferences prefs(Context c){return c.getApplicationContext().getSharedPreferences(PREFS,Context.MODE_PRIVATE);}
