@@ -37,7 +37,7 @@ void SynthEngine::setReverb(double roomSize, double damping, double width, doubl
 }
 void SynthEngine::setChorus(int voices, double level, double speed, double depthMs) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (synth_) fluid_synth_set_chorus(synth_, voices, level, speed, depthMs, FLUID_CHORUS_SINE);
+    if (synth_) fluid_synth_set_chorus(synth_, voices, level, speed, depthMs, FLUID_CHORUS_MOD_SINE);
 }
 void SynthEngine::setReverbActive(bool active) {
     std::lock_guard<std::mutex> lock(mutex_);
