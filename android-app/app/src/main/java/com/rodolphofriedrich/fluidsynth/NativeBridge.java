@@ -13,6 +13,10 @@ public final class NativeBridge {
 
     native boolean nativeInit();
     native boolean nativeSetPolyphony(int voices);
+    native void nativeSetReverb(float roomSize, float damping, float width, float level);
+    native void nativeSetChorus(int voices, float level, float speed, float depthMs);
+    native void nativeSetReverbActive(boolean active);
+    native void nativeSetChorusActive(boolean active);
     native int nativeLoad(String path);
     native int nativeLoadTrack(int channel, String path);
     native String[] nativeListPresets(String path);
