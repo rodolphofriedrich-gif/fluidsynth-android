@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
     private final NativeBridge nativeBridge = new NativeBridge();
+    private MidiScreen midiScreen;
+    private SettingsScreen settingsScreen;
     private final Object keyboardMidiSource = new Object();
     private MidiRouter midiRouter;
     private AudioEngine audioEngine;
@@ -64,12 +66,12 @@ public class MainActivity extends Activity {
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
 
-    private static final int BG = Color.rgb(13, 17, 27);
-    private static final int PANEL = Color.rgb(23, 30, 45);
-    private static final int CONTROL = Color.rgb(35, 45, 64);
-    private static final int ACCENT = Color.rgb(79, 140, 255);
-    private static final int TEXT = Color.rgb(239, 244, 255);
-    private static final int MUTED = Color.rgb(164, 178, 201);
+    private static final int BG = AppUi.BG;
+    private static final int PANEL = AppUi.PANEL;
+    private static final int CONTROL = AppUi.CONTROL;
+    private static final int ACCENT = AppUi.ACCENT;
+    private static final int TEXT = AppUi.TEXT;
+    private static final int MUTED = AppUi.MUTED;
 
     private NativeEngineLifecycle.Bridge createNativeEngineBridge() {
         return new NativeEngineLifecycle.Bridge() {
@@ -79,48 +81,7 @@ public class MainActivity extends Activity {
     }
 
     private GradientDrawable rounded(int color, int radiusDp, int strokeColor) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
-        shape.setCornerRadius(radiusDp * getResources().getDisplayMetrics().density);
-        if (strokeColor != 0) shape.setStroke((int)(1 * getResources().getDisplayMetrics().density), strokeColor);
-        return shape;
-    }
-
-    private void styleButton(Button button, int background, int textColor, int heightDp, int textSize) {
-        button.setAllCaps(false);
-        button.setTextColor(textColor);
-        button.setTextSize(textSize);
-        button.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        button.setMinHeight(0);
-        button.setMinimumHeight(0);
-        button.setPadding(8, 8, 8, 8);
-        button.setBackground(rounded(background, 12, 0));
-        button.setElevation(0);
-        button.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (int)(heightDp * getResources().getDisplayMetrics().density)));
-    }
-
-    private TextView sectionLabel(String value) {
-        TextView label = new TextView(this);
-        label.setText(value);
-        label.setTextColor(MUTED);
-        label.setTextSize(12);
-        label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        label.setLetterSpacing(0.06f);
-        return label;
-    }
-
-    private LinearLayout panel(LinearLayout parent) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(14, 12, 14, 12);
-        box.setBackground(rounded(PANEL, 16, Color.rgb(42, 54, 75)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = 12;
-        parent.addView(box, lp);
-        return box;
+        return AppUi.rounded(this, color, radiusDp, strokeColor);
     }
 
     @Override public void onCreate(Bundle state) {
@@ -128,46 +89,33 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(16, 48, 16, 24);
-        root.setBackgroundColor(BG);
-        LinearLayout settingsRoot = new LinearLayout(this);
-        settingsRoot.setOrientation(LinearLayout.VERTICAL);
-        settingsRoot.setPadding(16, 24, 16, 24);
-        settingsRoot.setBackgroundColor(BG);
+        midiScreen = new MidiScreen(this);
+        settingsScreen = new SettingsScreen(this);
 
-        LinearLayout header = panel(root);
-        TextView title = new TextView(this);
-        title.setText("FLUIDSYNTH PLAYER");
-        title.setTextColor(TEXT);
-        title.setTextSize(19);
-        title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        header.addView(title);
-        status = new TextView(this);
-        status.setText("Selecione uma faixa e carregue um SoundFont");
-        status.setTextColor(MUTED);
-        status.setTextSize(13);
-        status.setPadding(0, 5, 0, 0);
-        header.addView(status);
-        audioDiagnostics = new TextView(this);
-        audioDiagnostics.setText("Áudio: inicializando saída");
-        audioDiagnostics.setTextColor(MUTED);
-        audioDiagnostics.setTextSize(11);
-        audioDiagnostics.setPadding(0, 3, 0, 0);
-        header.addView(audioDiagnostics);
+        status = midiScreen.status;
+        audioDiagnostics = midiScreen.audioDiagnostics;
+        trackButtons = midiScreen.trackButtons;
+        selectInstrumentButton = midiScreen.selectInstrumentButton;
+        trackEnableButton = midiScreen.trackEnableButton;
+        velocitySeekBar = midiScreen.velocitySeekBar;
+        velocityValue = midiScreen.velocityValue;
+
+        deviceSelector = settingsScreen.deviceSelector;
+        usbStatus = settingsScreen.usbStatus;
+        bleStatus = settingsScreen.bleStatus;
+        polyphonySeekBar = settingsScreen.polyphonySeekBar;
+        polyphonyValue = settingsScreen.polyphonyValue;
+        bleSearchButton = settingsScreen.bleSearchButton;
+        choose = settingsScreen.chooseButton;
+        importProgressText = settingsScreen.importProgressText;
+        importProgressBar = settingsScreen.importProgressBar;
+        libraryListContainer = settingsScreen.libraryListContainer;
+
         operationStatus = new TextView(this);
         operationStatus.setText("");
         operationStatus.setTextColor(MUTED);
         operationStatus.setTextSize(12);
-        operationStatus.setPadding(0, 4, 0, 0);
 
-        LinearLayout controllerPanel = panel(settingsRoot);
-        controllerPanel.addView(sectionLabel("CONTROLADOR MIDI"));
-        deviceSelector = new Spinner(this);
-        deviceSelector.setPadding(4, 4, 4, 4);
-        deviceSelector.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"Teclado interno do aplicativo"}));
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
                 if (usbMidiInput == null) return;
@@ -181,82 +129,28 @@ public class MainActivity extends Activity {
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
-        controllerPanel.addView(deviceSelector, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int)(52 * getResources().getDisplayMetrics().density)));
-        usbStatus = new TextView(this);
-        usbStatus.setText("MIDI: aguardando controlador");
-        usbStatus.setTextColor(MUTED);
-        usbStatus.setTextSize(12);
-        controllerPanel.addView(usbStatus);
-        bleStatus = new TextView(this);
-        bleStatus.setText("BLE MIDI: busca desligada");
-        bleStatus.setTextColor(MUTED);
-        bleStatus.setTextSize(12);
-        bleStatus.setPadding(0, 3, 0, 0);
-        controllerPanel.addView(bleStatus);
-        operationStatus.setPadding(0, 6, 0, 0);
 
-        LinearLayout tracksPanel = panel(root);
-        TextView trackLabel = sectionLabel("16 FAIXAS MIDI");
-        tracksPanel.addView(trackLabel);
-        TextView trackHint = new TextView(this);
-        trackHint.setText("Toque em uma faixa para selecioná-la");
-        trackHint.setTextColor(MUTED);
-        trackHint.setTextSize(12);
-        trackHint.setPadding(0, 3, 0, 10);
-        tracksPanel.addView(trackHint);
-
-        GridLayout trackGrid = new GridLayout(this);
-        trackGrid.setColumnCount(4);
-        trackGrid.setRowCount(4);
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < trackButtons.length; i++) {
             final int channel = i;
-            Button trackButton = new Button(this);
-            trackButton.setText("CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\nVAZIA");
-            trackButton.setTextSize(11);
-            trackButton.setTextColor(TEXT);
-            trackButton.setAllCaps(false);
-            trackButton.setPadding(2, 2, 2, 2);
-            trackButton.setMinHeight(0);
-            trackButton.setMinimumHeight(0);
-            trackButton.setBackground(rounded(CONTROL, 10, Color.rgb(55, 69, 94)));
-            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                    GridLayout.spec(i / 4, 1f), GridLayout.spec(i % 4, 1f));
-            params.width = 0;
-            params.height = (int)(64 * getResources().getDisplayMetrics().density);
-            params.setMargins(3, 3, 3, 3);
-            trackGrid.addView(trackButton, params);
-            trackButtons[i] = trackButton;
-            trackButton.setOnClickListener(v -> {
+            trackButtons[i].setOnClickListener(v -> {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
                 }
             });
         }
-        tracksPanel.addView(trackGrid);
 
-        LinearLayout audioPanel = panel(settingsRoot);
-        audioPanel.addView(sectionLabel("POLIFONIA"));
-        TextView polyphonyHint = new TextView(this);
-        polyphonyHint.setText("Limite máximo de vozes simultâneas do sintetizador");
-        polyphonyHint.setTextColor(MUTED);
-        polyphonyHint.setTextSize(12);
-        polyphonyHint.setPadding(0, 3, 0, 8);
-        audioPanel.addView(polyphonyHint);
-        polyphonyValue = new TextView(this);
-        polyphonyValue.setText("512 vozes");
-        polyphonyValue.setTextColor(TEXT);
-        polyphonyValue.setTextSize(16);
-        polyphonyValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        audioPanel.addView(polyphonyValue);
-        polyphonySeekBar = new SeekBar(this);
-        polyphonySeekBar.setMax(255);
-        polyphonySeekBar.setProgress((512 / 8) - 1);
-        polyphonySeekBar.setContentDescription("Polifonia, de 8 a 2048 vozes, em passos de 8");
-        audioPanel.addView(polyphonySeekBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (int)(42 * getResources().getDisplayMetrics().density)));
+        selectInstrumentButton.setOnClickListener(v -> {
+            if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
+        });
+        trackEnableButton.setOnClickListener(v -> {
+            if (trackManager == null) return;
+            int channel = trackManager.getActiveChannel();
+            boolean enabled = !trackManager.get(channel).isEnabled();
+            trackManager.setEnabled(channel, enabled);
+            updateTrackControls();
+        });
+
         polyphonySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentPolyphony = (progress + 1) * PolyphonySettingsStore.STEP;
@@ -277,103 +171,19 @@ public class MainActivity extends Activity {
             }
         });
 
-        LinearLayout channelActionsPanel = panel(root);
-        selectInstrumentButton = new Button(this);
-        selectInstrumentButton.setText("ESCOLHER INSTRUMENTO");
-        selectInstrumentButton.setContentDescription("Escolher ou trocar o instrumento do canal MIDI ativo");
-        styleButton(selectInstrumentButton, CONTROL, TEXT, 48, 14);
-        selectInstrumentButton.setOnClickListener(v -> {
-            if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
-        });
-        channelActionsPanel.addView(selectInstrumentButton);
-        LinearLayout actionsPanel = panel(settingsRoot);
-        trackEnableButton = new Button(this);
-        trackEnableButton.setText("FAIXA ATIVA");
-        styleButton(trackEnableButton, CONTROL, TEXT, 48, 14);
-        trackEnableButton.setOnClickListener(v -> {
-            if (trackManager == null) return;
-            int channel = trackManager.getActiveChannel();
-            boolean enabled = !trackManager.get(channel).isEnabled();
-            trackManager.setEnabled(channel, enabled);
-            updateTrackControls();
-        });
-        channelActionsPanel.addView(trackEnableButton);
-        bleSearchButton = new Button(this);
-        bleSearchButton.setText("Ativar busca BLE");
-        styleButton(bleSearchButton, CONTROL, TEXT, 48, 14);
-        LinearLayout.LayoutParams bleLp = (LinearLayout.LayoutParams) bleSearchButton.getLayoutParams();
-        bleLp.topMargin = (int)(8 * getResources().getDisplayMetrics().density);
-        bleSearchButton.setLayoutParams(bleLp);
         bleSearchButton.setOnClickListener(v -> {
             if (bleMidiInput == null) return;
             boolean enabled = !bleMidiInput.isScanningEnabled();
             bleMidiInput.setScanningEnabled(enabled);
             updateBleSearchButton();
         });
-        actionsPanel.addView(bleSearchButton);
-        choose = new Button(this);
-        choose.setText("＋  Importar SoundFont para a faixa");
-        styleButton(choose, ACCENT, Color.WHITE, 54, 14);
-        LinearLayout.LayoutParams chooseLp = (LinearLayout.LayoutParams) choose.getLayoutParams();
-        chooseLp.topMargin = (int)(8 * getResources().getDisplayMetrics().density);
-        choose.setLayoutParams(chooseLp);
         choose.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(intent, PICK_SF2);
         });
-        actionsPanel.addView(choose);
-        importProgressText = new TextView(this);
-        importProgressText.setTextColor(MUTED);
-        importProgressText.setTextSize(12);
-        importProgressText.setPadding(0, 8, 0, 2);
-        importProgressText.setVisibility(View.GONE);
-        actionsPanel.addView(importProgressText);
-        importProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        importProgressBar.setMax(1000);
-        importProgressBar.setProgress(0);
-        importProgressBar.setIndeterminate(false);
-        importProgressBar.setVisibility(View.GONE);
-        actionsPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (int)(8 * getResources().getDisplayMetrics().density)));
 
-        LinearLayout librariesPanel = panel(settingsRoot);
-        librariesPanel.addView(sectionLabel("BIBLIOTECAS IMPORTADAS"));
-        TextView librariesHint = new TextView(this);
-        librariesHint.setText("Desativar oculta a biblioteca ao escolher instrumentos. Canais que já a utilizam não são alterados.");
-        librariesHint.setTextColor(MUTED);
-        librariesHint.setTextSize(12);
-        librariesHint.setPadding(0, 3, 0, 8);
-        librariesPanel.addView(librariesHint);
-        libraryListContainer = new LinearLayout(this);
-        libraryListContainer.setOrientation(LinearLayout.VERTICAL);
-        librariesPanel.addView(libraryListContainer);
-
-        LinearLayout keyboardPanel = panel(root);
-        keyboardPanel.addView(sectionLabel("TECLADO VIRTUAL"));
-        TextView keyboardHint = new TextView(this);
-        keyboardHint.setText("O teclado toca na faixa selecionada");
-        keyboardHint.setTextColor(MUTED);
-        keyboardHint.setTextSize(12);
-        keyboardHint.setPadding(0, 3, 0, 8);
-        keyboardPanel.addView(keyboardHint);
-        LinearLayout velocityPanel = panel(keyboardPanel);
-        velocityPanel.addView(sectionLabel("VELOCITY"));
-        velocityValue = new TextView(this);
-        velocityValue.setText("Velocity: " + currentVelocity);
-        velocityValue.setTextColor(TEXT);
-        velocityValue.setTextSize(15);
-        velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        velocityPanel.addView(velocityValue);
-        velocitySeekBar = new SeekBar(this);
-        velocitySeekBar.setMax(126);
-        velocitySeekBar.setProgress(Math.max(0, currentVelocity - 1));
-        velocitySeekBar.setContentDescription("Velocity MIDI, de 1 a 127");
-        velocityPanel.addView(velocitySeekBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (int)(42 * getResources().getDisplayMetrics().density)));
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentVelocity = progress + 1;
@@ -386,64 +196,37 @@ public class MainActivity extends Activity {
             }
         });
 
-        int[] notes = {60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79};
-        for (int row = 0; row < 2; row++) {
-            LinearLayout line = new LinearLayout(this);
-            line.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            rowLp.bottomMargin = (int)(6 * getResources().getDisplayMetrics().density);
-            keyboardPanel.addView(line, rowLp);
-            for (int col = 0; col < 6; col++) {
-                final int note = notes[row * 6 + col];
-                Button key = new Button(this);
-                key.setText(noteName(note));
-                key.setTextSize(12);
-                key.setTextColor(TEXT);
-                key.setAllCaps(false);
-                key.setPadding(0, 0, 0, 0);
-                key.setMinHeight(0);
-                key.setMinimumHeight(0);
-                key.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
-                LinearLayout.LayoutParams keyLp = new LinearLayout.LayoutParams(0,
-                        (int)(66 * getResources().getDisplayMetrics().density), 1);
-                keyLp.setMargins(2, 2, 2, 2);
-                line.addView(key, keyLp);
-                final int[] pressedChannel = {-1};
-                key.setOnTouchListener((v, event) -> {
-                    if (!initialized || audioEngine == null || !audioEngine.isPlaying()) return true;
-                    int action = event.getActionMasked();
-                    if (action == MotionEvent.ACTION_DOWN) {
-                        if (!internalKeyboardSelected) return true;
-                        int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
-                        pressedChannel[0] = channel;
-                        if (midiRouter != null) midiRouter.send(keyboardMidiSource,
-                                0x90 | channel, note, currentVelocity);
-                        v.setBackground(rounded(ACCENT, 10, 0));
-                        return true;
-                    }
-                    if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                        if (pressedChannel[0] >= 0) {
-                            if (midiRouter != null) midiRouter.send(keyboardMidiSource,
-                                    0x80 | pressedChannel[0], note, 0);
-                            pressedChannel[0] = -1;
-                        }
-                        v.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
-                        return true;
-                    }
+        for (int i = 0; i < midiScreen.keyboardKeys.length; i++) {
+            final int note = MidiScreen.NOTES[i];
+            Button key = midiScreen.keyboardKeys[i];
+            final int[] pressedChannel = {-1};
+            key.setOnTouchListener((v, event) -> {
+                if (!initialized || audioEngine == null || !audioEngine.isPlaying()) return true;
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    if (!internalKeyboardSelected) return true;
+                    int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
+                    pressedChannel[0] = channel;
+                    if (midiRouter != null) midiRouter.send(keyboardMidiSource,
+                            0x90 | channel, note, currentVelocity);
+                    v.setBackground(rounded(ACCENT, 10, 0));
                     return true;
-                });
-            }
+                }
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    if (pressedChannel[0] >= 0) {
+                        if (midiRouter != null) midiRouter.send(keyboardMidiSource,
+                                0x80 | pressedChannel[0], note, 0);
+                        pressedChannel[0] = -1;
+                    }
+                    v.setBackground(rounded(CONTROL, 10, Color.rgb(65, 82, 110)));
+                    return true;
+                }
+                return true;
+            });
         }
 
-        ScrollView midiScroll = new ScrollView(this);
-        midiScroll.setFillViewport(true);
-        midiScroll.setClipToPadding(false);
-        midiScroll.addView(root);
-        ScrollView settingsScroll = new ScrollView(this);
-        settingsScroll.setFillViewport(true);
-        settingsScroll.setClipToPadding(false);
-        settingsScroll.addView(settingsRoot);
+        ScrollView midiScroll = midiScreen.scrollView;
+        ScrollView settingsScroll = settingsScreen.scrollView;
         settingsScroll.setVisibility(View.GONE);
 
         LinearLayout screenHost = new LinearLayout(this);
@@ -453,31 +236,37 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
         operationStatus.setPadding(16, 8, 16, 8);
         operationStatus.setBackground(rounded(PANEL, 10, Color.rgb(42, 54, 75)));
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         operationStatusParams.setMargins(16, 4, 16, 8);
         screenHost.addView(operationStatus, operationStatusParams);
+
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         navigation.setPadding(12, 8, 12, 8);
         navigation.setBackground(rounded(PANEL, 14, Color.rgb(42, 54, 75)));
+
         Button midiTab = new Button(this);
         midiTab.setText("MIDI");
         midiTab.setAllCaps(false);
         midiTab.setTextColor(Color.WHITE);
         midiTab.setBackground(rounded(ACCENT, 10, 0));
+
         Button settingsTab = new Button(this);
         settingsTab.setText("CONFIGURAÇÕES");
         settingsTab.setAllCaps(false);
         settingsTab.setTextColor(TEXT);
         settingsTab.setBackground(rounded(CONTROL, 10, 0));
+
         LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
-                (int)(48 * getResources().getDisplayMetrics().density), 1f);
+                (int) (48 * getResources().getDisplayMetrics().density), 1f);
         tabParams.setMargins(4, 0, 4, 0);
         navigation.addView(midiTab, tabParams);
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
+
         midiTab.setOnClickListener(v -> {
             ScreenNavigator.show(midiScroll, settingsScroll, false);
             midiTab.setBackground(rounded(ACCENT, 10, 0));
@@ -488,6 +277,7 @@ public class MainActivity extends Activity {
             settingsTab.setBackground(rounded(ACCENT, 10, 0));
             midiTab.setBackground(rounded(CONTROL, 10, 0));
         });
+
         screenHost.addView(navigation, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         setContentView(screenHost);
@@ -594,7 +384,6 @@ public class MainActivity extends Activity {
             updateBleSearchButton();
         } else status.setText("Falha ao iniciar o motor FluidSynth.");
     }
-
 
     private String compactTrackName(String name) {
         if (name == null || name.trim().isEmpty()) return "SF2 CARREGADO";
