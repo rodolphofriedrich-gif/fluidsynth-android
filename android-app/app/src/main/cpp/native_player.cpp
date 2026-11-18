@@ -11,6 +11,14 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetPolyphony(JNIEnv*, jobject, jint voices) {
     return SynthEngine::instance().setPolyphony(voices) ? JNI_TRUE : JNI_FALSE;
 }
+extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetReverb(JNIEnv*, jobject, jfloat room, jfloat damp, jfloat width, jfloat level) { SynthEngine::instance().setReverb(room, damp, width, level); }
+extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetChorus(JNIEnv*, jobject, jint voices, jfloat level, jfloat speed, jfloat depth) { SynthEngine::instance().setChorus(voices, level, speed, depth); }
+extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetReverbActive(JNIEnv*, jobject, jboolean active) { SynthEngine::instance().setReverbActive(active == JNI_TRUE); }
+extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetChorusActive(JNIEnv*, jobject, jboolean active) { SynthEngine::instance().setChorusActive(active == JNI_TRUE); }
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeLoad(JNIEnv* env, jobject, jstring path) {
