@@ -25,7 +25,7 @@ public final class EffectsScreen {
     }
     private static final String[] NAMES={"REVERB","CHORUS"};
     private static final Spec[][] SPECS={
-        {new Spec("Tamanho da sala","",0,1.2f,.2f,2),new Spec("Amortecimento","",0,1,0,2),new Spec("Largura","",0,100,100,1),new Spec("Nível","",0,1,.9f,2)},
+        {new Spec("Tamanho da sala","",0,1.2f,.2f,2),new Spec("Amortecimento","",0,1,0,2),new Spec("Largura","",0,100,.5f,1),new Spec("Nível","",0,1,.9f,2)},
         {new Spec("Vozes","",0,99,3,0),new Spec("Nível","",0,10,2,1),new Spec("Velocidade"," Hz",.1f,5,.3f,1),new Spec("Profundidade"," ms",0,21,8,1)}};
     public final ScrollView scrollView;private final Context context;private final float[][] values=new float[2][4];
     private final KnobView[][] knobs=new KnobView[2][4];private final TextView[][] labels=new TextView[2][4];
