@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     private final NativeBridge nativeBridge = new NativeBridge();
     private MidiScreen midiScreen;
     private SettingsScreen settingsScreen;
+    private EffectsScreen effectsScreen;
     private final Object keyboardMidiSource = new Object();
     private MidiRouter midiRouter;
     private AudioEngine audioEngine;
@@ -71,7 +72,9 @@ public class MainActivity extends Activity {
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
     private static final String STATE_SHOWING_SETTINGS = "showing_settings";
+    private static final String STATE_SHOWING_EFFECTS = "showing_effects";
     private boolean showingSettings;
+    private boolean showingEffects;
     private final Handler statusHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideOperationStatus = () -> {
         if (operationStatus != null) operationStatus.setVisibility(View.GONE);
@@ -106,9 +109,12 @@ public class MainActivity extends Activity {
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         }
         showingSettings = state != null && state.getBoolean(STATE_SHOWING_SETTINGS, false);
+        showingEffects = state != null && state.getBoolean(STATE_SHOWING_EFFECTS, false);
+        if (showingEffects) showingSettings = false;
 
         midiScreen = new MidiScreen(this);
         settingsScreen = new SettingsScreen(this);
+        effectsScreen = new EffectsScreen(this);
 
         status = midiScreen.status;
         audioDiagnostics = midiScreen.audioDiagnostics;
@@ -246,7 +252,8 @@ public class MainActivity extends Activity {
 
         ScrollView midiScroll = midiScreen.scrollView;
         ScrollView settingsScroll = settingsScreen.scrollView;
-        ScreenNavigator.show(midiScroll, settingsScroll, showingSettings);
+        ScrollView effectsScroll = effectsScreen.scrollView;
+        ScreenNavigator.show(midiScroll, settingsScroll, effectsScroll, showingSettings, showingEffects);
 
         LinearLayout screenHost = new LinearLayout(this);
         screenHost.setOrientation(LinearLayout.VERTICAL);
@@ -254,6 +261,8 @@ public class MainActivity extends Activity {
         screenHost.addView(midiScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        screenHost.addView(effectsScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
         operationStatus.setPadding(AppUi.dp(this, 16), AppUi.dp(this, 8), AppUi.dp(this, 16), AppUi.dp(this, 8));
@@ -281,24 +290,25 @@ public class MainActivity extends Activity {
         settingsTab.setTextColor(TEXT);
         settingsTab.setBackground(AppUi.ripple(this, showingSettings ? ACCENT : CONTROL, 10, 0));
 
+        Button effectsTab = new Button(this);
+        effectsTab.setText(getString(R.string.tab_effects));
+        effectsTab.setAllCaps(false);
+        effectsTab.setTextColor(TEXT);
+        effectsTab.setBackground(AppUi.ripple(this, showingEffects ? ACCENT : CONTROL, 10, 0));
+
         LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
                 AppUi.dp(this, 48), 1f);
-        tabParams.setMargins(AppUi.dp(this, 4), 0, AppUi.dp(this, 4), 0);
+        tabParams.setMargins(AppUi.dp(this, 3), 0, AppUi.dp(this, 3), 0);
         navigation.addView(midiTab, tabParams);
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
+        navigation.addView(effectsTab, new LinearLayout.LayoutParams(tabParams));
 
-        midiTab.setOnClickListener(v -> {
-            showingSettings = false;
-            ScreenNavigator.show(midiScroll, settingsScroll, false);
-            midiTab.setBackground(AppUi.ripple(this, ACCENT, 10, 0));
-            settingsTab.setBackground(AppUi.ripple(this, CONTROL, 10, 0));
-        });
-        settingsTab.setOnClickListener(v -> {
-            showingSettings = true;
-            ScreenNavigator.show(midiScroll, settingsScroll, true);
-            settingsTab.setBackground(AppUi.ripple(this, ACCENT, 10, 0));
-            midiTab.setBackground(AppUi.ripple(this, CONTROL, 10, 0));
-        });
+        midiTab.setOnClickListener(v -> showMainScreen(0, midiScroll, settingsScroll, effectsScroll,
+                midiTab, settingsTab, effectsTab));
+        settingsTab.setOnClickListener(v -> showMainScreen(1, midiScroll, settingsScroll, effectsScroll,
+                midiTab, settingsTab, effectsTab));
+        effectsTab.setOnClickListener(v -> showMainScreen(2, midiScroll, settingsScroll, effectsScroll,
+                midiTab, settingsTab, effectsTab));
 
         screenHost.addView(navigation, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -328,6 +338,20 @@ public class MainActivity extends Activity {
                 polyphonyValue.setText(getString(R.string.polyphony_value, appliedPolyphony));
                 showOperationStatus(getString(R.string.operation_polyphony_restore_failed));
             }
+            restoreEffectsSettings();
+            effectsScreen.setListener(new EffectsScreen.Listener() {
+                @Override public void onEffectActive(int effect, boolean active) {
+                    EffectsSettingsStore.saveActive(MainActivity.this, effect, active);
+                    if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverbActive(active);
+                    else nativeBridge.nativeSetChorusActive(active);
+                }
+                @Override public void onParamChanged(int effect, int param, float value) {
+                    float[] values = effectsScreen.values(effect);
+                    if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
+                    else nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
+                    EffectsSettingsStore.saveValues(MainActivity.this, effect, values);
+                }
+            });
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
             velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
@@ -727,6 +751,32 @@ public class MainActivity extends Activity {
         statusHandler.postDelayed(hideOperationStatus, 4000L);
     }
 
+    private void showMainScreen(int screen, View midi, View settings, View effects,
+            Button midiTab, Button settingsTab, Button effectsTab) {
+        showingSettings = screen == 1;
+        showingEffects = screen == 2;
+        ScreenNavigator.show(midi, settings, effects, showingSettings, showingEffects);
+        midiTab.setBackground(AppUi.ripple(this, screen == 0 ? ACCENT : CONTROL, 10, 0));
+        settingsTab.setBackground(AppUi.ripple(this, screen == 1 ? ACCENT : CONTROL, 10, 0));
+        effectsTab.setBackground(AppUi.ripple(this, screen == 2 ? ACCENT : CONTROL, 10, 0));
+    }
+
+    private void restoreEffectsSettings() {
+        for (int effect = 0; effect < 2; effect++) {
+            float[] values = EffectsSettingsStore.loadValues(this, effect);
+            for (int param = 0; param < 4; param++) effectsScreen.setParam(effect, param, values[param]);
+            boolean active = EffectsSettingsStore.loadActive(this, effect);
+            effectsScreen.setActive(effect, active);
+            if (effect == EffectsScreen.REVERB) {
+                nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
+                nativeBridge.nativeSetReverbActive(active);
+            } else {
+                nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
+                nativeBridge.nativeSetChorusActive(active);
+            }
+        }
+    }
+
     private void applySystemInsets(View root) {
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             int left;
@@ -760,6 +810,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(STATE_SHOWING_SETTINGS, showingSettings);
+        outState.putBoolean(STATE_SHOWING_EFFECTS, showingEffects);
         super.onSaveInstanceState(outState);
     }
 
