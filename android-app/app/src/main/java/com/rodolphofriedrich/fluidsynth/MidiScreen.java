@@ -1,7 +1,6 @@
 package com.rodolphofriedrich.fluidsynth;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -26,38 +25,38 @@ public final class MidiScreen {
     public MidiScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(16, 48, 16, 24);
+        root.setPadding(AppUi.dp(context, 16), AppUi.dp(context, 12), AppUi.dp(context, 16), AppUi.dp(context, 24));
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout header = AppUi.panel(context, root);
         TextView title = new TextView(context);
-        title.setText("FLUIDSYNTH PLAYER");
+        title.setText(context.getString(R.string.app_title));
         title.setTextColor(AppUi.TEXT);
         title.setTextSize(19);
         title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         header.addView(title);
 
         status = new TextView(context);
-        status.setText("Selecione uma faixa e carregue um SoundFont");
+        status.setText(context.getString(R.string.status_select_track));
         status.setTextColor(AppUi.MUTED);
         status.setTextSize(13);
         status.setPadding(0, 5, 0, 0);
         header.addView(status);
 
         audioDiagnostics = new TextView(context);
-        audioDiagnostics.setText("Áudio: inicializando saída");
+        audioDiagnostics.setText(context.getString(R.string.audio_initializing));
         audioDiagnostics.setTextColor(AppUi.MUTED);
-        audioDiagnostics.setTextSize(11);
+        audioDiagnostics.setTextSize(12);
         audioDiagnostics.setPadding(0, 3, 0, 0);
         header.addView(audioDiagnostics);
 
         LinearLayout tracksPanel = AppUi.panel(context, root);
-        tracksPanel.addView(AppUi.sectionLabel(context, "16 FAIXAS MIDI"));
+        tracksPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.tracks_title)));
         TextView trackHint = new TextView(context);
-        trackHint.setText("Toque em uma faixa para selecioná-la");
+        trackHint.setText(context.getString(R.string.track_hint));
         trackHint.setTextColor(AppUi.MUTED);
         trackHint.setTextSize(12);
-        trackHint.setPadding(0, 3, 0, 10);
+        trackHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 10));
         tracksPanel.addView(trackHint);
 
         GridLayout trackGrid = new GridLayout(context);
@@ -65,19 +64,20 @@ public final class MidiScreen {
         trackGrid.setRowCount(4);
         for (int i = 0; i < 16; i++) {
             Button trackButton = new Button(context);
-            trackButton.setText("CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\nVAZIA");
-            trackButton.setTextSize(11);
+            trackButton.setText(context.getString(R.string.track_channel_empty, i + 1));
+            trackButton.setTextSize(12);
             trackButton.setTextColor(AppUi.TEXT);
             trackButton.setAllCaps(false);
-            trackButton.setPadding(2, 2, 2, 2);
+            trackButton.setPadding(AppUi.dp(context, 2), AppUi.dp(context, 2), AppUi.dp(context, 2), AppUi.dp(context, 2));
             trackButton.setMinHeight(0);
             trackButton.setMinimumHeight(0);
-            trackButton.setBackground(AppUi.rounded(context, AppUi.CONTROL, 10, Color.rgb(55, 69, 94)));
+            trackButton.setBackground(AppUi.ripple(context, AppUi.CONTROL, 10, AppUi.CONTROL_BORDER));
+            trackButton.setContentDescription(context.getString(R.string.track_accessibility, i + 1));
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
                     GridLayout.spec(i / 4, 1f), GridLayout.spec(i % 4, 1f));
             params.width = 0;
-            params.height = (int) (64 * context.getResources().getDisplayMetrics().density);
-            params.setMargins(3, 3, 3, 3);
+            params.height = AppUi.dp(context, 64);
+            params.setMargins(AppUi.dp(context, 3), AppUi.dp(context, 3), AppUi.dp(context, 3), AppUi.dp(context, 3));
             trackGrid.addView(trackButton, params);
             trackButtons[i] = trackButton;
         }
@@ -85,48 +85,47 @@ public final class MidiScreen {
 
         LinearLayout channelActionsPanel = AppUi.panel(context, root);
         selectInstrumentButton = new Button(context);
-        selectInstrumentButton.setText("ESCOLHER INSTRUMENTO");
+        selectInstrumentButton.setText(context.getString(R.string.choose_instrument));
         selectInstrumentButton.setContentDescription("Escolher ou trocar o instrumento do canal MIDI ativo");
         AppUi.styleButton(context, selectInstrumentButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
         channelActionsPanel.addView(selectInstrumentButton);
 
         trackEnableButton = new Button(context);
-        trackEnableButton.setText("FAIXA ATIVA");
+        trackEnableButton.setText(context.getString(R.string.track_active));
         AppUi.styleButton(context, trackEnableButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
         channelActionsPanel.addView(trackEnableButton);
 
         LinearLayout keyboardPanel = AppUi.panel(context, root);
-        keyboardPanel.addView(AppUi.sectionLabel(context, "TECLADO VIRTUAL"));
+        keyboardPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.virtual_keyboard)));
         TextView keyboardHint = new TextView(context);
-        keyboardHint.setText("O teclado toca na faixa selecionada");
+        keyboardHint.setText(context.getString(R.string.keyboard_hint));
         keyboardHint.setTextColor(AppUi.MUTED);
         keyboardHint.setTextSize(12);
-        keyboardHint.setPadding(0, 3, 0, 8);
+        keyboardHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 8));
         keyboardPanel.addView(keyboardHint);
 
-        LinearLayout velocityPanel = AppUi.panel(context, keyboardPanel);
-        velocityPanel.addView(AppUi.sectionLabel(context, "VELOCITY"));
+        keyboardPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.velocity_label)));
         velocityValue = new TextView(context);
-        velocityValue.setText("Velocity: 100");
+        velocityValue.setText(context.getString(R.string.velocity_value, 100));
         velocityValue.setTextColor(AppUi.TEXT);
-        velocityValue.setTextSize(15);
+        velocityValue.setTextSize(14);
         velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        velocityPanel.addView(velocityValue);
+        keyboardPanel.addView(velocityValue);
 
         velocitySeekBar = new SeekBar(context);
         velocitySeekBar.setMax(126);
         velocitySeekBar.setProgress(99);
-        velocitySeekBar.setContentDescription("Velocity MIDI, de 1 a 127");
-        velocityPanel.addView(velocitySeekBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (int) (42 * context.getResources().getDisplayMetrics().density)));
+        velocitySeekBar.setContentDescription(context.getString(R.string.velocity_accessibility));
+        AppUi.tint(velocitySeekBar);
+        keyboardPanel.addView(velocitySeekBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, AppUi.dp(context, 42)));
 
         for (int row = 0; row < 2; row++) {
             LinearLayout line = new LinearLayout(context);
             line.setGravity(android.view.Gravity.CENTER);
             LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            rowParams.bottomMargin = (int) (6 * context.getResources().getDisplayMetrics().density);
+            rowParams.bottomMargin = AppUi.dp(context, 6);
             keyboardPanel.addView(line, rowParams);
             for (int col = 0; col < 6; col++) {
                 int index = row * 6 + col;
@@ -139,10 +138,11 @@ public final class MidiScreen {
                 key.setPadding(0, 0, 0, 0);
                 key.setMinHeight(0);
                 key.setMinimumHeight(0);
-                key.setBackground(AppUi.rounded(context, AppUi.CONTROL, 10, Color.rgb(65, 82, 110)));
+                key.setBackground(AppUi.ripple(context, AppUi.CONTROL, 10, AppUi.KEY_BORDER));
+                key.setContentDescription(context.getString(R.string.key_accessibility, noteName(note), note));
                 LinearLayout.LayoutParams keyParams = new LinearLayout.LayoutParams(0,
-                        (int) (66 * context.getResources().getDisplayMetrics().density), 1);
-                keyParams.setMargins(2, 2, 2, 2);
+                        AppUi.dp(context, 66), 1);
+                keyParams.setMargins(AppUi.dp(context, 2), AppUi.dp(context, 2), AppUi.dp(context, 2), AppUi.dp(context, 2));
                 line.addView(key, keyParams);
                 keyboardKeys[index] = key;
             }

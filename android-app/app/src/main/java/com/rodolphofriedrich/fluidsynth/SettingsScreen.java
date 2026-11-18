@@ -9,7 +9,6 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.view.View;
 
@@ -23,6 +22,7 @@ public final class SettingsScreen {
     public final TextView polyphonyValue;
     public final Button bleSearchButton;
     public final Button chooseButton;
+    public final TextView importTargetText;
     public final TextView importProgressText;
     public final ProgressBar importProgressBar;
     public final LinearLayout libraryListContainer;
@@ -30,43 +30,43 @@ public final class SettingsScreen {
     public SettingsScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(16, 24, 16, 24);
+        root.setPadding(AppUi.dp(context, 16), AppUi.dp(context, 12), AppUi.dp(context, 16), AppUi.dp(context, 24));
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout controllerPanel = AppUi.panel(context, root);
         controllerPanel.addView(AppUi.sectionLabel(context, "CONTROLADOR MIDI"));
         deviceSelector = new Spinner(context);
-        deviceSelector.setPadding(4, 4, 4, 4);
+        deviceSelector.setPadding(AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4));
         deviceSelector.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"Teclado interno do aplicativo"}));
+                new String[]{context.getString(R.string.internal_keyboard)}));
         controllerPanel.addView(deviceSelector, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                (int) (52 * context.getResources().getDisplayMetrics().density)));
+                AppUi.dp(context, 52)));
 
         usbStatus = new TextView(context);
-        usbStatus.setText("MIDI: aguardando controlador");
+        usbStatus.setText(context.getString(R.string.midi_waiting));
         usbStatus.setTextColor(AppUi.MUTED);
         usbStatus.setTextSize(12);
         controllerPanel.addView(usbStatus);
 
         bleStatus = new TextView(context);
-        bleStatus.setText("BLE MIDI: busca desligada");
+        bleStatus.setText(context.getString(R.string.ble_search_off));
         bleStatus.setTextColor(AppUi.MUTED);
         bleStatus.setTextSize(12);
-        bleStatus.setPadding(0, 3, 0, 0);
+        bleStatus.setPadding(0, AppUi.dp(context, 3), 0, 0);
         controllerPanel.addView(bleStatus);
 
         LinearLayout audioPanel = AppUi.panel(context, root);
-        audioPanel.addView(AppUi.sectionLabel(context, "POLIFONIA"));
+        audioPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.polyphony_label)));
         TextView polyphonyHint = new TextView(context);
-        polyphonyHint.setText("Limite máximo de vozes simultâneas do sintetizador");
+        polyphonyHint.setText(context.getString(R.string.polyphony_hint));
         polyphonyHint.setTextColor(AppUi.MUTED);
         polyphonyHint.setTextSize(12);
-        polyphonyHint.setPadding(0, 3, 0, 8);
+        polyphonyHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 8));
         audioPanel.addView(polyphonyHint);
 
         polyphonyValue = new TextView(context);
-        polyphonyValue.setText("512 vozes");
+        polyphonyValue.setText(context.getString(R.string.polyphony_value, 512));
         polyphonyValue.setTextColor(AppUi.TEXT);
         polyphonyValue.setTextSize(16);
         polyphonyValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
@@ -75,32 +75,35 @@ public final class SettingsScreen {
         polyphonySeekBar = new SeekBar(context);
         polyphonySeekBar.setMax(255);
         polyphonySeekBar.setProgress((512 / 8) - 1);
-        polyphonySeekBar.setContentDescription("Polifonia, de 8 a 2048 vozes, em passos de 8");
+        polyphonySeekBar.setContentDescription(context.getString(R.string.polyphony_accessibility));
+        AppUi.tint(polyphonySeekBar);
         audioPanel.addView(polyphonySeekBar, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                (int) (42 * context.getResources().getDisplayMetrics().density)));
+                AppUi.dp(context, 42)));
 
         LinearLayout actionsPanel = AppUi.panel(context, root);
         bleSearchButton = new Button(context);
-        bleSearchButton.setText("Ativar busca BLE");
+        bleSearchButton.setText(context.getString(R.string.ble_search_off));
         AppUi.styleButton(context, bleSearchButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
-        LinearLayout.LayoutParams bleParams = (LinearLayout.LayoutParams) bleSearchButton.getLayoutParams();
-        bleParams.topMargin = (int) (8 * context.getResources().getDisplayMetrics().density);
-        bleSearchButton.setLayoutParams(bleParams);
         actionsPanel.addView(bleSearchButton);
 
+        importTargetText = new TextView(context);
+        importTargetText.setText(context.getString(R.string.import_target_channel, 1));
+        importTargetText.setTextColor(AppUi.MUTED);
+        importTargetText.setTextSize(12);
+        importTargetText.setPadding(0, AppUi.dp(context, 8), 0, AppUi.dp(context, 4));
+        importTargetText.setContentDescription(context.getString(R.string.import_target_accessibility, 1));
+        actionsPanel.addView(importTargetText);
+
         chooseButton = new Button(context);
-        chooseButton.setText("＋  Importar SoundFont para a faixa");
+        chooseButton.setText(context.getString(R.string.import_sf2_channel, 1));
         AppUi.styleButton(context, chooseButton, AppUi.ACCENT, Color.WHITE, 54, 14);
-        LinearLayout.LayoutParams chooseParams = (LinearLayout.LayoutParams) chooseButton.getLayoutParams();
-        chooseParams.topMargin = (int) (8 * context.getResources().getDisplayMetrics().density);
-        chooseButton.setLayoutParams(chooseParams);
         actionsPanel.addView(chooseButton);
 
         importProgressText = new TextView(context);
         importProgressText.setTextColor(AppUi.MUTED);
         importProgressText.setTextSize(12);
-        importProgressText.setPadding(0, 8, 0, 2);
+        importProgressText.setPadding(0, AppUi.dp(context, 8), 0, AppUi.dp(context, 2));
         importProgressText.setVisibility(View.GONE);
         actionsPanel.addView(importProgressText);
 
@@ -111,15 +114,15 @@ public final class SettingsScreen {
         importProgressBar.setVisibility(View.GONE);
         actionsPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                (int) (8 * context.getResources().getDisplayMetrics().density)));
+                AppUi.dp(context, 8)));
 
         LinearLayout librariesPanel = AppUi.panel(context, root);
-        librariesPanel.addView(AppUi.sectionLabel(context, "BIBLIOTECAS IMPORTADAS"));
+        librariesPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.imported_libraries)));
         TextView librariesHint = new TextView(context);
-        librariesHint.setText("Desativar oculta a biblioteca ao escolher instrumentos. Canais que já a utilizam não são alterados.");
+        librariesHint.setText(context.getString(R.string.library_visibility_hint));
         librariesHint.setTextColor(AppUi.MUTED);
         librariesHint.setTextSize(12);
-        librariesHint.setPadding(0, 3, 0, 8);
+        librariesHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 8));
         librariesPanel.addView(librariesHint);
 
         libraryListContainer = new LinearLayout(context);
