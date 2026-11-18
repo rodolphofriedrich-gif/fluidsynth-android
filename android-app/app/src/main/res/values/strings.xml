@@ -71,6 +71,7 @@
     <string name="mute_suffix"> • MUTE</string>
     <string name="tab_midi">MIDI</string>
     <string name="tab_settings">CONFIGURAÇÕES</string>
+    <string name="tab_effects">EFEITOS</string>
     <string name="device_usb">USB</string>
     <string name="device_internal_virtual">Interno/virtual</string>
     <string name="device_name_fallback">Dispositivo MIDI %1$d</string>
