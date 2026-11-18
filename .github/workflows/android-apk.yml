@@ -4,7 +4,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [ 'feature/sf2-preset-browser', android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control', 'feature/two-screen-midi-settings', 'review/feedback-atualizado', 'fix/audio-midi-stability' ]
+    branches:
+      - 'feature/sf2-preset-browser'
+      - 'android-apk-player'
+      - 'feature/usb-midi-input'
+      - 'feature/ble-midi-input'
+      - 'feature/multitrack-midi'
+      - 'fix/phase1-multitrack-stability'
+      - 'feature/polyphony-control'
+      - 'feature/two-screen-midi-settings'
+      - 'review/feedback-atualizado'
+      - 'fix/audio-midi-stability'
+      - 'docs/portugues-brasil'
     paths:
       - 'android-app/**'
       - 'src/**'
@@ -12,6 +23,12 @@ on:
       - 'android/**'
       - 'CMakeLists.txt'
       - '.github/workflows/android-apk.yml'
+      - 'README*'
+      - 'LICENSE*'
+      - 'CONTRIBUTING.md'
+      - 'ARCHITECTURE.md'
+      - 'TODO*'
+      - 'android-app/*.md'
 permissions:
   contents: read
 jobs:
@@ -42,9 +59,3 @@ jobs:
           name: fluidsynth-player-debug-apk
           path: android-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-# APK test build requested after the modular UI update.
-
-# Rebuild after track labels and persistence fixes.
-# Build Phase 1 multitrack stability changes.
-# Build the adjustable polyphony control.
