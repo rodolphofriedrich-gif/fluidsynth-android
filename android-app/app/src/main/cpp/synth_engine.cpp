@@ -31,6 +31,23 @@ bool SynthEngine::initialize() {
     return true;
 }
 
+void SynthEngine::setReverb(double roomSize, double damping, double width, double level) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (synth_) fluid_synth_set_reverb(synth_, roomSize, damping, width, level);
+}
+void SynthEngine::setChorus(int voices, double level, double speed, double depthMs) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (synth_) fluid_synth_set_chorus(synth_, voices, level, speed, depthMs, FLUID_CHORUS_SINE);
+}
+void SynthEngine::setReverbActive(bool active) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (synth_) fluid_synth_set_reverb_on(synth_, active ? 1 : 0);
+}
+void SynthEngine::setChorusActive(bool active) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (synth_) fluid_synth_set_chorus_on(synth_, active ? 1 : 0);
+}
+
 bool SynthEngine::setPolyphony(int voices) {
     voices = std::clamp(((voices + 4) / 8) * 8, 8, 2048);
     std::lock_guard<std::mutex> lock(mutex_);
