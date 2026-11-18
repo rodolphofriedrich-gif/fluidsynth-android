@@ -2,7 +2,6 @@ package com.rodolphofriedrich.fluidsynth;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -30,7 +29,7 @@ public final class EffectsScreen {
     public final ScrollView scrollView;private final Context context;private final float[][] values=new float[2][4];
     private final KnobView[][] knobs=new KnobView[2][4];private final TextView[][] labels=new TextView[2][4];
     private final Switch[] active=new Switch[2];private final View[] pages=new View[2];private final Button[] tabs=new Button[2];
-    private Listener listener;private boolean silent;private long lastSend;
+    private Listener listener;private boolean silent;
     public EffectsScreen(Context c){context=c;LinearLayout root=new LinearLayout(c);root.setOrientation(1);root.setPadding(dp(16),dp(24),dp(16),dp(24));root.setBackgroundColor(AppUi.BG);
         LinearLayout header=AppUi.panel(c,root);header.addView(AppUi.sectionLabel(c,"EFEITOS"));TextView hint=new TextView(c);hint.setText("Aplicados a todo o sintetizador");hint.setTextColor(AppUi.MUTED);hint.setTextSize(12);header.addView(hint);
         LinearLayout row=new LinearLayout(c);header.addView(row);for(int i=0;i<2;i++){final int e=i;Button b=new Button(c);b.setText(NAMES[i]);AppUi.styleButton(c,b,AppUi.CONTROL,AppUi.TEXT,44,13);
@@ -49,9 +48,10 @@ public final class EffectsScreen {
             TextView label=new TextView(context);label.setText(s.format(s.def));label.setTextColor(AppUi.TEXT);label.setTextSize(14);label.setTypeface(android.graphics.Typeface.DEFAULT,1);cell.addView(label);
             values[e][p]=s.def;knobs[e][p]=k;labels[e][p]=label;GridLayout.LayoutParams gp=new GridLayout.LayoutParams(GridLayout.spec(p/2,1f),GridLayout.spec(p%2,1f));gp.width=0;grid.addView(cell,gp);}
         page.addView(grid);Button reset=new Button(context);reset.setText("Restaurar padrão");AppUi.styleButton(context,reset,AppUi.CONTROL,AppUi.TEXT,48,14);reset.setOnClickListener(v->{for(int p=0;p<4;p++)setParam(e,p,SPECS[e][p].def);if(listener!=null)listener.onParamChanged(e,-1,0);});page.addView(reset);}
-    private void onKnob(int e,int p,float t,boolean tracking){float v=SPECS[e][p].toValue(t);labels[e][p].setText(SPECS[e][p].format(v));boolean changed=v!=values[e][p];values[e][p]=v;
-        if(tracking&&!changed)return;
-        long now=SystemClock.uptimeMillis();if(tracking&&now-lastSend<30)return;lastSend=now;if(listener!=null)listener.onParamChanged(e,p,v);}
+    private void onKnob(int e,int p,float t,boolean tracking){float v=SPECS[e][p].toValue(t);labels[e][p].setText(SPECS[e][p].format(v));values[e][p]=v;
+        // As APIs globais de efeitos não são realtime-safe: aplica ao soltar o knob.
+        if(tracking)return;
+        if(listener!=null)listener.onParamChanged(e,p,v);}
     private void selectTab(int selected){for(int i=0;i<2;i++){boolean on=i==selected;pages[i].setVisibility(on?View.VISIBLE:View.GONE);tabs[i].setBackground(AppUi.rounded(context,on?AppUi.ACCENT:AppUi.CONTROL,12,0));tabs[i].setTextColor(on?Color.WHITE:AppUi.TEXT);}}
     private int dp(float v){return Math.round(v*context.getResources().getDisplayMetrics().density);}
 }
