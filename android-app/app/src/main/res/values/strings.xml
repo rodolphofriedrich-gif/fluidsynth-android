@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">FluidSynth Player</string>
     <string name="app_title">FLUIDESYNTH PLAYER</string>
     <string name="status_select_track">Selecione uma faixa e carregue um SoundFont</string>
     <string name="audio_initializing">Áudio: inicializando saída</string>

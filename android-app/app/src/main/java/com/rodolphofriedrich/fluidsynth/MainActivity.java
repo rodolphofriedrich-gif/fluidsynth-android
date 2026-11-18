@@ -325,7 +325,7 @@ public class MainActivity extends Activity {
                 currentPolyphony = PolyphonySettingsStore.DEFAULT;
                 appliedPolyphony = PolyphonySettingsStore.DEFAULT;
                 polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
-                polyphonyValue.setText(appliedPolyphony + " vozes");
+                polyphonyValue.setText(getString(R.string.polyphony_value, appliedPolyphony));
                 showOperationStatus(getString(R.string.operation_polyphony_restore_failed));
             }
             currentVelocity = VelocitySettingsStore.load(this);
