@@ -77,4 +77,21 @@
     <string name="library_active">Ativa</string>
     <string name="library_disabled_label">Desativada</string>
     <string name="library_toggle_accessibility">Ativar ou desativar biblioteca %1$s</string>
+
+    <string name="controller_midi">CONTROLADOR MIDI</string>
+    <string name="choose_instrument_accessibility">Escolher ou trocar o instrumento do canal MIDI ativo</string>
+    <string name="device_selector_accessibility">Selecionar entrada MIDI USB, interna ou virtual</string>
+    <string name="track_enable_accessibility">Alternar o estado da faixa MIDI %1$d. Estado atual: %2$s</string>
+    <string name="enabled_state">ativa</string>
+    <string name="muted_state">mutada</string>
+    <string name="ble_search_accessibility_on">Desativar busca de dispositivos BLE MIDI</string>
+    <string name="ble_search_accessibility_off">Ativar busca de dispositivos BLE MIDI</string>
+    <string name="import_sf2_accessibility">Importar SoundFont para a faixa MIDI %1$d</string>
+    <string name="replace_sf2_accessibility">Substituir SoundFont da faixa MIDI %1$d</string>
+    <string name="midi_program_fallback">Programa MIDI %1$d</string>
+    <string name="usb_status">MIDI: %1$s</string>
+    <string name="ble_status">BLE MIDI: %1$s</string>
+    <string name="soundfont_default_filename">SoundFont.sf2</string>
+    <string name="preset_bank_program">%1$s (Banco %2$s, Programa %3$s)</string>
+    <string name="track_button_label">%1$sCH %2$02d\n%3$s</string>
 </resources>

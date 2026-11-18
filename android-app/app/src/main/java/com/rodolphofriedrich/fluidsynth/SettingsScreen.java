@@ -34,9 +34,10 @@ public final class SettingsScreen {
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout controllerPanel = AppUi.panel(context, root);
-        controllerPanel.addView(AppUi.sectionLabel(context, "CONTROLADOR MIDI"));
+        controllerPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.controller_midi)));
         deviceSelector = new Spinner(context);
         deviceSelector.setPadding(AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4));
+        deviceSelector.setContentDescription(context.getString(R.string.device_selector_accessibility));
         deviceSelector.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item,
                 new String[]{context.getString(R.string.internal_keyboard)}));
         controllerPanel.addView(deviceSelector, new LinearLayout.LayoutParams(

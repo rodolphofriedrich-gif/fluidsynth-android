@@ -172,20 +172,20 @@ public class MainActivity extends Activity {
         polyphonySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentPolyphony = (progress + 1) * PolyphonySettingsStore.STEP;
-                polyphonyValue.setText(currentPolyphony + " vozes");
+                polyphonyValue.setText(getString(R.string.polyphony_value, currentPolyphony));
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
                 if (initialized && !nativeBridge.nativeSetPolyphony(currentPolyphony)) {
                     currentPolyphony = appliedPolyphony;
                     polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
-                    polyphonyValue.setText(appliedPolyphony + " vozes");
-                    showOperationStatus("Não foi possível aplicar a polifonia. O valor anterior foi mantido.");
+                    polyphonyValue.setText(getString(R.string.polyphony_value, appliedPolyphony));
+                    showOperationStatus(getString(R.string.operation_polyphony_failed));
                     return;
                 }
                 appliedPolyphony = currentPolyphony;
                 PolyphonySettingsStore.save(MainActivity.this, currentPolyphony);
-                showOperationStatus("Polifonia definida para " + currentPolyphony + " vozes.");
+                showOperationStatus(getString(R.string.operation_polyphony_saved, currentPolyphony));
             }
         });
 
@@ -210,7 +210,7 @@ public class MainActivity extends Activity {
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
                 VelocitySettingsStore.save(MainActivity.this, currentVelocity);
-                showOperationStatus("Velocity definida para " + currentVelocity + ".");
+                showOperationStatus(getString(R.string.operation_velocity_saved, currentVelocity));
             }
         });
 
@@ -313,7 +313,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && trackManager != null
                                 && trackManager.updatePresetFromMidi(channel, bank, program,
-                                        "Programa MIDI " + (program + 1))) {
+                                        getString(R.string.midi_program_fallback, program + 1))) {
                             updateTrackControls();
                         }
                     }));
@@ -326,11 +326,11 @@ public class MainActivity extends Activity {
                 appliedPolyphony = PolyphonySettingsStore.DEFAULT;
                 polyphonySeekBar.setProgress((appliedPolyphony / PolyphonySettingsStore.STEP) - 1);
                 polyphonyValue.setText(appliedPolyphony + " vozes");
-                showOperationStatus("Não foi possível restaurar a polifonia salva. Usando o padrão.");
+                showOperationStatus(getString(R.string.operation_polyphony_restore_failed));
             }
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
-            velocityValue.setText("Intensidade: " + currentVelocity);
+            velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
             soundFontManager = new SoundFontManager(this);
             soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
             refreshSoundFontLibraryList();
@@ -342,16 +342,15 @@ public class MainActivity extends Activity {
             });
             updateTrackControls();
             setTrackControlsEnabled(false);
-            showOperationStatus("Restaurando SoundFonts e configurações...");
+            showOperationStatus(getString(R.string.operation_restoring));
             trackManager.restoreAsync(loader, () -> runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     updateTrackControls();
                     setTrackControlsEnabled(true);
                     int restoreFailures = trackManager.getRestoreFailureCount();
                     showOperationStatus(restoreFailures == 0
-                            ? "Configurações das faixas restauradas."
-                            : "Restauração concluída com " + restoreFailures
-                                    + " falha(s). Verifique os canais com SoundFont ausente ou inválido.");
+                            ? getString(R.string.operation_restore_ok)
+                            : getString(R.string.operation_restore_failures, restoreFailures));
                 }
             }));
             audioEngine = new AudioEngine(nativeBridge, new AudioEngine.Listener() {
@@ -384,7 +383,7 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) usbStatus.setText("MIDI: " + message);
+                        if (!isFinishing() && !isDestroyed()) usbStatus.setText(getString(R.string.usb_status, message));
                     });
                 }
                 @Override public void onDevicesChanged(List<MidiDeviceInfo> devices) {
@@ -401,7 +400,7 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) bleStatus.setText("BLE MIDI: " + message);
+                        if (!isFinishing() && !isDestroyed()) bleStatus.setText(getString(R.string.ble_status, message));
                     });
                 }
             });
@@ -433,7 +432,7 @@ public class MainActivity extends Activity {
             if (cursor != null) cursor.close();
         }
         String fallback = uri.getLastPathSegment();
-        return fallback == null || fallback.trim().isEmpty() ? "SoundFont.sf2" : fallback;
+        return fallback == null || fallback.trim().isEmpty() ? getString(R.string.soundfont_default_filename) : fallback;
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -487,7 +486,7 @@ public class MainActivity extends Activity {
         AppUi.setButtonEnabled(choose, false);
         showImportProgress();
         final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
-        showOperationStatus("Importando SF2 para CH " + (channel + 1) + "...");
+        showOperationStatus(getString(R.string.import_channel_started, channel + 1));
         final android.net.Uri uri = data.getData();
         loader.execute(() -> {
             String message;
@@ -529,7 +528,7 @@ public class MainActivity extends Activity {
             empty.setText(getString(R.string.libraries_empty));
             empty.setTextColor(MUTED);
             empty.setTextSize(13);
-            empty.setPadding(0, 8, 0, 8);
+            empty.setPadding(0, AppUi.dp(this, 8), 0, AppUi.dp(this, 8));
             libraryListContainer.addView(empty);
             return;
         }
@@ -539,7 +538,7 @@ public class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, 8, 0, 8);
+            row.setPadding(0, AppUi.dp(this, 8), 0, AppUi.dp(this, 8));
 
             TextView name = new TextView(this);
             name.setText(soundFontManager.getDisplayName(library));
@@ -609,7 +608,9 @@ public class MainActivity extends Activity {
                 String[] labels = new String[presets.length];
                 for (int i = 0; i < presets.length; i++) {
                     String[] fields = presets[i].split("\\|", 3);
-                    labels[i] = fields.length == 3 ? fields[2] + " (Banco " + fields[0] + ", Programa " + fields[1] + ")" : presets[i];
+                    labels[i] = fields.length == 3
+                            ? getString(R.string.preset_bank_program, fields[2], fields[0], fields[1])
+                            : presets[i];
                 }
                 new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                     .setTitle(soundFontManager.getDisplayName(library))
@@ -672,12 +673,13 @@ public class MainActivity extends Activity {
         int channel = trackManager.getActiveChannel();
         Track selected = trackManager.get(channel);
         trackEnableButton.setText(getString(selected.isEnabled() ? R.string.channel_enabled : R.string.channel_muted, channel + 1));
+        trackEnableButton.setContentDescription(getString(R.string.track_enable_accessibility, channel + 1, selected.isEnabled() ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
             String prefix = i == channel ? "● " : "";
-            trackButtons[i].setText(prefix + "CH " + String.format(java.util.Locale.ROOT, "%02d", i + 1) + "\n" + state);
+            trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
             trackButtons[i].setTextColor(TEXT);
@@ -688,6 +690,7 @@ public class MainActivity extends Activity {
         importTargetText.setText(getString(R.string.import_target_channel, channel + 1));
         importTargetText.setContentDescription(getString(R.string.import_target_accessibility, channel + 1));
         choose.setText(getString(selected.hasSoundFont() ? R.string.replace_sf2_channel : R.string.import_sf2_channel, channel + 1));
+        choose.setContentDescription(getString(selected.hasSoundFont() ? R.string.replace_sf2_accessibility : R.string.import_sf2_accessibility, channel + 1));
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : getString(R.string.soundfont_missing);
         String preset = selected.getPresetName();
         String instrument = preset == null || preset.trim().isEmpty()
@@ -713,6 +716,7 @@ public class MainActivity extends Activity {
         if (bleSearchButton == null) return;
         boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
         bleSearchButton.setText(getString(enabled ? R.string.ble_search_on : R.string.ble_search_off));
+        bleSearchButton.setContentDescription(getString(enabled ? R.string.ble_search_accessibility_on : R.string.ble_search_accessibility_off));
     }
 
     private void showOperationStatus(String message) {

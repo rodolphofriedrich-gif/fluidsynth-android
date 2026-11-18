@@ -40,14 +40,14 @@ public final class MidiScreen {
         status.setText(context.getString(R.string.status_select_track));
         status.setTextColor(AppUi.MUTED);
         status.setTextSize(13);
-        status.setPadding(0, 5, 0, 0);
+        status.setPadding(0, AppUi.dp(context, 5), 0, 0);
         header.addView(status);
 
         audioDiagnostics = new TextView(context);
         audioDiagnostics.setText(context.getString(R.string.audio_initializing));
         audioDiagnostics.setTextColor(AppUi.MUTED);
         audioDiagnostics.setTextSize(12);
-        audioDiagnostics.setPadding(0, 3, 0, 0);
+        audioDiagnostics.setPadding(0, AppUi.dp(context, 3), 0, 0);
         header.addView(audioDiagnostics);
 
         LinearLayout tracksPanel = AppUi.panel(context, root);
@@ -86,7 +86,7 @@ public final class MidiScreen {
         LinearLayout channelActionsPanel = AppUi.panel(context, root);
         selectInstrumentButton = new Button(context);
         selectInstrumentButton.setText(context.getString(R.string.choose_instrument));
-        selectInstrumentButton.setContentDescription("Escolher ou trocar o instrumento do canal MIDI ativo");
+        selectInstrumentButton.setContentDescription(context.getString(R.string.choose_instrument_accessibility));
         AppUi.styleButton(context, selectInstrumentButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
         channelActionsPanel.addView(selectInstrumentButton);
 
