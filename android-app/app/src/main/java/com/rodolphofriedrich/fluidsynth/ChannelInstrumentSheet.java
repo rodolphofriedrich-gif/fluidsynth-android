@@ -2,19 +2,18 @@ package com.rodolphofriedrich.fluidsynth;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Color;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 /** Seletor de SoundFont do canal ativo, apresentado como painel inferior. */
 public final class ChannelInstrumentSheet {
     public interface Listener {
         void onLibrarySelected(int index);
-        void onImportRequested();
     }
 
     private ChannelInstrumentSheet() {}
@@ -49,13 +48,22 @@ public final class ChannelInstrumentSheet {
         TextView section = AppUi.sectionLabel(context,
                 context.getString(R.string.soundfont_libraries_title));
         root.addView(section);
+        LinearLayout libraryList = new LinearLayout(context);
+        libraryList.setOrientation(LinearLayout.VERTICAL);
+        ScrollView libraryScroll = new ScrollView(context);
+        libraryScroll.setFillViewport(false);
+        libraryScroll.addView(libraryList, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
+        int maxListHeight = Math.round(context.getResources().getDisplayMetrics().heightPixels * .55f);
+        root.addView(libraryScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, maxListHeight));
         if (libraries.length == 0) {
             TextView empty = new TextView(context);
             empty.setText(context.getString(R.string.no_active_libraries));
             empty.setTextColor(AppUi.MUTED);
             empty.setTextSize(13);
             empty.setPadding(0, AppUi.dp(context, 10), 0, AppUi.dp(context, 10));
-            root.addView(empty);
+            libraryList.addView(empty);
         } else {
             for (int i = 0; i < libraries.length; i++) {
                 final int index = i;
@@ -63,7 +71,7 @@ public final class ChannelInstrumentSheet {
                 library.setText(libraries[i]);
                 library.setContentDescription(context.getString(R.string.channel_library_accessibility, libraries[i]));
                 AppUi.styleButton(context, library, AppUi.CONTROL, AppUi.TEXT, 48, 13);
-                root.addView(library);
+                libraryList.addView(library);
                 library.setOnClickListener(v -> {
                     dialog.dismiss();
                     if (listener != null) listener.onLibrarySelected(index);
@@ -78,6 +86,7 @@ public final class ChannelInstrumentSheet {
         cancel.setOnClickListener(v -> dialog.dismiss());
 
         dialog.setContentView(root);
+        dialog.setCanceledOnTouchOutside(true);
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawableResource(android.R.color.transparent);
