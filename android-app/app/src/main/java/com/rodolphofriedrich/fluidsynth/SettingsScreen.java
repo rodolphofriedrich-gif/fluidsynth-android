@@ -21,6 +21,7 @@ public final class SettingsScreen {
     public final TextView polyphonyValue;
     public final Button bleSearchButton;
     public final LinearLayout libraryListContainer;
+    public final Button importLibraryButton;
 
     public SettingsScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
@@ -92,6 +93,11 @@ public final class SettingsScreen {
         librariesHint.setTextSize(12);
         librariesHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 8));
         librariesPanel.addView(librariesHint);
+
+        importLibraryButton = new Button(context);
+        importLibraryButton.setText(R.string.import_library);
+        AppUi.styleButton(context, importLibraryButton, AppUi.ACCENT, Color.WHITE, 48, 14);
+        librariesPanel.addView(importLibraryButton);
 
         libraryListContainer = new LinearLayout(context);
         libraryListContainer.setOrientation(LinearLayout.VERTICAL);
