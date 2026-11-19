@@ -9,6 +9,7 @@ import android.util.Log;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import jp.kshoji.blemidi.central.BleMidiCentralProvider;
 import jp.kshoji.blemidi.device.MidiInputDevice;
@@ -35,6 +36,7 @@ public final class BleMidiInput implements AutoCloseable {
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
     private final Map<MidiInputDevice, Set<Integer>> activeNotesByDevice = new ConcurrentHashMap<>();
     private final Map<MidiInputDevice, Set<Integer>> sustainChannelsByDevice = new ConcurrentHashMap<>();
+    private final AtomicLong receivedMidiMessages = new AtomicLong();
     private volatile boolean started;
     private volatile boolean closed;
     private volatile boolean scanningEnabled = false;
@@ -244,11 +246,21 @@ public final class BleMidiInput implements AutoCloseable {
                 Log.w(TAG, "Não foi possível encerrar a busca após conexão", error);
             }
         }
+        Log.i(TAG, "BLE_INPUT_STARTED device=" + device.getDeviceName());
         listener.onDeviceStatus("Conectado: " + device.getDeviceName());
     }
 
     private void send(MidiInputDevice source, int status, int data1, int data2) {
-        if (!closed) listener.onMidiMessage(source, status, data1, data2);
+        if (closed) return;
+        long count = receivedMidiMessages.incrementAndGet();
+        int messageType = status & 0xF0;
+        if (count <= 10 || count % 32 == 0 || messageType == 0x90 || messageType == 0x80) {
+            Log.i(TAG, "BLE_MIDI_RX count=" + count
+                    + " type=0x" + Integer.toHexString(messageType)
+                    + " channel=" + ((status & 0x0F) + 1)
+                    + " data1=" + data1 + " data2=" + data2);
+        }
+        listener.onMidiMessage(source, status, data1, data2);
     }
 
     private void restartScanIfNeeded() {
