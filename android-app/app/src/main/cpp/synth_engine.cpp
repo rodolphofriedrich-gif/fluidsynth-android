@@ -15,6 +15,7 @@ bool SynthEngine::initialize() {
     bankMsb_.fill(0);
     bankLsb_.fill(0);
     programs_.fill(0);
+    channelVolumes_.fill(100);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -76,6 +77,7 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
         releaseSoundFont(newId);
         return FLUID_FAILED;
     }
+    fluid_synth_cc(synth_, channel, 7, channelVolumes_[channel]);
     const int oldId = soundfontIds_[channel];
     soundfontIds_[channel] = newId;
     bankMsb_[channel] = 0;
@@ -133,6 +135,7 @@ bool SynthEngine::selectPreset(int channel, int bank, int program) {
     if (!synth_ || soundfontIds_[channel] < 0) return false;
     if (fluid_synth_program_select(synth_, channel, soundfontIds_[channel], bank, program) != FLUID_OK) return false;
     bankMsb_[channel] = (bank >> 7) & 0x7f; bankLsb_[channel] = bank & 0x7f; programs_[channel] = program;
+    fluid_synth_cc(synth_, channel, 7, channelVolumes_[channel]);
     return true;
 }
 void SynthEngine::releaseSoundFont(int id) {
@@ -158,6 +161,15 @@ void SynthEngine::setTrackEnabled(int channel, bool enabled) {
         fluid_synth_all_sounds_off(synth_, channel);
     }
     enabled_[channel] = enabled;
+}
+
+void SynthEngine::setTrackVolume(int channel, int volume) {
+    if (channel < 0 || channel >= 16) return;
+    volume = std::clamp(volume, 0, 100);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!synth_) return;
+    channelVolumes_[channel] = volume;
+    fluid_synth_cc(synth_, channel, 7, volume);
 }
 
 void SynthEngine::setActiveChannel(int channel) {
@@ -208,6 +220,7 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
             return true;
         case 0xB0:
             fluid_synth_cc(synth_, channel, a, b);
+            if (a == 7) channelVolumes_[channel] = b;
             if (a == 0) bankMsb_[channel] = b;
             else if (a == 32) bankLsb_[channel] = b;
             // Bank Select is preparatory. Apply the selected bank once when
@@ -258,6 +271,7 @@ void SynthEngine::shutdown() {
     bankMsb_.fill(0);
     bankLsb_.fill(0);
     programs_.fill(0);
+    channelVolumes_.fill(100);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
