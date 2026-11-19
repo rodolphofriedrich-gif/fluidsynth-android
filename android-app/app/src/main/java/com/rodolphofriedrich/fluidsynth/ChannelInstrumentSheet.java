@@ -56,7 +56,8 @@ public final class ChannelInstrumentSheet {
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
         int maxListHeight = Math.round(context.getResources().getDisplayMetrics().heightPixels * .55f);
         root.addView(libraryScroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, maxListHeight));
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                libraries.length == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : maxListHeight));
         if (libraries.length == 0) {
             TextView empty = new TextView(context);
             empty.setText(context.getString(R.string.no_active_libraries));
