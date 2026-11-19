@@ -79,7 +79,7 @@ public final class MidiScreen {
             strip.setBackground(AppUi.rounded(c,AppUi.PANEL,10,AppUi.BORDER));
             Button ch=new Button(c); ch.setText(c.getString(R.string.track_channel_empty,i+1));
             ch.setTextSize(12); ch.setTextColor(AppUi.TEXT); ch.setAllCaps(false);
-            ch.setPadding(2,0,2,0); ch.setMinHeight(0); ch.setMinimumHeight(0);
+            ch.setPadding(AppUi.dp(c,2),0,AppUi.dp(c,2),0); ch.setMinHeight(0); ch.setMinimumHeight(0);
             ch.setBackground(AppUi.ripple(c,AppUi.CONTROL,8,AppUi.CONTROL_BORDER));
             ch.setContentDescription(c.getString(R.string.track_accessibility,i+1));
             strip.addView(ch,new LinearLayout.LayoutParams(-1,AppUi.dp(c,44))); trackButtons[i]=ch;
@@ -147,7 +147,8 @@ public final class MidiScreen {
 
     /** Reorganiza os 16 canais sem deixar a GridLayout com parâmetros da orientação anterior. */
     public void updateTrackGridOrientation(Configuration cfg){
-        int columns=cfg.orientation==Configuration.ORIENTATION_PORTRAIT?2:4;
+        int columns = cfg.screenWidthDp >= 600
+                || cfg.orientation != Configuration.ORIENTATION_PORTRAIT ? 4 : 2;
         int childCount=trackGrid.getChildCount();
         View[] channelViews=new View[childCount];
         for(int i=0;i<childCount;i++) channelViews[i]=trackGrid.getChildAt(i);
