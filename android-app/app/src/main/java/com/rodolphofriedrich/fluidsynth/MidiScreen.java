@@ -63,7 +63,7 @@ public final class MidiScreen {
         effectsToggleButton.setBackground(AppUi.ripple(c,AppUi.CONTROL,10,AppUi.BORDER));
         LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,48),AppUi.dp(c,48));
         ep.leftMargin=AppUi.dp(c,8); topControls.addView(effectsToggleButton,ep);
-        root.addView(topControls,new LinearLayout.LayoutParams(-1,-2));
+        // A barra é adicionada pela Activity fora do ScrollView para permanecer fixa.
 
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
         status.setVisibility(View.GONE); audioDiagnostics.setVisibility(View.GONE); midiActivity.setVisibility(View.GONE);
