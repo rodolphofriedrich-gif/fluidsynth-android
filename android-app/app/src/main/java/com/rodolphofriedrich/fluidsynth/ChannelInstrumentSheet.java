@@ -71,15 +71,6 @@ public final class ChannelInstrumentSheet {
             }
         }
 
-        Button importButton = new Button(context);
-        importButton.setText(R.string.channel_import_sf2);
-        AppUi.styleButton(context, importButton, AppUi.ACCENT, Color.WHITE, 50, 14);
-        root.addView(importButton);
-        importButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            if (listener != null) listener.onImportRequested();
-        });
-
         Button cancel = new Button(context);
         cancel.setText(R.string.cancel);
         AppUi.styleButton(context, cancel, AppUi.CONTROL, AppUi.MUTED, 44, 13);
