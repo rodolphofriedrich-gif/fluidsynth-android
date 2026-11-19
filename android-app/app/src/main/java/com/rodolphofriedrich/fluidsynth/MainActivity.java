@@ -748,6 +748,9 @@ public class MainActivity extends Activity {
     }
 
     private void openLibraryDocument() {
+        importProgressText = settingsScreen.importProgressText;
+        importProgressBar = settingsScreen.importProgressBar;
+        importProgressPanel = settingsScreen.importProgressPanel;
         pendingImportChannel = IMPORT_LIBRARY_ONLY;
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("*/*");
@@ -756,6 +759,9 @@ public class MainActivity extends Activity {
     }
 
     private void openSoundFontDocument(int channel) {
+        importProgressText = midiScreen.importProgressText;
+        importProgressBar = midiScreen.importProgressBar;
+        importProgressPanel = midiScreen.importProgressPanel;
         pendingImportChannel = Math.max(0, Math.min(15, channel));
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("*/*");
