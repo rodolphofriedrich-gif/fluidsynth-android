@@ -19,7 +19,7 @@ public final class EffectsWorkspaceController {
  public void onConfigurationChanged(){apply();}
  private boolean splitMode(){
   Configuration c=activity.getResources().getConfiguration();
-  return c.smallestScreenWidthDp>=600||c.screenWidthDp>=720;
+  return c.smallestScreenWidthDp>=600||c.screenWidthDp>=640;
  }
  private void apply(){
   TransitionManager.beginDelayedTransition(workspace,new AutoTransition().setDuration(220));
