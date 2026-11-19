@@ -15,7 +15,7 @@ bool SynthEngine::initialize() {
     bankMsb_.fill(0);
     bankLsb_.fill(0);
     programs_.fill(0);
-    channelVolumes_.fill(100);
+    channelVolumes_.fill(127);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -168,8 +168,9 @@ void SynthEngine::setTrackVolume(int channel, int volume) {
     volume = std::clamp(volume, 0, 100);
     std::lock_guard<std::mutex> lock(mutex_);
     if (!synth_) return;
-    channelVolumes_[channel] = volume;
-    fluid_synth_cc(synth_, channel, 7, volume);
+    const int midiVolume = (volume * 127 + 50) / 100;
+    channelVolumes_[channel] = midiVolume;
+    fluid_synth_cc(synth_, channel, 7, midiVolume);
 }
 
 void SynthEngine::setActiveChannel(int channel) {
