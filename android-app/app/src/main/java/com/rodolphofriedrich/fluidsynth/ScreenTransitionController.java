@@ -11,21 +11,10 @@ public final class ScreenTransitionController {
 
         current.animate().cancel();
         next.animate().cancel();
+        current.setAlpha(1f);
+        current.setVisibility(View.GONE);
         next.setAlpha(0f);
         next.setVisibility(View.VISIBLE);
-
-        current.animate()
-                .alpha(0f)
-                .setDuration(120L)
-                .withEndAction(() -> {
-                    current.setVisibility(View.GONE);
-                    current.setAlpha(1f);
-                })
-                .start();
-
-        next.animate()
-                .alpha(1f)
-                .setDuration(180L)
-                .start();
+        next.animate().alpha(1f).setDuration(180L).start();
     }
 }

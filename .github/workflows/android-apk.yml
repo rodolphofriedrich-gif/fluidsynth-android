@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [ 'feature/sf2-preset-browser', android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control', 'feature/two-screen-midi-settings', 'review/feedback-atualizado', 'fix/audio-midi-stability', 'feature/global-effects-tab', 'feature/ux-phase-1-midi-screen', 'feature/ux-phase-2-midi-controls', 'feature/ux-phase-3-library-settings', 'feature/ux-phase-4-effects-presets' ]
+    branches: [ 'feature/sf2-preset-browser', android-apk-player, 'feature/usb-midi-input', 'feature/ble-midi-input', 'feature/multitrack-midi', 'fix/phase1-multitrack-stability', 'feature/polyphony-control', 'feature/two-screen-midi-settings', 'review/feedback-atualizado', 'fix/audio-midi-stability', 'feature/global-effects-tab', 'feature/ux-phase-1-midi-screen', 'feature/ux-phase-2-midi-controls', 'feature/ux-phase-3-library-settings', 'feature/ux-phase-4-effects-presets', 'feature/ux-phase-5-polish' ]
     paths:
       - 'android-app/**'
       - 'src/**'
