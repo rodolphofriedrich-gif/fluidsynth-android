@@ -54,7 +54,7 @@ public final class MidiScreen {
         velocity.addView(velocityValue);
         velocitySeekBar=slider(c,126,99,c.getString(R.string.velocity_accessibility));
         velocity.addView(velocitySeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,34)));
-        LinearLayout vp=new LinearLayout.LayoutParams(0,-2,1f); vp.leftMargin=AppUi.dp(c,8);
+        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1f); vp.leftMargin=AppUi.dp(c,8);
         topControls.addView(velocity,vp);
         effectsToggleButton=new Button(c);
         effectsToggleButton.setText("≋"); effectsToggleButton.setTextSize(24);
