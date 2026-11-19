@@ -48,7 +48,11 @@ public class MainActivity extends Activity {
     private BleMidiInput bleMidiInput;
     private Button choose;
     private Button trackEnableButton;
+    private Button soloButton;
     private Button selectInstrumentButton;
+    private SeekBar masterVolumeSeekBar;
+    private TextView masterVolumeValue;
+    private ChannelMixController channelMixController;
     private Button bleSearchButton;
     private Button[] trackButtons = new Button[16];
     private SeekBar polyphonySeekBar;
@@ -122,6 +126,9 @@ public class MainActivity extends Activity {
         trackButtons = midiScreen.trackButtons;
         selectInstrumentButton = midiScreen.selectInstrumentButton;
         trackEnableButton = midiScreen.trackEnableButton;
+        soloButton = midiScreen.soloButton;
+        masterVolumeSeekBar = midiScreen.masterVolumeSeekBar;
+        masterVolumeValue = midiScreen.masterVolumeValue;
         velocitySeekBar = midiScreen.velocitySeekBar;
         velocityValue = midiScreen.velocityValue;
 
@@ -173,7 +180,13 @@ public class MainActivity extends Activity {
             if (trackManager == null) return;
             int channel = trackManager.getActiveChannel();
             boolean enabled = !trackManager.get(channel).isEnabled();
-            trackManager.setEnabled(channel, enabled);
+            if (channelMixController != null) channelMixController.setMuted(channel, !enabled);
+            else trackManager.setEnabled(channel, enabled);
+            updateTrackControls();
+        });
+        soloButton.setOnClickListener(v -> {
+            if (trackManager == null || channelMixController == null) return;
+            channelMixController.toggleSolo(trackManager.getActiveChannel());
             updateTrackControls();
         });
 
@@ -215,6 +228,21 @@ public class MainActivity extends Activity {
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
                 VelocitySettingsStore.save(MainActivity.this, currentVelocity);
                 showOperationStatus(getString(R.string.operation_velocity_saved, currentVelocity));
+            }
+        });
+
+        int savedMasterVolume = MasterVolumeSettingsStore.load(this);
+        masterVolumeSeekBar.setProgress(savedMasterVolume);
+        masterVolumeValue.setText(getString(R.string.master_volume_value, savedMasterVolume));
+        masterVolumeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                masterVolumeValue.setText(getString(R.string.master_volume_value, progress));
+                if (fromUser && audioEngine != null) audioEngine.setMasterVolume(progress / 100f);
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                MasterVolumeSettingsStore.save(MainActivity.this, seekBar.getProgress());
+                showOperationStatus(getString(R.string.master_volume_saved, seekBar.getProgress()));
             }
         });
 
@@ -325,6 +353,12 @@ public class MainActivity extends Activity {
                             updateTrackControls();
                         }
                     }));
+            midiRouter.setActivityListener((channel, command) ->
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && midiScreen != null) {
+                            midiScreen.showMidiActivity(channel);
+                        }
+                    }));
             currentPolyphony = PolyphonySettingsStore.load(this);
             polyphonySeekBar.setProgress((currentPolyphony / PolyphonySettingsStore.STEP) - 1);
             if (nativeBridge.nativeSetPolyphony(currentPolyphony)) {
@@ -362,6 +396,7 @@ public class MainActivity extends Activity {
                 @Override public void setEnabled(int channel, boolean enabled) { nativeBridge.nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeBridge.nativeSetActiveTrack(channel); }
             });
+            channelMixController = new ChannelMixController(trackManager, nativeBridge);
             updateTrackControls();
             setTrackControlsEnabled(false);
             showOperationStatus(getString(R.string.operation_restoring));
@@ -394,6 +429,7 @@ public class MainActivity extends Activity {
                     });
                 }
             });
+            audioEngine.setMasterVolume(MasterVolumeSettingsStore.load(this) / 100f);
             audioEngine.start();
             if (audioEngine.isPlaying()) audioDiagnostics.setText(getString(R.string.audio_output_active));
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
@@ -405,7 +441,10 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) usbStatus.setText(getString(R.string.usb_status, message));
+                        if (!isFinishing() && !isDestroyed()) {
+                            usbStatus.setText(getString(R.string.usb_status, message));
+                            usbStatus.setTextColor(message.startsWith("Conectado") ? Color.rgb(16, 185, 129) : MUTED);
+                        }
                     });
                 }
                 @Override public void onDevicesChanged(List<MidiDeviceInfo> devices) {
@@ -422,7 +461,10 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) bleStatus.setText(getString(R.string.ble_status, message));
+                        if (!isFinishing() && !isDestroyed()) {
+                            bleStatus.setText(getString(R.string.ble_status, message));
+                            bleStatus.setTextColor(message.startsWith("Conectado") ? Color.rgb(16, 185, 129) : MUTED);
+                        }
                     });
                 }
             });
@@ -712,10 +754,18 @@ public class MainActivity extends Activity {
         Track selected = trackManager.get(channel);
         trackEnableButton.setText(getString(selected.isEnabled() ? R.string.channel_enabled : R.string.channel_muted, channel + 1));
         trackEnableButton.setContentDescription(getString(R.string.track_enable_accessibility, channel + 1, selected.isEnabled() ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
+        if (soloButton != null) {
+            boolean solo = channelMixController != null && channelMixController.isSolo(channel);
+            soloButton.setText(getString(solo ? R.string.solo_active : R.string.solo_channel));
+            soloButton.setBackground(AppUi.ripple(this, solo ? ACCENT : CONTROL, 12, 0));
+            soloButton.setContentDescription(getString(solo ? R.string.solo_accessibility_active : R.string.solo_accessibility, channel + 1));
+        }
+        if (channelMixController != null) channelMixController.applyIfSoloActive();
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
+            if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
             String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
@@ -743,6 +793,7 @@ public class MainActivity extends Activity {
         AppUi.setButtonEnabled(choose, enabled);
         AppUi.setButtonEnabled(selectInstrumentButton, enabled);
         AppUi.setButtonEnabled(trackEnableButton, enabled);
+        AppUi.setButtonEnabled(soloButton, enabled);
         if (trackButtons != null) {
             for (Button button : trackButtons) {
                 AppUi.setButtonEnabled(button, enabled);

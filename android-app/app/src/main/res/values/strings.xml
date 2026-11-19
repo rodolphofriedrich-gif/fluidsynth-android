@@ -72,6 +72,17 @@
     <string name="soundfont_missing">sem SoundFont</string>
     <string name="track_empty_state">+ ADICIONAR INSTRUMENTO</string>
     <string name="mute_suffix"> • MUTE</string>
+    <string name="solo_suffix"> • SOLO</string>
+    <string name="solo_channel">SOLO</string>
+    <string name="solo_active">SOLO ATIVO</string>
+    <string name="solo_accessibility">Ativar solo no canal MIDI %1$d</string>
+    <string name="solo_accessibility_active">Desativar solo do canal MIDI %1$d</string>
+    <string name="midi_activity_waiting">MIDI: aguardando</string>
+    <string name="midi_activity_channel">MIDI: recebendo CH %1$02d</string>
+    <string name="master_volume_label">VOLUME GERAL</string>
+    <string name="master_volume_value">%1$d%%</string>
+    <string name="master_volume_accessibility">Volume geral da saída de áudio, de zero a cem por cento</string>
+    <string name="master_volume_saved">Volume geral definido para %1$d%%.</string>
     <string name="tab_midi">MIDI</string>
     <string name="tab_settings">CONFIGURAÇÕES</string>
     <string name="tab_effects">EFEITOS</string>

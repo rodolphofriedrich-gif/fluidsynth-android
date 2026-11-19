@@ -18,6 +18,10 @@ public final class MidiScreen {
     public final Button[] trackButtons = new Button[16];
     public final Button selectInstrumentButton;
     public final Button trackEnableButton;
+    public final Button soloButton;
+    public final SeekBar masterVolumeSeekBar;
+    public final TextView masterVolumeValue;
+    public final TextView midiActivity;
     public final SeekBar velocitySeekBar;
     public final TextView velocityValue;
     public final Button[] keyboardKeys = new Button[NOTES.length];
@@ -44,6 +48,12 @@ public final class MidiScreen {
         audioDiagnostics.setText(context.getString(R.string.audio_initializing));
         audioDiagnostics.setTextColor(AppUi.MUTED);
         audioDiagnostics.setTextSize(11);
+        midiActivity = new TextView(context);
+        midiActivity.setText(context.getString(R.string.midi_activity_waiting));
+        midiActivity.setTextColor(AppUi.MUTED);
+        midiActivity.setTextSize(11);
+        midiActivity.setPadding(AppUi.dp(context, 6), 0, AppUi.dp(context, 6), 0);
+        headerRow.addView(midiActivity);
         headerRow.addView(audioDiagnostics);
         header.addView(headerRow);
 
@@ -94,10 +104,38 @@ public final class MidiScreen {
         AppUi.styleButton(context, selectInstrumentButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
         channelActionsPanel.addView(selectInstrumentButton);
 
+        LinearLayout channelControlRow = new LinearLayout(context);
+        channelControlRow.setOrientation(LinearLayout.HORIZONTAL);
         trackEnableButton = new Button(context);
         trackEnableButton.setText(context.getString(R.string.track_active));
-        AppUi.styleButton(context, trackEnableButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
-        channelActionsPanel.addView(trackEnableButton);
+        AppUi.styleButton(context, trackEnableButton, AppUi.CONTROL, AppUi.TEXT, 48, 13);
+        LinearLayout.LayoutParams halfButton = new LinearLayout.LayoutParams(0,
+                AppUi.dp(context, 48), 1f);
+        halfButton.setMargins(AppUi.dp(context, 3), AppUi.dp(context, 6), AppUi.dp(context, 3), 0);
+        channelControlRow.addView(trackEnableButton, halfButton);
+        soloButton = new Button(context);
+        soloButton.setText(context.getString(R.string.solo_channel));
+        AppUi.styleButton(context, soloButton, AppUi.CONTROL, AppUi.TEXT, 48, 13);
+        LinearLayout.LayoutParams soloParams = new LinearLayout.LayoutParams(0,
+                AppUi.dp(context, 48), 1f);
+        soloParams.setMargins(AppUi.dp(context, 3), AppUi.dp(context, 6), AppUi.dp(context, 3), 0);
+        channelControlRow.addView(soloButton, soloParams);
+        channelActionsPanel.addView(channelControlRow);
+
+        LinearLayout masterPanel = AppUi.panel(context, root);
+        masterPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.master_volume_label)));
+        masterVolumeValue = new TextView(context);
+        masterVolumeValue.setText(context.getString(R.string.master_volume_value, 100));
+        masterVolumeValue.setTextColor(AppUi.TEXT);
+        masterVolumeValue.setTextSize(14);
+        masterPanel.addView(masterVolumeValue);
+        masterVolumeSeekBar = new SeekBar(context);
+        masterVolumeSeekBar.setMax(100);
+        masterVolumeSeekBar.setProgress(100);
+        masterVolumeSeekBar.setContentDescription(context.getString(R.string.master_volume_accessibility));
+        AppUi.tint(masterVolumeSeekBar);
+        masterPanel.addView(masterVolumeSeekBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, AppUi.dp(context, 42)));
 
         LinearLayout keyboardPanel = AppUi.panel(context, root);
         keyboardPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.virtual_keyboard)));
@@ -156,6 +194,15 @@ public final class MidiScreen {
         scrollView.setFillViewport(true);
         scrollView.setClipToPadding(false);
         scrollView.addView(root);
+    }
+
+    public void showMidiActivity(int channel) {
+        midiActivity.setText(getContextualMidiActivity(channel));
+        midiActivity.setTextColor(android.graphics.Color.rgb(16, 185, 129));
+    }
+
+    private String getContextualMidiActivity(int channel) {
+        return scrollView.getContext().getString(R.string.midi_activity_channel, channel + 1);
     }
 
     private static String noteName(int note) {

@@ -24,6 +24,7 @@ public final class AudioEngine {
     private final NativeBridge nativeBridge;
     private final Listener listener;
     private volatile boolean playing;
+    private volatile float masterVolume = 1f;
     private AudioTrack outputTrack;
     private Thread renderThread;
 
@@ -74,6 +75,7 @@ public final class AudioEngine {
             }
 
             outputTrack = candidate;
+            candidate.setVolume(masterVolume);
             playing = true;
             candidate.play();
 
@@ -136,6 +138,18 @@ public final class AudioEngine {
         playing = false;
         if (outputFailed) {
             reportError("A saída de áudio foi interrompida. Verifique o dispositivo de áudio.");
+        }
+    }
+
+    /** Sets output gain on AudioTrack only; MIDI velocity and FluidSynth state are untouched. */
+    public synchronized void setMasterVolume(float volume) {
+        masterVolume = Math.max(0f, Math.min(1f, volume));
+        AudioTrack current = outputTrack;
+        if (current != null) {
+            try { current.setVolume(masterVolume); }
+            catch (RuntimeException ignored) {
+                // The output thread must not be affected by a UI volume adjustment.
+            }
         }
     }
 

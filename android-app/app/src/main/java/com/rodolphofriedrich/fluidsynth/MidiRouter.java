@@ -15,6 +15,10 @@ public final class MidiRouter implements AutoCloseable {
         void onProgramChange(int channel, int bank, int program);
     }
 
+    public interface ActivityListener {
+        void onMidiActivity(int channel, int command);
+    }
+
     private final NativeBridge nativeBridge;
     private final Listener listener;
     private final Map<Object, SourceState> sources = new IdentityHashMap<>();
@@ -24,6 +28,8 @@ public final class MidiRouter implements AutoCloseable {
     private final IdentityHashMap<Object, Boolean>[] sustainOwners =
             new IdentityHashMap[16];
     private boolean closed;
+    private ActivityListener activityListener;
+    private long lastActivityCallbackMs;
 
     public MidiRouter(NativeBridge nativeBridge) {
         this(nativeBridge, null);
@@ -40,6 +46,10 @@ public final class MidiRouter implements AutoCloseable {
         }
     }
 
+    public synchronized void setActivityListener(ActivityListener listener) {
+        activityListener = listener;
+    }
+
     /** Routes one MIDI channel message while updating source-owned note state. */
     public synchronized void send(Object source, int status, int data1, int data2) {
         if (closed || source == null || status < 0x80 || status > 0xEF) return;
@@ -48,6 +58,11 @@ public final class MidiRouter implements AutoCloseable {
         int channel = status & 0x0F;
         int first = clampMidiValue(data1);
         int second = clampMidiValue(data2);
+        long now = android.os.SystemClock.uptimeMillis();
+        if (activityListener != null && now - lastActivityCallbackMs >= 80L) {
+            lastActivityCallbackMs = now;
+            activityListener.onMidiActivity(channel, command);
+        }
         SourceState state = sources.get(source);
         if (state == null) {
             state = new SourceState();
