@@ -92,6 +92,13 @@
     <string name="master_volume_value">%1$d%%</string>
     <string name="master_volume_accessibility">Volume geral da saída de áudio, de zero a cem por cento</string>
     <string name="master_volume_saved">Volume geral definido para %1$d%%.</string>
+    <string name="channel_volume_accessibility">Volume do canal MIDI %1$d</string>
+    <string name="channel_volume_saved">Volume do canal %1$d definido para %2$d%%.</string>
+    <string name="channel_toggle_accessibility">Ativar ou desativar o canal MIDI %1$d: </string>
+    <string name="effects_panel_open">Abrir painel de efeitos</string>
+    <string name="effects_panel_close">Fechar painel de efeitos</string>
+    <string name="import_library">IMPORTAR BIBLIOTECA SF2</string>
+    <string name="library_imported">Biblioteca importada: %1$s</string>
     <string name="tab_midi">MIDI</string>
     <string name="tab_settings">CONFIGURAÇÕES</string>
     <string name="tab_effects">EFEITOS</string>
