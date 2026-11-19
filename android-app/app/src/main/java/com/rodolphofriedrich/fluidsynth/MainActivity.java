@@ -292,7 +292,11 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 4), AppUi.dp(this, 16), AppUi.dp(this, 8));
-        screenHost.addView(operationStatus, operationStatusParams);
+        operationStatus.setMaxLines(2);
+        operationStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        operationStatus.setGravity(Gravity.CENTER_VERTICAL);
+        operationStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        screenHost.addView(operationStatus, 0, operationStatusParams);
 
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
@@ -838,12 +842,22 @@ public class MainActivity extends Activity {
 
     private void showMainScreen(int screen, View midi, View settings, View effects,
             Button midiTab, Button settingsTab, Button effectsTab) {
+        int current = showingEffects ? 2 : (showingSettings ? 1 : 0);
+        View currentView = current == 0 ? midi : (current == 1 ? settings : effects);
+        View nextView = screen == 0 ? midi : (screen == 1 ? settings : effects);
+        if (current != screen) ScreenTransitionController.show(currentView, nextView);
+
         showingSettings = screen == 1;
         showingEffects = screen == 2;
-        ScreenNavigator.show(midi, settings, effects, showingSettings, showingEffects);
         midiTab.setBackground(AppUi.ripple(this, screen == 0 ? ACCENT : CONTROL, 10, 0));
         settingsTab.setBackground(AppUi.ripple(this, screen == 1 ? ACCENT : CONTROL, 10, 0));
         effectsTab.setBackground(AppUi.ripple(this, screen == 2 ? ACCENT : CONTROL, 10, 0));
+        midiTab.setSelected(screen == 0);
+        settingsTab.setSelected(screen == 1);
+        effectsTab.setSelected(screen == 2);
+        midiTab.setContentDescription(getString(R.string.tab_midi_accessibility, screen == 0 ? getString(R.string.tab_selected) : ""));
+        settingsTab.setContentDescription(getString(R.string.tab_settings_accessibility, screen == 1 ? getString(R.string.tab_selected) : ""));
+        effectsTab.setContentDescription(getString(R.string.tab_effects_accessibility, screen == 2 ? getString(R.string.tab_selected) : ""));
     }
 
     private void restoreEffectsSettings() {

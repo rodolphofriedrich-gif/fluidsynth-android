@@ -95,6 +95,10 @@
     <string name="tab_midi">MIDI</string>
     <string name="tab_settings">CONFIGURAÇÕES</string>
     <string name="tab_effects">EFEITOS</string>
+    <string name="tab_selected">— selecionada</string>
+    <string name="tab_midi_accessibility">Abrir tela MIDI %1$s</string>
+    <string name="tab_settings_accessibility">Abrir Configurações %1$s</string>
+    <string name="tab_effects_accessibility">Abrir Efeitos %1$s</string>
     <string name="effect_presets">PREDEFINIÇÕES</string>
     <string name="effect_restore_default">RESTAURAR PADRÃO</string>
     <string name="preset_room_small">Sala pequena</string>
