@@ -788,9 +788,6 @@ public class MainActivity extends Activity {
                     @Override public void onLibrarySelected(int index) {
                         if (index >= 0 && index < files.length) showPresetPicker(channel, files[index]);
                     }
-                    @Override public void onImportRequested() {
-                        openSoundFontDocument(channel);
-                    }
                 });
     }
 
