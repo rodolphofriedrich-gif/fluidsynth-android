@@ -427,10 +427,10 @@ public class MainActivity extends Activity {
                     else nativeBridge.nativeSetChorusActive(active);
                 }
                 @Override public void onParamChanged(int effect, int param, float value) {
-                    float[] values = effectsScreen.values(effect);
-                    if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
-                    else nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
-                    EffectsSettingsStore.saveValues(MainActivity.this, effect, values);
+                    applyEffectParameters(effect);
+                }
+                @Override public void onPresetApplied(int effect) {
+                    applyEffectParameters(effect);
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
@@ -968,6 +968,16 @@ public class MainActivity extends Activity {
                 screen == 0 ? getString(R.string.tab_selected) : ""));
         settingsTab.setContentDescription(getString(R.string.tab_settings_accessibility,
                 screen == 1 ? getString(R.string.tab_selected) : ""));
+    }
+
+    private void applyEffectParameters(int effect) {
+        float[] values = effectsScreen.values(effect);
+        if (effect == EffectsScreen.REVERB) {
+            nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
+        } else {
+            nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
+        }
+        EffectsSettingsStore.saveValues(this, effect, values);
     }
 
     private void restoreEffectsSettings() {
