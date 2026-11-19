@@ -63,7 +63,6 @@ public final class MidiScreen {
         effectsToggleButton.setBackground(AppUi.ripple(c,AppUi.CONTROL,10,AppUi.BORDER));
         LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,48),AppUi.dp(c,48));
         ep.leftMargin=AppUi.dp(c,8); topControls.addView(effectsToggleButton,ep);
-        // A barra é adicionada pela Activity fora do ScrollView para permanecer fixa.
 
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
         status.setVisibility(View.GONE); audioDiagnostics.setVisibility(View.GONE); midiActivity.setVisibility(View.GONE);
@@ -145,14 +144,24 @@ public final class MidiScreen {
         b.setPadding(0,0,0,0); b.setMinHeight(0); b.setMinimumHeight(0);
         b.setBackground(AppUi.ripple(c,AppUi.CONTROL,7,AppUi.CONTROL_BORDER)); return b;
     }
+
+    /** Reorganiza os 16 canais sem deixar a GridLayout com parâmetros da orientação anterior. */
     public void updateTrackGridOrientation(Configuration cfg){
         int columns=cfg.orientation==Configuration.ORIENTATION_PORTRAIT?2:4;
-        trackGrid.setColumnCount(columns); trackGrid.setRowCount(16/columns);
-        for(int i=0;i<trackGrid.getChildCount();i++){
-            GridLayout.LayoutParams p=new GridLayout.LayoutParams(GridLayout.spec(i/columns,1f),GridLayout.spec(i%columns,1f));
-            p.width=0; p.height=GridLayout.LayoutParams.WRAP_CONTENT;
-            p.setMargins(AppUi.dp(context,3),AppUi.dp(context,3),AppUi.dp(context,3),AppUi.dp(context,3));
-            trackGrid.getChildAt(i).setLayoutParams(p);
+        int childCount=trackGrid.getChildCount();
+        View[] channelViews=new View[childCount];
+        for(int i=0;i<childCount;i++) channelViews[i]=trackGrid.getChildAt(i);
+        trackGrid.removeAllViews();
+        trackGrid.setColumnCount(columns);
+        trackGrid.setRowCount((childCount+columns-1)/columns);
+        for(int i=0;i<childCount;i++){
+            GridLayout.LayoutParams params=new GridLayout.LayoutParams(
+                    GridLayout.spec(i/columns,1f),GridLayout.spec(i%columns,1f));
+            params.width=0;
+            params.height=GridLayout.LayoutParams.WRAP_CONTENT;
+            params.setMargins(AppUi.dp(context,3),AppUi.dp(context,3),
+                    AppUi.dp(context,3),AppUi.dp(context,3));
+            trackGrid.addView(channelViews[i],params);
         }
         trackGrid.requestLayout();
     }
