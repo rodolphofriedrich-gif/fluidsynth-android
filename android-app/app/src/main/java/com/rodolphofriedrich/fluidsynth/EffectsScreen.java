@@ -289,7 +289,7 @@ public final class EffectsScreen {
 
     private void restoreDefaults(int effect) {
         for (int param = 0; param < 4; param++) setParam(effect, param, SPECS[effect][param].def);
-        notifyParametersChanged(effect);
+        notifyPresetApplied(effect);
     }
 
     private void notifyPresetApplied(int effect) {
