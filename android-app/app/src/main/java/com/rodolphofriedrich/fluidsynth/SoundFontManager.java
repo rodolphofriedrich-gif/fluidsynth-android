@@ -121,6 +121,12 @@ public final class SoundFontManager {
         }
     }
 
+    public void removeDisplayName(File soundFont) {
+        if (soundFont == null) return;
+        context.getSharedPreferences("soundfont_library_names", Context.MODE_PRIVATE)
+                .edit().remove(soundFont.getName()).apply();
+    }
+
     public String getDisplayName(File soundFont) {
         if (soundFont == null) return "SoundFont";
         String saved = context.getSharedPreferences("soundfont_library_names", Context.MODE_PRIVATE)

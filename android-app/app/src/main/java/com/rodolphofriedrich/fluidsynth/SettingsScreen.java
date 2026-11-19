@@ -5,7 +5,6 @@ import android.graphics.Color;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -21,10 +20,6 @@ public final class SettingsScreen {
     public final SeekBar polyphonySeekBar;
     public final TextView polyphonyValue;
     public final Button bleSearchButton;
-    public final Button chooseButton;
-    public final TextView importTargetText;
-    public final TextView importProgressText;
-    public final ProgressBar importProgressBar;
     public final LinearLayout libraryListContainer;
 
     public SettingsScreen(Context context) {
@@ -83,39 +78,11 @@ public final class SettingsScreen {
                 AppUi.dp(context, 42)));
 
         LinearLayout actionsPanel = AppUi.panel(context, root);
+        actionsPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.midi_connection_actions)));
         bleSearchButton = new Button(context);
         bleSearchButton.setText(context.getString(R.string.ble_search_off));
         AppUi.styleButton(context, bleSearchButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
         actionsPanel.addView(bleSearchButton);
-
-        importTargetText = new TextView(context);
-        importTargetText.setText(context.getString(R.string.import_target_channel, 1));
-        importTargetText.setTextColor(AppUi.MUTED);
-        importTargetText.setTextSize(12);
-        importTargetText.setPadding(0, AppUi.dp(context, 8), 0, AppUi.dp(context, 4));
-        importTargetText.setContentDescription(context.getString(R.string.import_target_accessibility, 1));
-        actionsPanel.addView(importTargetText);
-
-        chooseButton = new Button(context);
-        chooseButton.setText(context.getString(R.string.import_sf2_channel, 1));
-        AppUi.styleButton(context, chooseButton, AppUi.ACCENT, Color.WHITE, 54, 14);
-        actionsPanel.addView(chooseButton);
-
-        importProgressText = new TextView(context);
-        importProgressText.setTextColor(AppUi.MUTED);
-        importProgressText.setTextSize(12);
-        importProgressText.setPadding(0, AppUi.dp(context, 8), 0, AppUi.dp(context, 2));
-        importProgressText.setVisibility(View.GONE);
-        actionsPanel.addView(importProgressText);
-
-        importProgressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
-        importProgressBar.setMax(1000);
-        importProgressBar.setProgress(0);
-        importProgressBar.setIndeterminate(false);
-        importProgressBar.setVisibility(View.GONE);
-        actionsPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                AppUi.dp(context, 8)));
 
         LinearLayout librariesPanel = AppUi.panel(context, root);
         librariesPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.imported_libraries)));

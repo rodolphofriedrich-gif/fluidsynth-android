@@ -47,6 +47,24 @@ public final class SoundFontLibraryStore {
         preferences.edit().putBoolean(preferenceKey(library), enabled).apply();
     }
 
+    public synchronized boolean isLibraryInUse(File library, TrackManager tracks) {
+        if (library == null || tracks == null) return false;
+        String path = library.getAbsolutePath();
+        for (Track track : tracks.getAll()) {
+            if (path.equals(track.getSoundFontPath())) return true;
+        }
+        return false;
+    }
+
+    /** Deletes only libraries that are not loaded by any MIDI channel. */
+    public synchronized boolean deleteLibrary(File library, TrackManager tracks) {
+        if (library == null || isLibraryInUse(library, tracks) || !library.isFile()) return false;
+        if (!library.delete()) return false;
+        preferences.edit().remove(preferenceKey(library)).apply();
+        soundFontManager.removeDisplayName(library);
+        return true;
+    }
+
     private String preferenceKey(File library) {
         return "enabled_" + library.getName();
     }

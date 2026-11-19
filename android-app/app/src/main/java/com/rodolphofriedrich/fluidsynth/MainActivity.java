@@ -46,7 +46,6 @@ public class MainActivity extends Activity {
     private TextView bleStatus;
     private UsbMidiInput usbMidiInput;
     private BleMidiInput bleMidiInput;
-    private Button choose;
     private Button trackEnableButton;
     private Button soloButton;
     private Button selectInstrumentButton;
@@ -62,7 +61,7 @@ public class MainActivity extends Activity {
     private int currentVelocity = 100;
     private ProgressBar importProgressBar;
     private TextView importProgressText;
-    private TextView importTargetText;
+    private View importProgressPanel;
     private LinearLayout libraryListContainer;
     private Spinner deviceSelector;
     private int currentPolyphony = 512;
@@ -138,11 +137,10 @@ public class MainActivity extends Activity {
         polyphonySeekBar = settingsScreen.polyphonySeekBar;
         polyphonyValue = settingsScreen.polyphonyValue;
         bleSearchButton = settingsScreen.bleSearchButton;
-        choose = settingsScreen.chooseButton;
-        importProgressText = settingsScreen.importProgressText;
-        importProgressBar = settingsScreen.importProgressBar;
+        importProgressText = midiScreen.importProgressText;
+        importProgressBar = midiScreen.importProgressBar;
+        importProgressPanel = midiScreen.importProgressPanel;
         libraryListContainer = settingsScreen.libraryListContainer;
-        importTargetText = settingsScreen.importTargetText;
 
         operationStatus = new TextView(this);
         operationStatus.setTextColor(MUTED);
@@ -216,9 +214,6 @@ public class MainActivity extends Activity {
             bleMidiInput.setScanningEnabled(enabled);
             updateBleSearchButton();
         });
-        choose.setOnClickListener(v -> openSoundFontDocument(
-                trackManager == null ? 0 : trackManager.getActiveChannel()));
-
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentVelocity = progress + 1;
@@ -516,6 +511,7 @@ public class MainActivity extends Activity {
         importProgressBar.setVisibility(View.VISIBLE);
         importProgressText.setText(getString(R.string.import_preparing));
         importProgressText.setVisibility(View.VISIBLE);
+        if (importProgressPanel != null) importProgressPanel.setVisibility(View.VISIBLE);
     }
 
     private void updateImportProgress(long copiedBytes, long totalBytes) {
@@ -542,12 +538,12 @@ public class MainActivity extends Activity {
         importProgressBar.setProgress(0);
         importProgressBar.setVisibility(View.GONE);
         importProgressText.setVisibility(View.GONE);
+        if (importProgressPanel != null) importProgressPanel.setVisibility(View.GONE);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
-        AppUi.setButtonEnabled(choose, false);
         showImportProgress();
         final int channel = pendingImportChannel >= 0 ? pendingImportChannel
                 : (trackManager == null ? 0 : trackManager.getActiveChannel());
@@ -576,7 +572,6 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     showOperationStatus(result);
-                    AppUi.setButtonEnabled(choose, true);
                     hideImportProgress();
                     refreshSoundFontLibraryList();
                     updateTrackControls();
@@ -630,6 +625,36 @@ public class MainActivity extends Activity {
             });
             row.addView(enabledSwitch, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            Button deleteButton = new Button(this);
+            deleteButton.setText(R.string.library_delete);
+            deleteButton.setTextSize(10);
+            deleteButton.setAllCaps(false);
+            deleteButton.setTextColor(Color.WHITE);
+            deleteButton.setPadding(AppUi.dp(this, 6), 0, AppUi.dp(this, 6), 0);
+            deleteButton.setBackground(AppUi.ripple(this, Color.rgb(145, 55, 65), 8, 0));
+            deleteButton.setContentDescription(getString(R.string.library_delete_accessibility,
+                    soundFontManager.getDisplayName(library)));
+            LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                    AppUi.dp(this, 72), AppUi.dp(this, 38));
+            deleteParams.leftMargin = AppUi.dp(this, 6);
+            row.addView(deleteButton, deleteParams);
+            deleteButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this,
+                    android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle(R.string.library_delete_title)
+                    .setMessage(getString(R.string.library_delete_confirm,
+                            soundFontManager.getDisplayName(library)))
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.library_delete, (dialog, which) -> {
+                        if (soundFontLibraryStore.isLibraryInUse(library, trackManager)) {
+                            showOperationStatus(getString(R.string.library_in_use));
+                        } else if (soundFontLibraryStore.deleteLibrary(library, trackManager)) {
+                            showOperationStatus(getString(R.string.library_deleted));
+                        } else {
+                            showOperationStatus(getString(R.string.library_delete_failed));
+                        }
+                        refreshSoundFontLibraryList();
+                    }).show());
             libraryListContainer.addView(row);
 
             if (i < libraries.size() - 1) {
@@ -775,10 +800,6 @@ public class MainActivity extends Activity {
             trackButtons[i].setBackground(AppUi.ripple(this, i == channel ? ACCENT : CONTROL, 10,
                     i == channel ? ACCENT : AppUi.CONTROL_BORDER));
         }
-        importTargetText.setText(getString(R.string.import_target_channel, channel + 1));
-        importTargetText.setContentDescription(getString(R.string.import_target_accessibility, channel + 1));
-        choose.setText(getString(selected.hasSoundFont() ? R.string.replace_sf2_channel : R.string.import_sf2_channel, channel + 1));
-        choose.setContentDescription(getString(selected.hasSoundFont() ? R.string.replace_sf2_accessibility : R.string.import_sf2_accessibility, channel + 1));
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : getString(R.string.soundfont_missing);
         String preset = selected.getPresetName();
         String instrument = preset == null || preset.trim().isEmpty()
@@ -790,7 +811,6 @@ public class MainActivity extends Activity {
     }
 
     private void setTrackControlsEnabled(boolean enabled) {
-        AppUi.setButtonEnabled(choose, enabled);
         AppUi.setButtonEnabled(selectInstrumentButton, enabled);
         AppUi.setButtonEnabled(trackEnableButton, enabled);
         AppUi.setButtonEnabled(soloButton, enabled);

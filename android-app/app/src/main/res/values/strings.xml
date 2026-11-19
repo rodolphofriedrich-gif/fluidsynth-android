@@ -55,6 +55,15 @@
     <string name="library_disabled">Biblioteca desativada para novas seleções. Canais em uso foram preservados.</string>
     <string name="no_active_libraries">Não há bibliotecas ativas. Ative uma biblioteca nas Configurações ou importe uma nova.</string>
     <string name="soundfont_libraries_title">Bibliotecas SoundFont</string>
+    <string name="import_progress_title">IMPORTAÇÃO SF2</string>
+    <string name="midi_connection_actions">CONEXÕES MIDI</string>
+    <string name="library_delete">Excluir</string>
+    <string name="library_delete_title">Excluir biblioteca</string>
+    <string name="library_delete_confirm">Deseja excluir a biblioteca “%1$s”? Essa ação não pode ser desfeita.</string>
+    <string name="library_delete_accessibility">Excluir biblioteca %1$s</string>
+    <string name="library_in_use">Esta biblioteca está em uso por um ou mais canais e não pode ser excluída.</string>
+    <string name="library_deleted">Biblioteca excluída.</string>
+    <string name="library_delete_failed">Não foi possível excluir a biblioteca.</string>
     <string name="channel_picker_title">INSTRUMENTO — CH %1$02d</string>
     <string name="channel_import_sf2">IMPORTAR NOVA BIBLIOTECA SF2</string>
     <string name="channel_library_accessibility">Selecionar biblioteca %1$s para este canal</string>

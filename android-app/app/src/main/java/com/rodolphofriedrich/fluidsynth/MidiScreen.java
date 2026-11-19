@@ -7,6 +7,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.ProgressBar;
+import android.view.View;
 
 /** Constrói exclusivamente a interface da aba MIDI. */
 public final class MidiScreen {
@@ -22,6 +24,9 @@ public final class MidiScreen {
     public final SeekBar masterVolumeSeekBar;
     public final TextView masterVolumeValue;
     public final TextView midiActivity;
+    public final LinearLayout importProgressPanel;
+    public final TextView importProgressText;
+    public final ProgressBar importProgressBar;
     public final SeekBar velocitySeekBar;
     public final TextView velocityValue;
     public final Button[] keyboardKeys = new Button[NOTES.length];
@@ -96,6 +101,21 @@ public final class MidiScreen {
             trackButtons[i] = trackButton;
         }
         tracksPanel.addView(trackGrid);
+
+        importProgressPanel = AppUi.panel(context, root);
+        importProgressPanel.setVisibility(View.GONE);
+        importProgressPanel.addView(AppUi.sectionLabel(context,
+                context.getString(R.string.import_progress_title)));
+        importProgressText = new TextView(context);
+        importProgressText.setTextColor(AppUi.MUTED);
+        importProgressText.setTextSize(12);
+        importProgressPanel.addView(importProgressText);
+        importProgressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
+        importProgressBar.setMax(1000);
+        importProgressBar.setProgress(0);
+        importProgressBar.setIndeterminate(false);
+        importProgressPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, AppUi.dp(context, 8)));
 
         LinearLayout channelActionsPanel = AppUi.panel(context, root);
         selectInstrumentButton = new Button(context);
