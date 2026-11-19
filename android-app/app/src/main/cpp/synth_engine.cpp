@@ -272,7 +272,7 @@ void SynthEngine::shutdown() {
     bankMsb_.fill(0);
     bankLsb_.fill(0);
     programs_.fill(0);
-    channelVolumes_.fill(100);
+    channelVolumes_.fill(127);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
