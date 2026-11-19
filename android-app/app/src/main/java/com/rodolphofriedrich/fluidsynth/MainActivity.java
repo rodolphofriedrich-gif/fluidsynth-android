@@ -442,7 +442,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed()) {
                             usbStatus.setText(getString(R.string.usb_status, message));
-                            usbStatus.setTextColor(message.startsWith("Conectado") ? Color.rgb(16, 185, 129) : MUTED);
+                            usbStatus.setTextColor((message.startsWith("Conectado") || message.startsWith("Controlador conectado")) ? Color.rgb(16, 185, 129) : MUTED);
                         }
                     });
                 }
@@ -462,7 +462,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed()) {
                             bleStatus.setText(getString(R.string.ble_status, message));
-                            bleStatus.setTextColor(message.startsWith("Conectado") ? Color.rgb(16, 185, 129) : MUTED);
+                            bleStatus.setTextColor((message.startsWith("Conectado") || message.startsWith("Controlador conectado")) ? Color.rgb(16, 185, 129) : MUTED);
                         }
                     });
                 }
