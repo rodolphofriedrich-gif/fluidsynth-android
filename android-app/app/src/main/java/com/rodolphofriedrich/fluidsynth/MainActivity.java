@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private boolean internalKeyboardSelected = true;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
+    private int pendingImportChannel = -1;
     private static final String STATE_SHOWING_SETTINGS = "showing_settings";
     private static final String STATE_SHOWING_EFFECTS = "showing_effects";
     private boolean showingSettings;
@@ -160,6 +161,7 @@ public class MainActivity extends Activity {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
+                    showSoundFontLibraryPicker(channel);
                 }
             });
         }
@@ -201,12 +203,8 @@ public class MainActivity extends Activity {
             bleMidiInput.setScanningEnabled(enabled);
             updateBleSearchButton();
         });
-        choose.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("*/*");
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, PICK_SF2);
-        });
+        choose.setOnClickListener(v -> openSoundFontDocument(
+                trackManager == null ? 0 : trackManager.getActiveChannel()));
 
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -509,7 +507,9 @@ public class MainActivity extends Activity {
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         AppUi.setButtonEnabled(choose, false);
         showImportProgress();
-        final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
+        final int channel = pendingImportChannel >= 0 ? pendingImportChannel
+                : (trackManager == null ? 0 : trackManager.getActiveChannel());
+        pendingImportChannel = -1;
         showOperationStatus(getString(R.string.import_channel_started, channel + 1));
         final android.net.Uri uri = data.getData();
         loader.execute(() -> {
@@ -600,23 +600,37 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void openSoundFontDocument(int channel) {
+        pendingImportChannel = Math.max(0, Math.min(15, channel));
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, PICK_SF2);
+    }
+
     private void showSoundFontLibraryPicker(int channel) {
         if (soundFontLibraryStore == null) return;
         List<File> availableLibraries = new ArrayList<>();
         for (File library : soundFontLibraryStore.getLibraries()) {
             if (soundFontLibraryStore.isEnabled(library)) availableLibraries.add(library);
         }
-        if (availableLibraries.isEmpty()) {
-            showOperationStatus(getString(R.string.no_active_libraries));
-            return;
-        }
         File[] files = availableLibraries.toArray(new File[0]);
         String[] names = new String[files.length];
         for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
-        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.soundfont_libraries_title)
-            .setItems(names, (dialog, which) -> showPresetPicker(channel, files[which]))
-            .setNegativeButton(R.string.cancel, null).show();
+        Track selected = trackManager == null ? null : trackManager.get(channel);
+        String subtitle = selected == null || !selected.hasSoundFont()
+                ? getString(R.string.track_empty_state)
+                : selected.getPresetName() == null ? selected.getSoundFontName()
+                : selected.getPresetName() + " — " + selected.getSoundFontName();
+        ChannelInstrumentSheet.show(this, channel, subtitle, names,
+                new ChannelInstrumentSheet.Listener() {
+                    @Override public void onLibrarySelected(int index) {
+                        if (index >= 0 && index < files.length) showPresetPicker(channel, files[index]);
+                    }
+                    @Override public void onImportRequested() {
+                        openSoundFontDocument(channel);
+                    }
+                });
     }
 
     private void showPresetPicker(int channel, File library) {

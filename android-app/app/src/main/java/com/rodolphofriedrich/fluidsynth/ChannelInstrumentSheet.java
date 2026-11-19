@@ -1,0 +1,108 @@
+package com.rodolphofriedrich.fluidsynth;
+
+import android.app.Dialog;
+import android.content.Context;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+/** Seletor de SoundFont do canal ativo, apresentado como painel inferior. */
+public final class ChannelInstrumentSheet {
+    public interface Listener {
+        void onLibrarySelected(int index);
+        void onImportRequested();
+    }
+
+    private ChannelInstrumentSheet() {}
+
+    public static void show(Context context, int channel, String currentInstrument,
+            String[] libraries, Listener listener) {
+        Dialog dialog = new Dialog(context, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(AppUi.dp(context, 20), AppUi.dp(context, 18),
+                AppUi.dp(context, 20), AppUi.dp(context, 24));
+        root.setBackground(AppUi.rounded(context, AppUi.PANEL, 20, AppUi.BORDER));
+
+        TextView title = new TextView(context);
+        title.setText(context.getString(R.string.channel_picker_title, channel + 1));
+        title.setTextColor(AppUi.TEXT);
+        title.setTextSize(18);
+        title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        root.addView(title);
+
+        TextView subtitle = new TextView(context);
+        subtitle.setText(currentInstrument);
+        subtitle.setTextColor(AppUi.MUTED);
+        subtitle.setTextSize(13);
+        subtitle.setMaxLines(2);
+        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        subtitleParams.topMargin = AppUi.dp(context, 5);
+        subtitleParams.bottomMargin = AppUi.dp(context, 12);
+        root.addView(subtitle, subtitleParams);
+
+        TextView section = AppUi.sectionLabel(context,
+                context.getString(R.string.soundfont_libraries_title));
+        root.addView(section);
+        if (libraries.length == 0) {
+            TextView empty = new TextView(context);
+            empty.setText(context.getString(R.string.no_active_libraries));
+            empty.setTextColor(AppUi.MUTED);
+            empty.setTextSize(13);
+            empty.setPadding(0, AppUi.dp(context, 10), 0, AppUi.dp(context, 10));
+            root.addView(empty);
+        } else {
+            for (int i = 0; i < libraries.length; i++) {
+                final int index = i;
+                Button library = new Button(context);
+                library.setText(libraries[i]);
+                library.setContentDescription(context.getString(R.string.channel_library_accessibility, libraries[i]));
+                AppUi.styleButton(context, library, AppUi.CONTROL, AppUi.TEXT, 48, 13);
+                root.addView(library);
+                library.setOnClickListener(v -> {
+                    dialog.dismiss();
+                    if (listener != null) listener.onLibrarySelected(index);
+                });
+            }
+        }
+
+        Button importButton = new Button(context);
+        importButton.setText(R.string.channel_import_sf2);
+        AppUi.styleButton(context, importButton, AppUi.ACCENT, Color.WHITE, 50, 14);
+        root.addView(importButton);
+        importButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (listener != null) listener.onImportRequested();
+        });
+
+        Button cancel = new Button(context);
+        cancel.setText(R.string.cancel);
+        AppUi.styleButton(context, cancel, AppUi.CONTROL, AppUi.MUTED, 44, 13);
+        root.addView(cancel);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.setContentView(root);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            WindowManager.LayoutParams params = window.getAttributes();
+            params.width = WindowManager.LayoutParams.MATCH_PARENT;
+            params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+            params.gravity = Gravity.BOTTOM;
+            params.dimAmount = 0.42f;
+            window.setAttributes(params);
+        }
+        dialog.show();
+        if (window != null) {
+            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.BOTTOM);
+        }
+    }
+}

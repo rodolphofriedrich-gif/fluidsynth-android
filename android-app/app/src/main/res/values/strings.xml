@@ -55,6 +55,9 @@
     <string name="library_disabled">Biblioteca desativada para novas seleções. Canais em uso foram preservados.</string>
     <string name="no_active_libraries">Não há bibliotecas ativas. Ative uma biblioteca nas Configurações ou importe uma nova.</string>
     <string name="soundfont_libraries_title">Bibliotecas SoundFont</string>
+    <string name="channel_picker_title">INSTRUMENTO — CH %1$02d</string>
+    <string name="channel_import_sf2">IMPORTAR NOVA BIBLIOTECA SF2</string>
+    <string name="channel_library_accessibility">Selecionar biblioteca %1$s para este canal</string>
     <string name="cancel">Cancelar</string>
     <string name="reading_instruments">Lendo instrumentos...</string>
     <string name="no_presets">Nenhum instrumento encontrado.</string>
@@ -67,7 +70,7 @@
     <string name="channel_instrument_status">CH %1$d: %2$s</string>
     <string name="soundfont_loaded">SF2 CARREGADO</string>
     <string name="soundfont_missing">sem SoundFont</string>
-    <string name="track_empty_state">SEM SF2</string>
+    <string name="track_empty_state">+ ADICIONAR INSTRUMENTO</string>
     <string name="mute_suffix"> • MUTE</string>
     <string name="tab_midi">MIDI</string>
     <string name="tab_settings">CONFIGURAÇÕES</string>

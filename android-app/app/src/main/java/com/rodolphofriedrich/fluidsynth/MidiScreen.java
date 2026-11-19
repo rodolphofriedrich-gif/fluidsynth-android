@@ -29,26 +29,30 @@ public final class MidiScreen {
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout header = AppUi.panel(context, root);
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         TextView title = new TextView(context);
         title.setText(context.getString(R.string.app_title));
         title.setTextColor(AppUi.TEXT);
-        title.setTextSize(19);
+        title.setTextSize(16);
         title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        header.addView(title);
-
-        status = new TextView(context);
-        status.setText(context.getString(R.string.status_select_track));
-        status.setTextColor(AppUi.MUTED);
-        status.setTextSize(13);
-        status.setPadding(0, AppUi.dp(context, 5), 0, 0);
-        header.addView(status);
+        headerRow.addView(title, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
         audioDiagnostics = new TextView(context);
         audioDiagnostics.setText(context.getString(R.string.audio_initializing));
         audioDiagnostics.setTextColor(AppUi.MUTED);
-        audioDiagnostics.setTextSize(12);
-        audioDiagnostics.setPadding(0, AppUi.dp(context, 3), 0, 0);
-        header.addView(audioDiagnostics);
+        audioDiagnostics.setTextSize(11);
+        headerRow.addView(audioDiagnostics);
+        header.addView(headerRow);
+
+        status = new TextView(context);
+        status.setText(context.getString(R.string.status_select_track));
+        status.setTextColor(AppUi.MUTED);
+        status.setTextSize(12);
+        status.setPadding(0, AppUi.dp(context, 3), 0, 0);
+        header.addView(status);
 
         LinearLayout tracksPanel = AppUi.panel(context, root);
         tracksPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.tracks_title)));
