@@ -21,6 +21,7 @@ public final class EffectsScreen {
     public interface Listener {
         void onEffectActive(int effect, boolean active);
         void onParamChanged(int effect, int param, float value);
+        void onPresetApplied(int effect);
     }
 
     private static final class Spec {
@@ -58,16 +59,16 @@ public final class EffectsScreen {
     private static final String[] NAMES = {"REVERB", "CHORUS"};
     private static final Spec[][] SPECS = {
         {
-            new Spec("Tamanho da sala", "", 0f, 1.2f, .2f, 2),
-            new Spec("Amortecimento", "", 0f, 1f, 0f, 2),
-            new Spec("Largura", "", 0f, 100f, .5f, 1),
-            new Spec("Nível", "", 0f, 1f, .9f, 2)
+            new Spec("Tamanho da sala", "", EffectsSettingsStore.minimum(REVERB, 0), EffectsSettingsStore.maximum(REVERB, 0), EffectsSettingsStore.defaults(REVERB)[0], EffectsSettingsStore.decimals(REVERB, 0)),
+            new Spec("Amortecimento", "", EffectsSettingsStore.minimum(REVERB, 1), EffectsSettingsStore.maximum(REVERB, 1), EffectsSettingsStore.defaults(REVERB)[1], EffectsSettingsStore.decimals(REVERB, 1)),
+            new Spec("Largura", "", EffectsSettingsStore.minimum(REVERB, 2), EffectsSettingsStore.maximum(REVERB, 2), EffectsSettingsStore.defaults(REVERB)[2], EffectsSettingsStore.decimals(REVERB, 2)),
+            new Spec("Nível", "", EffectsSettingsStore.minimum(REVERB, 3), EffectsSettingsStore.maximum(REVERB, 3), EffectsSettingsStore.defaults(REVERB)[3], EffectsSettingsStore.decimals(REVERB, 3))
         },
         {
-            new Spec("Vozes", "", 0f, 99f, 3f, 0),
-            new Spec("Nível", "", 0f, 10f, 2f, 1),
-            new Spec("Velocidade", " Hz", .1f, 5f, .3f, 1),
-            new Spec("Profundidade", " ms", 0f, 21f, 8f, 1)
+            new Spec("Vozes", "", EffectsSettingsStore.minimum(CHORUS, 0), EffectsSettingsStore.maximum(CHORUS, 0), EffectsSettingsStore.defaults(CHORUS)[0], EffectsSettingsStore.decimals(CHORUS, 0)),
+            new Spec("Nível", "", EffectsSettingsStore.minimum(CHORUS, 1), EffectsSettingsStore.maximum(CHORUS, 1), EffectsSettingsStore.defaults(CHORUS)[1], EffectsSettingsStore.decimals(CHORUS, 1)),
+            new Spec("Velocidade", " Hz", EffectsSettingsStore.minimum(CHORUS, 2), EffectsSettingsStore.maximum(CHORUS, 2), EffectsSettingsStore.defaults(CHORUS)[2], EffectsSettingsStore.decimals(CHORUS, 2)),
+            new Spec("Profundidade", " ms", EffectsSettingsStore.minimum(CHORUS, 3), EffectsSettingsStore.maximum(CHORUS, 3), EffectsSettingsStore.defaults(CHORUS)[3], EffectsSettingsStore.decimals(CHORUS, 3))
         }
     };
 
@@ -146,8 +147,9 @@ public final class EffectsScreen {
     }
 
     public void setParam(int effect, int param, float value) {
+        checkParameter(effect, param);
         Spec spec = SPECS[effect][param];
-        float safe = Math.max(spec.min, Math.min(spec.max, value));
+        float safe = EffectsSettingsStore.normalize(effect, param, value);
         values[effect][param] = safe;
         knobs[effect][param].setValue(spec.norm(safe));
         labels[effect][param].setText(spec.format(safe));
@@ -155,10 +157,24 @@ public final class EffectsScreen {
     }
 
     public void setActive(int effect, boolean enabled) {
+        checkEffect(effect);
         silent = true;
         active[effect].setChecked(enabled);
         silent = false;
         for (KnobView knob : knobs[effect]) knob.setEnabled(enabled);
+    }
+
+    private static void checkEffect(int effect) {
+        if (effect < 0 || effect >= SPECS.length) {
+            throw new IllegalArgumentException("Efeito inválido: " + effect);
+        }
+    }
+
+    private static void checkParameter(int effect, int param) {
+        checkEffect(effect);
+        if (param < 0 || param >= SPECS[effect].length) {
+            throw new IllegalArgumentException("Parâmetro inválido: " + param);
+        }
     }
 
     private void buildPage(LinearLayout root, int effect) {
@@ -268,7 +284,7 @@ public final class EffectsScreen {
     private void applyPreset(int effect, int preset) {
         float[] values = PRESETS[effect][preset];
         for (int param = 0; param < 4; param++) setParam(effect, param, values[param]);
-        notifyParametersChanged(effect);
+        notifyPresetApplied(effect);
     }
 
     private void restoreDefaults(int effect) {
@@ -276,12 +292,13 @@ public final class EffectsScreen {
         notifyParametersChanged(effect);
     }
 
-    private void notifyParametersChanged(int effect) {
-        if (listener != null) listener.onParamChanged(effect, -1, 0f);
+    private void notifyPresetApplied(int effect) {
+        if (listener != null) listener.onPresetApplied(effect);
     }
 
     private void onKnob(int effect, int param, float normalized, boolean tracking) {
-        float value = SPECS[effect][param].toValue(normalized);
+        float value = EffectsSettingsStore.normalize(effect, param,
+                SPECS[effect][param].toValue(normalized));
         labels[effect][param].setText(SPECS[effect][param].format(value));
         values[effect][param] = value;
         updateResetButton(effect);
