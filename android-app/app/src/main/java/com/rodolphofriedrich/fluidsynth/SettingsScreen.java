@@ -7,6 +7,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.view.View;
@@ -21,6 +22,10 @@ public final class SettingsScreen {
     public final TextView polyphonyValue;
     public final Button bleSearchButton;
     public final LinearLayout libraryListContainer;
+    public final Button importLibraryButton;
+    public final LinearLayout importProgressPanel;
+    public final TextView importProgressText;
+    public final ProgressBar importProgressBar;
 
     public SettingsScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
@@ -92,6 +97,22 @@ public final class SettingsScreen {
         librariesHint.setTextSize(12);
         librariesHint.setPadding(0, AppUi.dp(context, 3), 0, AppUi.dp(context, 8));
         librariesPanel.addView(librariesHint);
+
+        importLibraryButton = new Button(context);
+        importLibraryButton.setText(R.string.import_library);
+        AppUi.styleButton(context, importLibraryButton, AppUi.ACCENT, Color.WHITE, 48, 14);
+        librariesPanel.addView(importLibraryButton);
+
+        importProgressPanel = AppUi.panel(context, librariesPanel);
+        importProgressPanel.setVisibility(View.GONE);
+        importProgressText = new TextView(context);
+        importProgressText.setTextColor(AppUi.MUTED);
+        importProgressText.setTextSize(12);
+        importProgressPanel.addView(importProgressText);
+        importProgressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
+        importProgressBar.setMax(1000);
+        importProgressPanel.addView(importProgressBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, AppUi.dp(context, 8)));
 
         libraryListContainer = new LinearLayout(context);
         libraryListContainer.setOrientation(LinearLayout.VERTICAL);

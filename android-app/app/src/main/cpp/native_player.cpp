@@ -85,6 +85,10 @@ Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackEnabled(JNIEnv*
     SynthEngine::instance().setTrackEnabled(channel, enabled == JNI_TRUE);
 }
 extern "C" JNIEXPORT void JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackVolume(JNIEnv*, jobject, jint channel, jint volume) {
+    SynthEngine::instance().setTrackVolume(channel, volume);
+}
+extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetActiveTrack(JNIEnv*, jobject, jint channel) {
     SynthEngine::instance().setActiveChannel(channel);
 }
