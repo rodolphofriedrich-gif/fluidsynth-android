@@ -2,7 +2,9 @@ package com.rodolphofriedrich.fluidsynth;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -99,6 +101,9 @@ public final class EffectsScreen {
     private final Button[] tabs = new Button[2];
     private final Button[] resetButtons = new Button[2];
     private final Button[][] presetButtons = new Button[2][];
+    private final GridLayout[] parameterGrids = new GridLayout[2];
+    private final View[][] parameterCells = new View[2][4];
+    private final int[] selectedPreset = {-1, -1};
     private Listener listener;
     private boolean silent;
 
@@ -106,19 +111,28 @@ public final class EffectsScreen {
         this.context = context;
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(24), dp(16), dp(24));
+        root.setPadding(dp(16), dp(16), dp(16), dp(20));
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout header = AppUi.panel(context, root);
-        header.addView(AppUi.sectionLabel(context, "EFEITOS"));
+        TextView title = AppUi.sectionLabel(context, "PROCESSAMENTO DE ÁUDIO");
+        title.setTextColor(VisualTheme.EFFECTS);
+        header.addView(title);
         TextView hint = new TextView(context);
-        hint.setText("Aplicados a todo o sintetizador");
+        hint.setText("Efeitos globais aplicados a todos os canais");
         hint.setTextColor(AppUi.MUTED);
         hint.setTextSize(12);
-        header.addView(hint);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hintParams.topMargin = dp(4);
+        header.addView(hint, hintParams);
 
         LinearLayout tabRow = new LinearLayout(context);
-        header.addView(tabRow);
+        tabRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams tabRowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tabRowParams.topMargin = dp(12);
+        header.addView(tabRow, tabRowParams);
         for (int i = 0; i < 2; i++) {
             final int effect = i;
             Button tab = new Button(context);
@@ -153,6 +167,8 @@ public final class EffectsScreen {
         values[effect][param] = safe;
         knobs[effect][param].setValue(spec.norm(safe));
         labels[effect][param].setText(spec.format(safe));
+        selectedPreset[effect] = -1;
+        updatePresetButtons(effect);
         updateResetButton(effect);
     }
 
@@ -177,24 +193,69 @@ public final class EffectsScreen {
         }
     }
 
+    public void onConfigurationChanged(Configuration configuration) {
+        boolean landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        for (int effect = 0; effect < parameterGrids.length; effect++) {
+            reflowParameterGrid(effect, landscape);
+        }
+    }
+
+    private void reflowParameterGrid(int effect, boolean landscape) {
+        GridLayout grid = parameterGrids[effect];
+        if (grid == null) return;
+        int columns = landscape ? 4 : 2;
+        grid.setColumnCount(columns);
+        for (int param = 0; param < 4; param++) {
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                    GridLayout.spec(param / columns, 1f),
+                    GridLayout.spec(param % columns, 1f));
+            params.width = 0;
+            parameterCells[effect][param].setLayoutParams(params);
+        }
+    }
+
     private void buildPage(LinearLayout root, int effect) {
         LinearLayout page = AppUi.panel(context, root);
         pages[effect] = page;
 
+        TextView pageTitle = new TextView(context);
+        pageTitle.setText(effect == REVERB ? "Ambiência e espaço" : "Espessura e movimento");
+        AppUi.styleHeading(pageTitle);
+        pageTitle.setTextSize(17);
+        page.addView(pageTitle);
+
         LinearLayout activeRow = new LinearLayout(context);
         activeRow.setGravity(Gravity.CENTER_VERTICAL);
-        activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 10, AppUi.BORDER));
-        activeRow.setPadding(dp(12), dp(8), dp(8), dp(8));
+        activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
+        activeRow.setPadding(dp(14), dp(8), dp(10), dp(8));
+        LinearLayout.LayoutParams activeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
+        activeParams.topMargin = dp(12);
+        page.addView(activeRow, activeParams);
+
+        LinearLayout activeText = new LinearLayout(context);
+        activeText.setOrientation(LinearLayout.VERTICAL);
         TextView activeLabel = new TextView(context);
-        activeLabel.setText("Ativo");
+        activeLabel.setText(effect == REVERB ? "Reverb ativo" : "Chorus ativo");
         activeLabel.setTextColor(AppUi.TEXT);
-        activeLabel.setTextSize(15);
-        activeRow.addView(activeLabel, new LinearLayout.LayoutParams(0,
+        activeLabel.setTextSize(14);
+        activeLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        activeText.addView(activeLabel);
+        TextView activeHint = new TextView(context);
+        activeHint.setText("Aplicado globalmente");
+        activeHint.setTextColor(AppUi.MUTED);
+        activeHint.setTextSize(10);
+        activeText.addView(activeHint);
+        activeRow.addView(activeText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
         Switch toggle = new Switch(context);
-        toggle.setThumbTintList(ColorStateList.valueOf(AppUi.ACCENT));
-        toggle.setTrackTintList(ColorStateList.valueOf(Color.argb(110, 79, 140, 255)));
+        toggle.setThumbTintList(new ColorStateList(
+                new int[][] {new int[] {android.R.attr.state_checked}, new int[] {}},
+                new int[] {VisualTheme.EFFECTS, AppUi.MUTED}));
+        toggle.setTrackTintList(new ColorStateList(
+                new int[][] {new int[] {android.R.attr.state_checked}, new int[] {}},
+                new int[] {Color.argb(95, 152, 116, 232), AppUi.CONTROL_BORDER}));
         toggle.setChecked(true);
         toggle.setContentDescription("Ativar " + NAMES[effect]);
         activeRow.addView(toggle);
@@ -206,12 +267,11 @@ public final class EffectsScreen {
         activeRow.setClickable(true);
         activeRow.setFocusable(true);
         activeRow.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
-        page.addView(activeRow);
 
-        TextView presetsTitle = AppUi.sectionLabel(context, context.getString(R.string.effect_presets));
+        TextView presetsTitle = AppUi.sectionLabel(context, "PREDEFINIÇÕES");
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(12);
+        titleParams.topMargin = dp(18);
         page.addView(presetsTitle, titleParams);
 
         LinearLayout presetsRow = new LinearLayout(context);
@@ -223,72 +283,108 @@ public final class EffectsScreen {
             button.setText(context.getString(resourceId(PRESET_NAMES[effect][i])));
             button.setTextSize(11);
             button.setAllCaps(false);
-            button.setTextColor(AppUi.TEXT);
-            button.setPadding(dp(3), dp(4), dp(3), dp(4));
-            button.setBackground(AppUi.ripple(context, AppUi.CONTROL, 9, AppUi.CONTROL_BORDER));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(42), 1f);
-            params.setMargins(dp(2), dp(4), dp(2), dp(4));
+            button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            button.setMinHeight(0);
+            button.setMinimumHeight(0);
+            button.setPadding(dp(4), dp(4), dp(4), dp(4));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
+            params.setMargins(dp(3), dp(6), dp(3), dp(2));
             presetsRow.addView(button, params);
             presetButtons[effect][i] = button;
             button.setOnClickListener(v -> applyPreset(effect, preset));
         }
         page.addView(presetsRow);
+        updatePresetButtons(effect);
 
         GridLayout grid = new GridLayout(context);
-        grid.setColumnCount(2);
+        boolean landscape = context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        grid.setColumnCount(landscape ? 4 : 2);
+        parameterGrids[effect] = grid;
+        LinearLayout.LayoutParams gridParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        gridParams.topMargin = dp(16);
+        page.addView(grid, gridParams);
+
         for (int param = 0; param < 4; param++) {
             final int parameter = param;
             Spec spec = SPECS[effect][param];
             LinearLayout cell = new LinearLayout(context);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setPadding(dp(4), dp(8), dp(4), dp(10));
 
             TextView name = new TextView(context);
             name.setText(spec.name);
             name.setTextColor(AppUi.MUTED);
-            name.setTextSize(12);
+            name.setTextSize(11);
+            name.setGravity(Gravity.CENTER);
             cell.addView(name);
 
             KnobView knob = new KnobView(context);
             knob.setContentDescription(spec.name);
             knob.setValue(spec.norm(spec.def));
             knob.setListener((view, value, tracking) -> onKnob(effect, parameter, value, tracking));
-            cell.addView(knob, new LinearLayout.LayoutParams(dp(88), dp(88)));
+            LinearLayout.LayoutParams knobParams = new LinearLayout.LayoutParams(dp(92), dp(92));
+            knobParams.topMargin = dp(2);
+            cell.addView(knob, knobParams);
 
             TextView value = new TextView(context);
             value.setText(spec.format(spec.def));
-            value.setTextColor(AppUi.TEXT);
+            AppUi.styleValue(value);
             value.setTextSize(14);
-            value.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-            cell.addView(value);
+            value.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams valueParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            valueParams.topMargin = dp(2);
+            cell.addView(value, valueParams);
 
+            parameterCells[effect][param] = cell;
             values[effect][param] = spec.def;
             knobs[effect][param] = knob;
             labels[effect][param] = value;
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                    GridLayout.spec(param / 2, 1f), GridLayout.spec(param % 2, 1f));
+                    GridLayout.spec(param / (landscape ? 4 : 2), 1f),
+                    GridLayout.spec(param % (landscape ? 4 : 2), 1f));
             params.width = 0;
             grid.addView(cell, params);
         }
-        page.addView(grid);
 
         Button reset = new Button(context);
         reset.setText(R.string.effect_restore_default);
-        AppUi.styleButton(context, reset, AppUi.CONTROL, AppUi.TEXT, 48, 14);
+        reset.setAllCaps(false);
+        reset.setTextSize(12);
+        reset.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        reset.setTextColor(VisualTheme.EFFECTS);
+        reset.setBackground(AppUi.ripple(context, AppUi.PANEL, 12, VisualTheme.EFFECTS));
+        reset.setMinHeight(0);
+        reset.setMinimumHeight(0);
+        reset.setPadding(dp(14), dp(8), dp(14), dp(8));
+        LinearLayout.LayoutParams resetParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
+        resetParams.topMargin = dp(8);
+        page.addView(reset, resetParams);
         reset.setOnClickListener(v -> restoreDefaults(effect));
-        page.addView(reset);
         resetButtons[effect] = reset;
         updateResetButton(effect);
     }
 
     private void applyPreset(int effect, int preset) {
-        float[] values = PRESETS[effect][preset];
-        for (int param = 0; param < 4; param++) setParam(effect, param, values[param]);
+        float[] presetValues = PRESETS[effect][preset];
+        for (int param = 0; param < 4; param++) {
+            setParam(effect, param, presetValues[param]);
+        }
+        selectedPreset[effect] = preset;
+        updatePresetButtons(effect);
         notifyPresetApplied(effect);
     }
 
     private void restoreDefaults(int effect) {
-        for (int param = 0; param < 4; param++) setParam(effect, param, SPECS[effect][param].def);
+        for (int param = 0; param < 4; param++) {
+            setParam(effect, param, SPECS[effect][param].def);
+        }
+        selectedPreset[effect] = -1;
+        updatePresetButtons(effect);
         notifyPresetApplied(effect);
     }
 
@@ -301,10 +397,27 @@ public final class EffectsScreen {
                 SPECS[effect][param].toValue(normalized));
         labels[effect][param].setText(SPECS[effect][param].format(value));
         values[effect][param] = value;
+        selectedPreset[effect] = -1;
+        updatePresetButtons(effect);
         updateResetButton(effect);
         // As APIs globais de efeitos não são realtime-safe: aplica ao soltar o knob.
         if (tracking) return;
         if (listener != null) listener.onParamChanged(effect, param, value);
+    }
+
+    private void updatePresetButtons(int effect) {
+        Button[] buttons = presetButtons[effect];
+        if (buttons == null) return;
+        for (int i = 0; i < buttons.length; i++) {
+            boolean selected = i == selectedPreset[effect];
+            buttons[i].setTextColor(selected ? Color.WHITE : AppUi.TEXT);
+            buttons[i].setBackground(AppUi.ripple(context,
+                    selected ? Color.argb(58, 152, 116, 232) : AppUi.CONTROL,
+                    10, selected ? VisualTheme.EFFECTS : AppUi.CONTROL_BORDER));
+            buttons[i].setSelected(selected);
+            buttons[i].setContentDescription(buttons[i].getText()
+                    + (selected ? ", predefinição selecionada" : ""));
+        }
     }
 
     private void updateResetButton(int effect) {
@@ -317,8 +430,8 @@ public final class EffectsScreen {
                 break;
             }
         }
-        button.setEnabled(changed);
-        button.setAlpha(changed ? 1f : .4f);
+        AppUi.setButtonEnabled(button, changed);
+        button.setAlpha(changed ? 1f : .62f);
     }
 
     private int resourceId(String name) {
@@ -329,8 +442,11 @@ public final class EffectsScreen {
         for (int i = 0; i < 2; i++) {
             boolean on = i == selected;
             pages[i].setVisibility(on ? View.VISIBLE : View.GONE);
-            tabs[i].setBackground(AppUi.rounded(context, on ? AppUi.ACCENT : AppUi.CONTROL, 12, 0));
-            tabs[i].setTextColor(on ? Color.WHITE : AppUi.TEXT);
+            tabs[i].setBackground(AppUi.ripple(context,
+                    on ? Color.argb(58, 152, 116, 232) : AppUi.CONTROL,
+                    12, on ? VisualTheme.EFFECTS : AppUi.CONTROL_BORDER));
+            tabs[i].setTextColor(on ? VisualTheme.EFFECTS : AppUi.TEXT);
+            tabs[i].setSelected(on);
         }
     }
 
