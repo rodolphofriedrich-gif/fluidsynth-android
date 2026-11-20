@@ -931,6 +931,12 @@ public class MainActivity extends Activity {
         boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
         bleSearchButton.setText(getString(enabled ? R.string.ble_search_on : R.string.ble_search_off));
         bleSearchButton.setContentDescription(getString(enabled ? R.string.ble_search_accessibility_on : R.string.ble_search_accessibility_off));
+        bleSearchButton.setTextColor(enabled ? Color.WHITE : TEXT);
+        bleSearchButton.setBackground(AppUi.ripple(this,
+                enabled ? VisualTheme.SUCCESS : CONTROL,
+                VisualTheme.RADIUS_CONTROL,
+                enabled ? VisualTheme.SUCCESS : AppUi.BORDER));
+        bleSearchButton.setElevation(enabled ? AppUi.dp(this, 2) : 0);
     }
 
     private void showOperationStatus(String message) {
