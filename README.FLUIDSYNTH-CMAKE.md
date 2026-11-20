@@ -1,3 +1,7 @@
+> **Nota:** documento preservado do projeto original FluidSynth. Referências a outros sistemas operacionais descrevem o motor upstream e não representam versões do aplicativo deste repositório, destinado exclusivamente ao Android.
+
+---
+
 ## For users - how to compile FluidSynth
 
 The latest information on how to compile FluidSynth using the cmake build system can be found in our wiki:

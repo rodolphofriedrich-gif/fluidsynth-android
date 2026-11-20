@@ -1,101 +1,122 @@
-# FluidSynth
+# FluidSynth Player para Android
 
-| | Build Status |
-|---|---|
-| <img src="https://www.kernel.org/theme/images/logos/tux.png" height="30" alt=""> **Linux** (CI) | [![FluidSynth Linux](https://github.com/FluidSynth/fluidsynth/workflows/FluidSynth%20Linux/badge.svg)](https://github.com/FluidSynth/fluidsynth/actions?query=workflow%3A%22FluidSynth+Linux%22) |
-| <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Obs-logo.png" height=30 alt=""> **Linux** (Packaging) | [![build result](https://build.opensuse.org/projects/home:derselbst:anmp/packages/fluidsynth/badge.svg?type=default)](https://build.opensuse.org/package/show/home:derselbst:anmp/fluidsynth)
-| <img src="https://raw.githubusercontent.com/docker-library/docs/781049d54b1bd9b26d7e8ad384a92f7e0dcb0894/alpine/logo.png" height="25" alt=""> **Alpine** (musl) | [![Fluidsynth Alpine](https://dev.azure.com/tommbrt/tommbrt/_apis/build/status%2FFluidSynth.fluidsynth.alpine?branchName=master)](https://dev.azure.com/tommbrt/tommbrt/_build/latest?definitionId=12&branchName=alpine) |
-| <img src="https://www.freebsd.org/gifs/daemon_hammer.jpg" height="30" alt=""> **FreeBSD** | [![Build Status](https://api.cirrus-ci.com/github/FluidSynth/fluidsynth.svg?branch=master)](https://cirrus-ci.com/github/FluidSynth/fluidsynth) |
-| <img src="https://www.microsoft.com/windows/favicon.ico" height="25" alt=""> **Windows** | [![Build Status](https://dev.azure.com/tommbrt/tommbrt/_apis/build/status/FluidSynth.fluidsynth.Win?branchName=master)](https://dev.azure.com/tommbrt/tommbrt/_build/latest?definitionId=3&branchName=master) |
-| <img src="https://www.apple.com/favicon.ico" height="30" alt=""> **MacOSX** | [![Build Status](https://dev.azure.com/tommbrt/tommbrt/_apis/build/status/FluidSynth.fluidsynth.macOS?branchName=master)](https://dev.azure.com/tommbrt/tommbrt/_build/latest?definitionId=5&branchName=master) |
-| <img src="https://www.android.com/favicon.ico" height="30" alt=""> **Android** | [![Build Status](https://dev.azure.com/tommbrt/tommbrt/_apis/build/status/FluidSynth.fluidsynth.Android?branchName=master)](https://dev.azure.com/tommbrt/tommbrt/_build/latest?definitionId=4&branchName=master) |
+Aplicativo de sintetizador de áudio para **Android**, baseado no motor nativo FluidSynth e compatível com bibliotecas SoundFont 2 (SF2).
 
+> **Plataforma do aplicativo: somente Android.** Este projeto não oferece versões do aplicativo para Windows, Linux, macOS ou iOS. O fato de o código-fonte original do FluidSynth ser multiplataforma não significa que este aplicativo também seja.
 
-#### FluidSynth is a cross-platform, real-time software synthesizer based on the Soundfont 2 specification.
+O repositório mantém parte do código-fonte e dos arquivos de referência do FluidSynth original para compilar o motor utilizado pelo aplicativo. Os documentos identificados como upstream descrevem o projeto de origem, não outros destinos de distribuição do aplicativo.
 
-FluidSynth generates audio by reading and handling MIDI events from MIDI input devices by using a [SoundFont](https://github.com/FluidSynth/fluidsynth/wiki/SoundFont). It is the software analogue of a MIDI synthesizer. FluidSynth can also play MIDI files.
+## Recursos
 
-[![SonarQube Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=FluidSynth_fluidsynth&metric=alert_status)](https://sonarcloud.io/dashboard?id=FluidSynth_fluidsynth) [![OHLOH Project Stats](https://www.openhub.net/p/fluidsynth/widgets/project_thin_badge?format=gif)](https://www.openhub.net/p/fluidsynth)
+- Motor FluidSynth nativo integrado ao Android por JNI.
+- Até 16 canais MIDI independentes, cada um com SoundFont e preset próprios.
+- Importação de bibliotecas SF2 em Configurações, com validação inicial e progresso de cópia.
+- Ativação, desativação e exclusão de bibliotecas não utilizadas por canais.
+- Persistência das bibliotecas, instrumentos, presets e configurações.
+- Teclado virtual com Velocity ajustável de 1 a 127.
+- Entrada MIDI por USB, dispositivos virtuais do serviço MIDI Android e BLE MIDI.
+- Roteamento MIDI comum para teclado virtual, USB e BLE, com rastreamento de notas e sustain por origem.
+- Mute/ativação e Solo por canal.
+- Volume individual por canal e volume master.
+- Controle de polifonia.
+- Efeitos globais Reverb e Chorus, com presets.
+- Interface responsiva: canais em grade 2 × 8 no retrato e 4 × 4 na paisagem.
+- Painel de efeitos em tela inteira em telas estreitas e painel dividido em telas maiores.
+- Saída de áudio estéreo pelo Android usando `AudioTrack`.
 
+USB MIDI e BLE MIDI são entradas para o aplicativo. A saída de áudio do sintetizador é produzida no próprio Android. O projeto não deve ser descrito como um roteador de saída MIDI para instrumentos externos.
 
-## Documentation
+## Requisitos Android
 
-The central place for documentation and further links is our **wiki** here at GitHub:
+- Android 6.0 (API 23) ou superior.
+- Para MIDI USB: aparelho com USB host/OTG e controlador reconhecido pelo serviço MIDI do Android.
+- Para BLE MIDI: Bluetooth LE e controlador compatível com o perfil BLE MIDI.
+- Android 12 ou superior: permissões Bluetooth Scan e Connect.
+- Android 6 a 11: permissão de localização precisa para busca BLE.
 
-#### https://github.com/FluidSynth/fluidsynth/wiki
+USB e BLE são recursos opcionais. A compatibilidade depende do aparelho, da versão do Android, do controlador e dos serviços de sistema disponíveis. O aplicativo solicita modo de baixa latência quando disponível, mas isso não garante a mesma latência em todos os dispositivos.
 
-If you are missing parts of the documentation, let us know by writing to our mailing list.
-Of course, you are welcome to edit and improve the wiki yourself. All you need is an account at GitHub. Alternatively, you may send an EMail to our mailing list along with your suggested changes. Further information about the mailing list is available in the wiki as well.
+## Gerar o APK de teste
 
-Latest information about FluidSynth is also available on the web site at https://www.fluidsynth.org/.
+O fluxo de compilação é **Build Android APK**, executado pelo GitHub Actions. O runner pode usar Ubuntu como ambiente de compilação; o artefato produzido continua sendo um APK Android.
 
-## License
+1. Abra a aba **Actions** deste repositório.
+2. Selecione **Build Android APK**.
+3. Execute **Run workflow** ou abra uma execução concluída com sucesso.
+4. Na seção **Artifacts**, baixe `fluidsynth-player-debug-apk`.
+5. Extraia o ZIP para obter `app-debug.apk`.
 
-The source code for FluidSynth is distributed under the terms of the [GNU Lesser General Public License](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html), see the [LICENSE](https://github.com/FluidSynth/fluidsynth/blob/master/LICENSE) file. To better understand the conditions how FluidSynth can be used in e.g. commercial or closed-source projects, please refer to the [LicensingFAQ in our wiki](https://github.com/FluidSynth/fluidsynth/wiki/LicensingFAQ).
+O APK de depuração não é uma versão de lançamento assinada para distribuição comercial.
 
-## Building from source
+### Compilação manual
 
-For information on how to build FluidSynth from source, please [refer to our wiki](https://github.com/FluidSynth/fluidsynth/wiki/BuildingWithCMake).
+Ambiente utilizado pelo fluxo automatizado:
 
-## Links
+- JDK 17.
+- Gradle 8.9.
+- Android SDK Platform 35 e Build Tools 35.0.0.
+- CMake 3.22.1.
+- Android NDK 27.2.12479018.
 
-- FluidSynth's Home Page, https://www.fluidsynth.org
+Inicialize os submódulos:
 
-- FluidSynth's wiki, https://github.com/FluidSynth/fluidsynth/wiki
+```bash
+git submodule update --init --recursive
+```
 
-- FluidSynth's API documentation, https://www.fluidsynth.org/api/
+Com as ferramentas instaladas, execute:
 
----
+```bash
+cd android-app
+gradle --no-daemon :app:assembleDebug
+```
 
-## Historical background
+O APK será gerado em:
 
-### Why did we do it
+```
+android-app/app/build/outputs/apk/debug/app-debug.apk
+```
 
-The synthesizer grew out of a project, started by Samuel Bianchini and
-Peter Hanappe, and later joined by Johnathan Lee, that aimed at
-developing a networked multi-user game.
+O módulo Android configura os ABIs `arm64-v8a`, `armeabi-v7a` e `x86_64`.
 
-Sound (and music) was considered a very important part of the game. In
-addition, users had to be able to extend the game with their own
-sounds and images. Johnathan Lee proposed to use the Soundfont
-standard combined with intelligent use of midifiles. The arguments
-were:
+## Organização do código
 
-- Wavetable synthesis is low on CPU usage, it is intuitive and it can
-  produce rich sounds
+- `android-app/`: aplicativo Android, interface, integração JNI, áudio, MIDI, SoundFonts e canais.
+- `android-app/app/src/main/java/`: módulos Java do aplicativo.
+- `MidiScreen.java` e `SettingsScreen.java`: construção independente das telas MIDI e Configurações.
+- `EffectsScreen.java` e `EffectsWorkspaceController.java`: interface de efeitos e comportamento responsivo do painel.
+- `AppUi.java`: estilos e componentes visuais compartilhados.
+- `MainActivity.java`: coordenação das telas e integração dos recursos.
+- `android-app/app/src/main/cpp/`: bridge JNI e integração nativa com FluidSynth.
+- `src/` e `include/`: código e cabeçalhos do motor FluidSynth.
+- `android/`: arquivos de suporte à compilação Android do motor.
 
-- Hardware acceleration is possible if the user owns a Soundfont
-  compatible soundcard (important for games!)
+O motor deve permanecer isolado da interface e dos adaptadores MIDI. Sempre que possível, cada responsabilidade deve ficar em seu próprio arquivo. Alterações no motor só devem ocorrer quando houver necessidade técnica demonstrada.
 
-- MIDI files are small and Soundfont2 files can be made small thru the
-  intelligent use of loops and wavetables. Together, they are easier to
-  downloaded than MP3 or audio files.
+## Validação e situação do projeto
 
-- Graphical editors are available for both file format: various
-  Soundfont editors are available on PC and on Linux (Smurf!), and
-  MIDI sequencers are available on all platforms.
+O usuário confirmou que todos os testes físicos do APK de referência #258 foram aprovados, incluindo teclado, canais, SoundFonts, USB, BLE, ausência de atrasos perceptíveis, mixer, efeitos, rotação, painel responsivo e persistência.
 
-It seemed like a good combination to use for an (online) game. 
+O build de integração mais recente, [GitHub Actions #44775429211](https://github.com/rodolphofriedrich-gif/fluidsynth-android/actions/runs/44775429211), também concluiu com sucesso. Ele inclui a correção de acessibilidade dos knobs e a consolidação da versão testada.
 
-In order to make Soundfonts available on all platforms (Linux, Mac,
-and Windows) and for all sound cards, we needed a software Soundfont
-synthesizer. That is why we developed FluidSynth.
+A aprovação de um build comprova a compilação do APK; a validação física é registrada separadamente em [android-app/STABLE_BASELINE.md](android-app/STABLE_BASELINE.md).
 
-### Design decisions
+## Documentação
 
-The synthesizer was designed to be as self-contained as possible for
-several reasons:
+- [Arquitetura atual](ARCHITECTURE.md)
+- [Estado e plano de validação](android-app/ROADMAP.md)
+- [Referência funcional](android-app/STABLE_BASELINE.md)
+- [Entrada USB MIDI](android-app/USB_MIDI_IMPLEMENTATION.md)
+- [Entrada BLE MIDI](android-app/BLE_MIDI_IMPLEMENTATION.md)
+- [Como contribuir](CONTRIBUTING.md)
+- [Licenças e avisos de terceiros](LICENSES.md)
 
-- It had to be multi-platform (Linux, macOS, Win32). It was therefore
-  important that the code didn't rely on any platform-specific
-  library.
+## Motor de origem e documentos preservados
 
-- It had to be easy to integrate the synthesizer modules in various
-  environments, as a plugin or as a dynamically loadable object. I
-  wanted to make the synthesizer available as a plugin (jMax, LADSPA,
-  Xmms, WinAmp, Director, ...); develop language bindings (Python,
-  Java, Perl, ...); and integrate it into (game) frameworks (Crystal
-  Space, SDL, ...). For these reasons I've decided it would be easiest
-  if the project stayed very focused on its goal (a Soundfont
-  synthesizer), stayed small (ideally one file) and didn't dependent
-  on external code.
+O motor utilizado é baseado no [FluidSynth original](https://github.com/FluidSynth/fluidsynth), um sintetizador de software multiplataforma. Essa característica pertence ao projeto upstream; o aplicativo deste repositório tem como destino exclusivamente o Android.
+
+- [README original do FluidSynth](README.FLUIDSYNTH.md)
+- [Instruções CMake do FluidSynth original](README.FLUIDSYNTH-CMAKE.md)
+- [Lista de tarefas histórica do FluidSynth original](TODO.FLUIDSYNTH.md)
+- [Documentação oficial do FluidSynth](https://github.com/FluidSynth/fluidsynth/wiki)
+- [Documentação da API](https://www.fluidsynth.org/api/)

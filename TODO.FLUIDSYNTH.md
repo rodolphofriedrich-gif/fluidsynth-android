@@ -1,3 +1,7 @@
+> **Nota:** lista histórica do projeto original FluidSynth. Não representa o roteiro de desenvolvimento do aplicativo Android; consulte [android-app/ROADMAP.md](android-app/ROADMAP.md).
+
+---
+
 New features
 ------------
 - Audio level metering
