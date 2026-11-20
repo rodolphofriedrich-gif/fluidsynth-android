@@ -44,7 +44,7 @@ public final class KnobView extends View {
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS);
     }
     @Override public boolean performAccessibilityAction(int action, Bundle args) {
-        if (action == AccessibilityNodeInfo.ACTION_SET_PROGRESS && args != null && isEnabled()) {
+        if (action == AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.getId() && args != null && isEnabled()) {
             float next = clamp(args.getFloat(
                     AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value));
             if (next != value) {
