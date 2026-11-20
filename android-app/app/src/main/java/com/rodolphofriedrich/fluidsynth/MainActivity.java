@@ -356,30 +356,18 @@ public class MainActivity extends Activity {
         navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 8), AppUi.dp(this, 12), AppUi.dp(this, 8));
         navigation.setBackground(rounded(PANEL, 14, AppUi.BORDER));
 
-        Button midiTab = new Button(this);
-        midiTab.setText(getString(R.string.tab_midi));
-        midiTab.setAllCaps(false);
-        midiTab.setTextColor(Color.WHITE);
-        midiTab.setBackground(AppUi.ripple(this, showingSettings ? CONTROL : ACCENT, 10, 0));
-
-        Button settingsTab = new Button(this);
-        settingsTab.setText(getString(R.string.tab_settings));
-        settingsTab.setAllCaps(false);
-        settingsTab.setTextColor(TEXT);
-        settingsTab.setBackground(AppUi.ripple(this, showingSettings ? ACCENT : CONTROL, 10, 0));
-
-        Button effectsTab = new Button(this);
-        effectsTab.setText(getString(R.string.tab_effects));
-        effectsTab.setAllCaps(false);
-        effectsTab.setTextColor(TEXT);
-        effectsTab.setBackground(AppUi.ripple(this, showingEffects ? ACCENT : CONTROL, 10, 0));
+        Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
+                !showingSettings, getString(R.string.tab_midi_accessibility,
+                        !showingSettings ? getString(R.string.tab_selected) : ""));
+        Button settingsTab = NavigationTabFactory.create(this, "⚙", getString(R.string.tab_settings),
+                showingSettings, getString(R.string.tab_settings_accessibility,
+                        showingSettings ? getString(R.string.tab_selected) : ""));
 
         LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
-                AppUi.dp(this, 48), 1f);
-        tabParams.setMargins(AppUi.dp(this, 3), 0, AppUi.dp(this, 3), 0);
+                AppUi.dp(this, 56), 1f);
+        tabParams.setMargins(AppUi.dp(this, 4), 0, AppUi.dp(this, 4), 0);
         navigation.addView(midiTab, tabParams);
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
-        effectsTab.setVisibility(View.GONE);
         midiTab.setOnClickListener(v -> showMainScreen(0, workspace, settingsScroll,
                 midiScreen.topControls, midiTab, settingsTab));
         settingsTab.setOnClickListener(v -> showMainScreen(1, workspace, settingsScroll,
@@ -967,10 +955,8 @@ public class MainActivity extends Activity {
             midiWorkspace.setVisibility(View.VISIBLE);
             topControls.setVisibility(View.VISIBLE);
         }
-        midiTab.setBackground(AppUi.ripple(this, screen == 0 ? ACCENT : CONTROL, 10, 0));
-        settingsTab.setBackground(AppUi.ripple(this, screen == 1 ? ACCENT : CONTROL, 10, 0));
-        midiTab.setSelected(screen == 0);
-        settingsTab.setSelected(screen == 1);
+        NavigationTabFactory.update(this, midiTab, screen == 0);
+        NavigationTabFactory.update(this, settingsTab, screen == 1);
         midiTab.setContentDescription(getString(R.string.tab_midi_accessibility,
                 screen == 0 ? getString(R.string.tab_selected) : ""));
         settingsTab.setContentDescription(getString(R.string.tab_settings_accessibility,
