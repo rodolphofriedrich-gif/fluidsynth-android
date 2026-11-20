@@ -1,43 +1,44 @@
-# FluidSynth Android — base estável
+# FluidSynth Player para Android — referência funcional
 
-**Marco:** motor de áudio nativo validado  
-**Branch:** `android-apk-player`  
-**Commit-base validado:** `798c93a11be624c267e8df55f9ba8cffd6cca41f`
+## Versão fisicamente testada
 
-## Estado validado em dispositivo Android
+**APK de referência:** build #258  
+**Commit testado:** `e07c7fa1156480539f0324c475adb54e22aa09ea`  
+**Build:** [GitHub Actions #258](https://github.com/rodolphofriedrich-gif/fluidsynth-android/actions/runs/44753847627)  
+**Artefato:** `fluidsynth-player-debug-apk`
 
-O usuário confirmou os seguintes testes:
+O usuário confirmou que todos os testes realizados com esse APK foram aprovados.
 
-- Reprodução sem atraso perceptível.
-- Pressionamento e soltura rápida de notas.
-- Reprodução de várias notas simultâneas.
-- Troca de SoundFont sem fechar o aplicativo.
-- Fechamento e reabertura do aplicativo.
+## Testes físicos confirmados
 
-## Arquitetura preservada
+- Instalação e inicialização.
+- Importação e seleção de bibliotecas SF2.
+- Seleção de instrumentos nos 16 canais.
+- Reprodução simultânea e troca de presets.
+- Entrada MIDI por USB.
+- Entrada MIDI por BLE, inclusive no canal 10.
+- Reprodução sem atrasos perceptíveis e sem notas presas.
+- Mute e Solo.
+- Volume individual dos canais.
+- Volume master e Velocity.
+- Reverb, Chorus e presets de efeitos.
+- Rotação entre retrato e paisagem.
+- Painel de efeitos responsivo em telas estreitas e largas.
+- Persistência após fechar completamente e reabrir o aplicativo.
 
-- FluidSynth nativo integrado por JNI.
-- Saída de áudio Android por `AudioTrack`.
-- Renderização em thread dedicada com prioridade de áudio.
-- Sincronização do acesso ao sintetizador e encerramento nativo.
-- Importação de SoundFont pelo seletor de arquivos Android.
+## Consolidação na branch principal
 
-## Regra para próximas etapas
+As alterações do APK testado foram integradas à branch `master` pelo PR #17.
 
-Esta versão é a referência funcional. Não modificar o motor de áudio durante a implementação de novas funções, salvo se um teste demonstrar necessidade.
+- PR: [#17 — Consolidação da versão Android testada](https://github.com/rodolphofriedrich-gif/fluidsynth-android/pull/17).
+- Commit de merge: `7dc598db550074688eb628b9395a84f1c453cc79`.
+- Build de integração: [GitHub Actions #44775429211](https://github.com/rodolphofriedrich-gif/fluidsynth-android/actions/runs/44775429211).
+- Resultado do build de integração: **sucesso**.
 
-## Próxima etapa planejada: controlador MIDI USB
+O build de integração inclui a preservação e correção da ação de acessibilidade dos knobs. O build #258 é o registro dos testes físicos completos; o build #44775429211 comprova a compilação da árvore consolidada.
 
-Adicionar entrada MIDI por USB para que um controlador físico envie eventos MIDI ao FluidSynth e o aplicativo reproduza o som pelo próprio dispositivo Android.
+## Regra para próximas alterações
 
-Critérios mínimos para a próxima etapa:
+Preservar os comportamentos físicos já confirmados. Alterações devem ser pequenas, modulares e acompanhadas de build Android. O motor FluidSynth, a renderização e o roteamento estável não devem ser modificados sem necessidade técnica demonstrada.
 
-1. Detectar conexão e desconexão de controladores MIDI USB.
-2. Solicitar e gerenciar a permissão USB do Android.
-3. Receber Note On, Note Off, velocity e canal MIDI.
-4. Encaminhar os eventos ao FluidSynth nativo sem bloquear a thread de áudio.
-5. Tratar desconexão com notas presas, enviando encerramento seguro das notas ativas.
-6. Manter o teclado virtual e a reprodução atual funcionando.
-7. Testar com controlador físico e cabo/adaptador USB OTG.
-
-**Importante:** a conexão USB será uma entrada MIDI para tocar o sintetizador interno. O áudio continuará saindo pelo Android; não se trata de transmitir áudio pelo USB.
+Uma mudança futura que afete áudio, MIDI, SoundFonts, volumes, efeitos, orientação ou acessibilidade deve receber build e teste de regressão antes de ser considerada estável.
