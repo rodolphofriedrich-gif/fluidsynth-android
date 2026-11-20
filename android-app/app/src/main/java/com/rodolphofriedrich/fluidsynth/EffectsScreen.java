@@ -101,6 +101,8 @@ public final class EffectsScreen {
     private final Button[] tabs = new Button[2];
     private final Button[] resetButtons = new Button[2];
     private final Button[][] presetButtons = new Button[2][];
+    private final GridLayout[] parameterGrids = new GridLayout[2];
+    private final View[][] parameterCells = new View[2][4];
     private final int[] selectedPreset = {-1, -1};
     private Listener listener;
     private boolean silent;
@@ -191,6 +193,27 @@ public final class EffectsScreen {
         }
     }
 
+    public void onConfigurationChanged(Configuration configuration) {
+        boolean landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        for (int effect = 0; effect < parameterGrids.length; effect++) {
+            reflowParameterGrid(effect, landscape);
+        }
+    }
+
+    private void reflowParameterGrid(int effect, boolean landscape) {
+        GridLayout grid = parameterGrids[effect];
+        if (grid == null) return;
+        int columns = landscape ? 4 : 2;
+        grid.setColumnCount(columns);
+        for (int param = 0; param < 4; param++) {
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(
+                    GridLayout.spec(param / columns, 1f),
+                    GridLayout.spec(param % columns, 1f));
+            params.width = 0;
+            parameterCells[effect][param].setLayoutParams(params);
+        }
+    }
+
     private void buildPage(LinearLayout root, int effect) {
         LinearLayout page = AppUi.panel(context, root);
         pages[effect] = page;
@@ -277,6 +300,7 @@ public final class EffectsScreen {
         boolean landscape = context.getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
         grid.setColumnCount(landscape ? 4 : 2);
+        parameterGrids[effect] = grid;
         LinearLayout.LayoutParams gridParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         gridParams.topMargin = dp(16);
@@ -315,6 +339,7 @@ public final class EffectsScreen {
             valueParams.topMargin = dp(2);
             cell.addView(value, valueParams);
 
+            parameterCells[effect][param] = cell;
             values[effect][param] = spec.def;
             knobs[effect][param] = knob;
             labels[effect][param] = value;
