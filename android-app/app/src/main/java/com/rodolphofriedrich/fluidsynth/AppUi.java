@@ -3,6 +3,7 @@ package com.rodolphofriedrich.fluidsynth;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.widget.Button;
@@ -11,17 +12,22 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
-/** Componentes visuais compartilhados pelas telas do aplicativo. */
+/**
+ * Componentes visuais compartilhados pelas telas.
+ *
+ * Mantém uma API pequena e estável para as telas existentes; tokens de cor
+ * e identidade visual ficam centralizados em VisualTheme.
+ */
 public final class AppUi {
-    public static final int BG = Color.rgb(13, 17, 27);
-    public static final int PANEL = Color.rgb(23, 30, 45);
-    public static final int CONTROL = Color.rgb(35, 45, 64);
-    public static final int ACCENT = Color.rgb(79, 140, 255);
-    public static final int TEXT = Color.rgb(239, 244, 255);
-    public static final int MUTED = Color.rgb(164, 178, 201);
-    public static final int BORDER = Color.rgb(42, 54, 75);
-    public static final int CONTROL_BORDER = Color.rgb(55, 69, 94);
-    public static final int KEY_BORDER = Color.rgb(65, 82, 110);
+    public static final int BG = VisualTheme.BACKGROUND;
+    public static final int PANEL = VisualTheme.SURFACE;
+    public static final int CONTROL = VisualTheme.CONTROL;
+    public static final int ACCENT = VisualTheme.ACCENT;
+    public static final int TEXT = VisualTheme.TEXT_PRIMARY;
+    public static final int MUTED = VisualTheme.TEXT_SECONDARY;
+    public static final int BORDER = VisualTheme.BORDER;
+    public static final int CONTROL_BORDER = VisualTheme.CONTROL_BORDER;
+    public static final int KEY_BORDER = VisualTheme.KEY_BORDER;
 
     private AppUi() {}
 
@@ -38,7 +44,7 @@ public final class AppUi {
     }
 
     public static RippleDrawable ripple(Context context, int color, int radiusDp, int strokeColor) {
-        ColorStateList rippleColor = ColorStateList.valueOf(Color.argb(70, 255, 255, 255));
+        ColorStateList rippleColor = ColorStateList.valueOf(Color.argb(58, 255, 255, 255));
         return new RippleDrawable(rippleColor,
                 rounded(context, color, radiusDp, strokeColor),
                 rounded(context, Color.WHITE, radiusDp, 0));
@@ -49,12 +55,12 @@ public final class AppUi {
         button.setAllCaps(false);
         button.setTextColor(textColor);
         button.setTextSize(textSizeSp);
-        button.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setMinHeight(0);
         button.setMinimumHeight(0);
-        button.setPadding(dp(context, 8), dp(context, 8), dp(context, 8), dp(context, 8));
-        button.setBackground(ripple(context, background, 12, 0));
-        button.setElevation(0);
+        button.setPadding(dp(context, 12), dp(context, 8), dp(context, 12), dp(context, 8));
+        button.setBackground(ripple(context, background, VisualTheme.RADIUS_CONTROL, 0));
+        button.setElevation(dp(context, 1));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(context, heightDp));
         params.topMargin = dp(context, 6);
@@ -77,25 +83,48 @@ public final class AppUi {
 
     public static void tint(Switch toggle) {
         if (toggle == null) return;
-        toggle.setThumbTintList(ColorStateList.valueOf(ACCENT));
-        toggle.setTrackTintList(ColorStateList.valueOf(Color.argb(110, 79, 140, 255)));
+        toggle.setThumbTintList(new ColorStateList(
+                new int[][] { new int[] { android.R.attr.state_checked }, new int[] {} },
+                new int[] { VisualTheme.ACCENT, VisualTheme.TEXT_SECONDARY }));
+        toggle.setTrackTintList(new ColorStateList(
+                new int[][] { new int[] { android.R.attr.state_checked }, new int[] {} },
+                new int[] { VisualTheme.ACCENT_SOFT, VisualTheme.CONTROL_BORDER }));
     }
 
     public static TextView sectionLabel(Context context, String value) {
         TextView label = new TextView(context);
         label.setText(value);
         label.setTextColor(MUTED);
-        label.setTextSize(12);
-        label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        label.setLetterSpacing(0.06f);
+        label.setTextSize(11);
+        label.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        label.setLetterSpacing(0.08f);
         return label;
+    }
+
+    /** Aplica tipografia de leitura a títulos de seção ou conteúdo principal. */
+    public static void styleHeading(TextView view) {
+        if (view == null) return;
+        view.setTextColor(TEXT);
+        view.setTextSize(16);
+        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        view.setLetterSpacing(0.01f);
+    }
+
+    /** Números de mixer e parâmetros usam largura fixa para evitar oscilações visuais. */
+    public static void styleValue(TextView view) {
+        if (view == null) return;
+        view.setTextColor(TEXT);
+        view.setTextSize(13);
+        view.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        view.setFontFeatureSettings("tnum");
     }
 
     public static LinearLayout panel(Context context, LinearLayout parent) {
         LinearLayout box = new LinearLayout(context);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(context, 14), dp(context, 12), dp(context, 14), dp(context, 12));
-        box.setBackground(rounded(context, PANEL, 16, BORDER));
+        box.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14));
+        box.setBackground(rounded(context, PANEL, VisualTheme.RADIUS_CARD, BORDER));
+        box.setElevation(dp(context, 2));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(context, 12);
