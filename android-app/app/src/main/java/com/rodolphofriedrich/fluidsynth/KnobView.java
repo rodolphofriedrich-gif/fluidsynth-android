@@ -1,12 +1,13 @@
 package com.rodolphofriedrich.fluidsynth;
 import android.content.Context;
+import android.os.Bundle;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 /** Knob vertical reutilizável, com suporte a teclado/acessibilidade. */
 public final class KnobView extends View {
     public interface Listener{void onKnobChanged(KnobView knob,float value,boolean tracking);}
@@ -35,6 +36,25 @@ public final class KnobView extends View {
         case MotionEvent.ACTION_CANCEL:if(moved&&listener!=null)listener.onKnobChanged(this,value,false);releaseParent();return true;default:return true;}}
     private void releaseParent(){if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(false);}
     @Override public boolean performClick(){super.performClick();return true;}
-    @Override public void onInitializeAccessibilityEvent(AccessibilityEvent e){super.onInitializeAccessibilityEvent(e);e.setClassName("android.widget.SeekBar");}
+    @Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+        super.onInitializeAccessibilityNodeInfo(info);
+        info.setClassName("android.widget.SeekBar");
+        info.setRangeInfo(AccessibilityNodeInfo.RangeInfo.obtain(
+                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_FLOAT, 0f, 1f, value));
+        info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS);
+    }
+    @Override public boolean performAccessibilityAction(int action, Bundle args) {
+        if (action == AccessibilityNodeInfo.ACTION_SET_PROGRESS && args != null && isEnabled()) {
+            float next = clamp(args.getFloat(
+                    AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value));
+            if (next != value) {
+                value = next;
+                invalidate();
+                if (listener != null) listener.onKnobChanged(this, value, false);
+            }
+            return true;
+        }
+        return super.performAccessibilityAction(action, args);
+    }
     private static float clamp(float v){return Math.max(0f,Math.min(1f,v));}
 }
