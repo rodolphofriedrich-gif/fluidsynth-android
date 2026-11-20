@@ -1044,6 +1044,7 @@ public class MainActivity extends Activity {
     @Override public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
+        if (effectsScreen != null) effectsScreen.onConfigurationChanged(newConfig);
         if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
         getWindow().getDecorView().requestApplyInsets();
     }
