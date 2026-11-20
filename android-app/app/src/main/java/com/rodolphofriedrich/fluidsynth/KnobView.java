@@ -8,7 +8,6 @@ import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityEvent;
 /** Knob vertical reutilizável, com suporte a teclado/acessibilidade. */
 public final class KnobView extends View {
     public interface Listener{void onKnobChanged(KnobView knob,float value,boolean tracking);}
@@ -45,7 +44,7 @@ public final class KnobView extends View {
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS);
     }
     @Override public boolean performAccessibilityAction(int action, Bundle args) {
-        if (action == AccessibilityNodeInfo.ACTION_SET_PROGRESS && args != null && isEnabled()) {
+        if (action == AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.getId() && args != null && isEnabled()) {
             float next = clamp(args.getFloat(
                     AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value));
             if (next != value) {

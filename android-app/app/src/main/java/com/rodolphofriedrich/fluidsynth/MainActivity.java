@@ -46,11 +46,20 @@ public class MainActivity extends Activity {
     private TextView bleStatus;
     private UsbMidiInput usbMidiInput;
     private BleMidiInput bleMidiInput;
-    private Button choose;
     private Button trackEnableButton;
+    private Button soloButton;
     private Button selectInstrumentButton;
+    private SeekBar masterVolumeSeekBar;
+    private TextView masterVolumeValue;
+    private ChannelMixController channelMixController;
     private Button bleSearchButton;
     private Button[] trackButtons = new Button[16];
+    private Button[] trackMuteButtons = new Button[16];
+    private Button[] trackSoloButtons = new Button[16];
+    private SeekBar[] trackVolumeSeekBars = new SeekBar[16];
+    private TextView[] trackVolumeValues = new TextView[16];
+    private LinearLayout workspace;
+    private EffectsWorkspaceController effectsWorkspaceController;
     private SeekBar polyphonySeekBar;
     private TextView polyphonyValue;
     private SeekBar velocitySeekBar;
@@ -58,7 +67,7 @@ public class MainActivity extends Activity {
     private int currentVelocity = 100;
     private ProgressBar importProgressBar;
     private TextView importProgressText;
-    private TextView importTargetText;
+    private View importProgressPanel;
     private LinearLayout libraryListContainer;
     private Spinner deviceSelector;
     private int currentPolyphony = 512;
@@ -71,8 +80,10 @@ public class MainActivity extends Activity {
     private boolean internalKeyboardSelected = true;
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private static final int PICK_SF2 = 71;
+    private int pendingImportChannel = -1;
     private static final String STATE_SHOWING_SETTINGS = "showing_settings";
     private static final String STATE_SHOWING_EFFECTS = "showing_effects";
+    private static final int IMPORT_LIBRARY_ONLY = -2;
     private boolean showingSettings;
     private boolean showingEffects;
     private final Handler statusHandler = new Handler(Looper.getMainLooper());
@@ -119,8 +130,15 @@ public class MainActivity extends Activity {
         status = midiScreen.status;
         audioDiagnostics = midiScreen.audioDiagnostics;
         trackButtons = midiScreen.trackButtons;
+        trackMuteButtons = midiScreen.trackMuteButtons;
+        trackSoloButtons = midiScreen.trackSoloButtons;
+        trackVolumeSeekBars = midiScreen.trackVolumeSeekBars;
+        trackVolumeValues = midiScreen.trackVolumeValues;
         selectInstrumentButton = midiScreen.selectInstrumentButton;
         trackEnableButton = midiScreen.trackEnableButton;
+        soloButton = midiScreen.soloButton;
+        masterVolumeSeekBar = midiScreen.masterVolumeSeekBar;
+        masterVolumeValue = midiScreen.masterVolumeValue;
         velocitySeekBar = midiScreen.velocitySeekBar;
         velocityValue = midiScreen.velocityValue;
 
@@ -130,11 +148,11 @@ public class MainActivity extends Activity {
         polyphonySeekBar = settingsScreen.polyphonySeekBar;
         polyphonyValue = settingsScreen.polyphonyValue;
         bleSearchButton = settingsScreen.bleSearchButton;
-        choose = settingsScreen.chooseButton;
-        importProgressText = settingsScreen.importProgressText;
-        importProgressBar = settingsScreen.importProgressBar;
+        importProgressText = midiScreen.importProgressText;
+        importProgressBar = midiScreen.importProgressBar;
+        importProgressPanel = midiScreen.importProgressPanel;
         libraryListContainer = settingsScreen.libraryListContainer;
-        importTargetText = settingsScreen.importTargetText;
+        settingsScreen.importLibraryButton.setOnClickListener(v -> openLibraryDocument());
 
         operationStatus = new TextView(this);
         operationStatus.setTextColor(MUTED);
@@ -160,6 +178,31 @@ public class MainActivity extends Activity {
                 if (trackManager != null) {
                     trackManager.select(channel);
                     updateTrackControls();
+                    showSoundFontLibraryPicker(channel);
+                }
+            });
+            trackMuteButtons[i].setOnClickListener(v -> {
+                if (trackManager == null) return;
+                boolean enabled = trackManager.get(channel).isEnabled();
+                if (channelMixController != null) channelMixController.setMuted(channel, enabled);
+                else trackManager.setEnabled(channel, !enabled);
+                updateTrackControls();
+            });
+            trackSoloButtons[i].setOnClickListener(v -> {
+                if (channelMixController == null) return;
+                channelMixController.toggleSolo(channel);
+                updateTrackControls();
+            });
+            trackVolumeSeekBars[i].setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    trackVolumeValues[channel].setText(progress + "%");
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                    int volume = seekBar.getProgress();
+                    if (initialized) nativeBridge.nativeSetTrackVolume(channel, volume);
+                    ChannelVolumeSettingsStore.save(MainActivity.this, channel, volume);
+                    showOperationStatus(getString(R.string.channel_volume_saved, channel + 1, volume));
                 }
             });
         }
@@ -171,7 +214,13 @@ public class MainActivity extends Activity {
             if (trackManager == null) return;
             int channel = trackManager.getActiveChannel();
             boolean enabled = !trackManager.get(channel).isEnabled();
-            trackManager.setEnabled(channel, enabled);
+            if (channelMixController != null) channelMixController.setMuted(channel, !enabled);
+            else trackManager.setEnabled(channel, enabled);
+            updateTrackControls();
+        });
+        soloButton.setOnClickListener(v -> {
+            if (trackManager == null || channelMixController == null) return;
+            channelMixController.toggleSolo(trackManager.getActiveChannel());
             updateTrackControls();
         });
 
@@ -201,13 +250,6 @@ public class MainActivity extends Activity {
             bleMidiInput.setScanningEnabled(enabled);
             updateBleSearchButton();
         });
-        choose.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("*/*");
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, PICK_SF2);
-        });
-
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentVelocity = progress + 1;
@@ -217,6 +259,21 @@ public class MainActivity extends Activity {
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
                 VelocitySettingsStore.save(MainActivity.this, currentVelocity);
                 showOperationStatus(getString(R.string.operation_velocity_saved, currentVelocity));
+            }
+        });
+
+        int savedMasterVolume = MasterVolumeSettingsStore.load(this);
+        masterVolumeSeekBar.setProgress(savedMasterVolume);
+        masterVolumeValue.setText(getString(R.string.master_volume_value, savedMasterVolume));
+        masterVolumeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                masterVolumeValue.setText(getString(R.string.master_volume_value, progress));
+                if (fromUser && audioEngine != null) audioEngine.setMasterVolume(progress / 100f);
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                MasterVolumeSettingsStore.save(MainActivity.this, seekBar.getProgress());
+                showOperationStatus(getString(R.string.master_volume_saved, seekBar.getProgress()));
             }
         });
 
@@ -253,17 +310,34 @@ public class MainActivity extends Activity {
         ScrollView midiScroll = midiScreen.scrollView;
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
-        ScreenNavigator.show(midiScroll, settingsScroll, effectsScroll, showingSettings, showingEffects);
+        workspace = new LinearLayout(this);
+        workspace.setOrientation(LinearLayout.HORIZONTAL);
+        workspace.setBackgroundColor(BG);
+        workspace.addView(midiScroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        workspace.addView(effectsScroll, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.MATCH_PARENT, 0f));
+        effectsWorkspaceController = new EffectsWorkspaceController(this, workspace,
+                midiScroll, effectsScroll, midiScreen.effectsToggleButton);
+        effectsWorkspaceController.setOpen(showingEffects);
+        midiScreen.effectsToggleButton.setOnClickListener(v -> {
+            if (showingSettings) return;
+            effectsWorkspaceController.toggle();
+            showingEffects = effectsWorkspaceController.isOpen();
+        });
 
         LinearLayout screenHost = new LinearLayout(this);
         screenHost.setOrientation(LinearLayout.VERTICAL);
         screenHost.setBackgroundColor(BG);
-        screenHost.addView(midiScroll, new LinearLayout.LayoutParams(
+        screenHost.addView(midiScreen.topControls, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        screenHost.addView(workspace, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        screenHost.addView(effectsScroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        settingsScroll.setVisibility(showingSettings ? View.VISIBLE : View.GONE);
+        workspace.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
+        midiScreen.topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
 
         operationStatus.setPadding(AppUi.dp(this, 16), AppUi.dp(this, 8), AppUi.dp(this, 16), AppUi.dp(this, 8));
         operationStatus.setBackground(rounded(PANEL, 10, AppUi.BORDER));
@@ -271,7 +345,11 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 4), AppUi.dp(this, 16), AppUi.dp(this, 8));
-        screenHost.addView(operationStatus, operationStatusParams);
+        operationStatus.setMaxLines(2);
+        operationStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        operationStatus.setGravity(Gravity.CENTER_VERTICAL);
+        operationStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        screenHost.addView(operationStatus, 0, operationStatusParams);
 
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
@@ -282,7 +360,7 @@ public class MainActivity extends Activity {
         midiTab.setText(getString(R.string.tab_midi));
         midiTab.setAllCaps(false);
         midiTab.setTextColor(Color.WHITE);
-        midiTab.setBackground(AppUi.ripple(this, (!showingSettings && !showingEffects) ? ACCENT : CONTROL, 10, 0));
+        midiTab.setBackground(AppUi.ripple(this, showingSettings ? CONTROL : ACCENT, 10, 0));
 
         Button settingsTab = new Button(this);
         settingsTab.setText(getString(R.string.tab_settings));
@@ -301,14 +379,11 @@ public class MainActivity extends Activity {
         tabParams.setMargins(AppUi.dp(this, 3), 0, AppUi.dp(this, 3), 0);
         navigation.addView(midiTab, tabParams);
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
-        navigation.addView(effectsTab, new LinearLayout.LayoutParams(tabParams));
-
-        midiTab.setOnClickListener(v -> showMainScreen(0, midiScroll, settingsScroll, effectsScroll,
-                midiTab, settingsTab, effectsTab));
-        settingsTab.setOnClickListener(v -> showMainScreen(1, midiScroll, settingsScroll, effectsScroll,
-                midiTab, settingsTab, effectsTab));
-        effectsTab.setOnClickListener(v -> showMainScreen(2, midiScroll, settingsScroll, effectsScroll,
-                midiTab, settingsTab, effectsTab));
+        effectsTab.setVisibility(View.GONE);
+        midiTab.setOnClickListener(v -> showMainScreen(0, workspace, settingsScroll,
+                midiScreen.topControls, midiTab, settingsTab));
+        settingsTab.setOnClickListener(v -> showMainScreen(1, workspace, settingsScroll,
+                midiScreen.topControls, midiTab, settingsTab));
 
         screenHost.addView(navigation, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -325,6 +400,12 @@ public class MainActivity extends Activity {
                                 && trackManager.updatePresetFromMidi(channel, bank, program,
                                         getString(R.string.midi_program_fallback, program + 1))) {
                             updateTrackControls();
+                        }
+                    }));
+            midiRouter.setActivityListener((channel, command) ->
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && midiScreen != null) {
+                            midiScreen.showMidiActivity(channel);
                         }
                     }));
             currentPolyphony = PolyphonySettingsStore.load(this);
@@ -346,10 +427,10 @@ public class MainActivity extends Activity {
                     else nativeBridge.nativeSetChorusActive(active);
                 }
                 @Override public void onParamChanged(int effect, int param, float value) {
-                    float[] values = effectsScreen.values(effect);
-                    if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
-                    else nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
-                    EffectsSettingsStore.saveValues(MainActivity.this, effect, values);
+                    applyEffectParameters(effect);
+                }
+                @Override public void onPresetApplied(int effect) {
+                    applyEffectParameters(effect);
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
@@ -364,6 +445,10 @@ public class MainActivity extends Activity {
                 @Override public void setEnabled(int channel, boolean enabled) { nativeBridge.nativeSetTrackEnabled(channel, enabled); }
                 @Override public void setActiveChannel(int channel) { nativeBridge.nativeSetActiveTrack(channel); }
             });
+            channelMixController = new ChannelMixController(trackManager, nativeBridge);
+            for (int channel = 0; channel < 16; channel++) {
+                nativeBridge.nativeSetTrackVolume(channel, ChannelVolumeSettingsStore.load(this, channel));
+            }
             updateTrackControls();
             setTrackControlsEnabled(false);
             showOperationStatus(getString(R.string.operation_restoring));
@@ -396,6 +481,7 @@ public class MainActivity extends Activity {
                     });
                 }
             });
+            audioEngine.setMasterVolume(MasterVolumeSettingsStore.load(this) / 100f);
             audioEngine.start();
             if (audioEngine.isPlaying()) audioDiagnostics.setText(getString(R.string.audio_output_active));
             usbMidiInput = new UsbMidiInput(this, new UsbMidiInput.Listener() {
@@ -407,7 +493,10 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) usbStatus.setText(getString(R.string.usb_status, message));
+                        if (!isFinishing() && !isDestroyed()) {
+                            usbStatus.setText(getString(R.string.usb_status, message));
+                            usbStatus.setTextColor((message.startsWith("Conectado") || message.startsWith("Controlador conectado")) ? Color.rgb(16, 185, 129) : MUTED);
+                        }
                     });
                 }
                 @Override public void onDevicesChanged(List<MidiDeviceInfo> devices) {
@@ -424,7 +513,10 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onDeviceStatus(String message) {
                     runOnUiThread(() -> {
-                        if (!isFinishing() && !isDestroyed()) bleStatus.setText(getString(R.string.ble_status, message));
+                        if (!isFinishing() && !isDestroyed()) {
+                            bleStatus.setText(getString(R.string.ble_status, message));
+                            bleStatus.setTextColor((message.startsWith("Conectado") || message.startsWith("Controlador conectado")) ? Color.rgb(16, 185, 129) : MUTED);
+                        }
                     });
                 }
             });
@@ -476,6 +568,7 @@ public class MainActivity extends Activity {
         importProgressBar.setVisibility(View.VISIBLE);
         importProgressText.setText(getString(R.string.import_preparing));
         importProgressText.setVisibility(View.VISIBLE);
+        if (importProgressPanel != null) importProgressPanel.setVisibility(View.VISIBLE);
     }
 
     private void updateImportProgress(long copiedBytes, long totalBytes) {
@@ -502,14 +595,39 @@ public class MainActivity extends Activity {
         importProgressBar.setProgress(0);
         importProgressBar.setVisibility(View.GONE);
         importProgressText.setVisibility(View.GONE);
+        if (importProgressPanel != null) importProgressPanel.setVisibility(View.GONE);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != PICK_SF2 || resultCode != RESULT_OK || data == null || data.getData() == null) return;
-        AppUi.setButtonEnabled(choose, false);
         showImportProgress();
-        final int channel = trackManager == null ? 0 : trackManager.getActiveChannel();
+        final int requestedChannel = pendingImportChannel;
+        final int channel = requestedChannel >= 0 ? requestedChannel
+                : (trackManager == null ? 0 : trackManager.getActiveChannel());
+        pendingImportChannel = -1;
+        if (requestedChannel == IMPORT_LIBRARY_ONLY) {
+            loader.execute(() -> {
+                String result;
+                try {
+                    String displayName = getSoundFontDisplayName(data.getData());
+                    soundFontManager.importForTrack(data.getData(), 0, displayName,
+                            (copiedBytes, totalBytes) -> updateImportProgress(copiedBytes, totalBytes));
+                    result = getString(R.string.library_imported, displayName);
+                } catch (Exception error) {
+                    result = getString(R.string.import_error, error.getMessage());
+                }
+                final String message = result;
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        hideImportProgress();
+                        refreshSoundFontLibraryList();
+                        showOperationStatus(message);
+                    }
+                });
+            });
+            return;
+        }
         showOperationStatus(getString(R.string.import_channel_started, channel + 1));
         final android.net.Uri uri = data.getData();
         loader.execute(() -> {
@@ -534,7 +652,6 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     showOperationStatus(result);
-                    AppUi.setButtonEnabled(choose, true);
                     hideImportProgress();
                     refreshSoundFontLibraryList();
                     updateTrackControls();
@@ -588,6 +705,36 @@ public class MainActivity extends Activity {
             });
             row.addView(enabledSwitch, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            Button deleteButton = new Button(this);
+            deleteButton.setText(R.string.library_delete);
+            deleteButton.setTextSize(10);
+            deleteButton.setAllCaps(false);
+            deleteButton.setTextColor(Color.WHITE);
+            deleteButton.setPadding(AppUi.dp(this, 6), 0, AppUi.dp(this, 6), 0);
+            deleteButton.setBackground(AppUi.ripple(this, Color.rgb(145, 55, 65), 8, 0));
+            deleteButton.setContentDescription(getString(R.string.library_delete_accessibility,
+                    soundFontManager.getDisplayName(library)));
+            LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
+                    AppUi.dp(this, 72), AppUi.dp(this, 38));
+            deleteParams.leftMargin = AppUi.dp(this, 6);
+            row.addView(deleteButton, deleteParams);
+            deleteButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this,
+                    android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle(R.string.library_delete_title)
+                    .setMessage(getString(R.string.library_delete_confirm,
+                            soundFontManager.getDisplayName(library)))
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.library_delete, (dialog, which) -> {
+                        if (soundFontLibraryStore.isLibraryInUse(library, trackManager)) {
+                            showOperationStatus(getString(R.string.library_in_use));
+                        } else if (soundFontLibraryStore.deleteLibrary(library, trackManager)) {
+                            showOperationStatus(getString(R.string.library_deleted));
+                        } else {
+                            showOperationStatus(getString(R.string.library_delete_failed));
+                        }
+                        refreshSoundFontLibraryList();
+                    }).show());
             libraryListContainer.addView(row);
 
             if (i < libraries.size() - 1) {
@@ -600,23 +747,48 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void openLibraryDocument() {
+        importProgressText = settingsScreen.importProgressText;
+        importProgressBar = settingsScreen.importProgressBar;
+        importProgressPanel = settingsScreen.importProgressPanel;
+        pendingImportChannel = IMPORT_LIBRARY_ONLY;
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, PICK_SF2);
+    }
+
+    private void openSoundFontDocument(int channel) {
+        importProgressText = midiScreen.importProgressText;
+        importProgressBar = midiScreen.importProgressBar;
+        importProgressPanel = midiScreen.importProgressPanel;
+        pendingImportChannel = Math.max(0, Math.min(15, channel));
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, PICK_SF2);
+    }
+
     private void showSoundFontLibraryPicker(int channel) {
         if (soundFontLibraryStore == null) return;
         List<File> availableLibraries = new ArrayList<>();
         for (File library : soundFontLibraryStore.getLibraries()) {
             if (soundFontLibraryStore.isEnabled(library)) availableLibraries.add(library);
         }
-        if (availableLibraries.isEmpty()) {
-            showOperationStatus(getString(R.string.no_active_libraries));
-            return;
-        }
         File[] files = availableLibraries.toArray(new File[0]);
         String[] names = new String[files.length];
         for (int i = 0; i < files.length; i++) names[i] = soundFontManager.getDisplayName(files[i]);
-        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.soundfont_libraries_title)
-            .setItems(names, (dialog, which) -> showPresetPicker(channel, files[which]))
-            .setNegativeButton(R.string.cancel, null).show();
+        Track selected = trackManager == null ? null : trackManager.get(channel);
+        String subtitle = selected == null || !selected.hasSoundFont()
+                ? getString(R.string.track_empty_state)
+                : selected.getPresetName() == null ? selected.getSoundFontName()
+                : selected.getPresetName() + " — " + selected.getSoundFontName();
+        ChannelInstrumentSheet.show(this, channel, subtitle, names,
+                new ChannelInstrumentSheet.Listener() {
+                    @Override public void onLibrarySelected(int index) {
+                        if (index >= 0 && index < files.length) showPresetPicker(channel, files[index]);
+                    }
+                });
     }
 
     private void showPresetPicker(int channel, File library) {
@@ -698,10 +870,18 @@ public class MainActivity extends Activity {
         Track selected = trackManager.get(channel);
         trackEnableButton.setText(getString(selected.isEnabled() ? R.string.channel_enabled : R.string.channel_muted, channel + 1));
         trackEnableButton.setContentDescription(getString(R.string.track_enable_accessibility, channel + 1, selected.isEnabled() ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
+        if (soloButton != null) {
+            boolean solo = channelMixController != null && channelMixController.isSolo(channel);
+            soloButton.setText(getString(solo ? R.string.solo_active : R.string.solo_channel));
+            soloButton.setBackground(AppUi.ripple(this, solo ? ACCENT : CONTROL, 12, 0));
+            soloButton.setContentDescription(getString(solo ? R.string.solo_accessibility_active : R.string.solo_accessibility, channel + 1));
+        }
+        if (channelMixController != null) channelMixController.applyIfSoloActive();
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
+            if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
             String prefix = i == channel ? "● " : "";
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
@@ -710,11 +890,20 @@ public class MainActivity extends Activity {
             trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
             trackButtons[i].setBackground(AppUi.ripple(this, i == channel ? ACCENT : CONTROL, 10,
                     i == channel ? ACCENT : AppUi.CONTROL_BORDER));
+            boolean enabled = item.isEnabled();
+            trackMuteButtons[i].setText(enabled ? "CH ✓" : "CH ×");
+            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? CONTROL : Color.rgb(145, 55, 65), 7, 0));
+            trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
+                    + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
+            boolean solo = channelMixController != null && channelMixController.isSolo(i);
+            trackSoloButtons[i].setText(solo ? "SOLO ✓" : "SOLO");
+            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? ACCENT : CONTROL, 7, 0));
+            trackSoloButtons[i].setContentDescription(getString(solo
+                    ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
+            int volume = ChannelVolumeSettingsStore.load(this, i);
+            if (trackVolumeSeekBars[i].getProgress() != volume) trackVolumeSeekBars[i].setProgress(volume);
+            trackVolumeValues[i].setText(volume + "%");
         }
-        importTargetText.setText(getString(R.string.import_target_channel, channel + 1));
-        importTargetText.setContentDescription(getString(R.string.import_target_accessibility, channel + 1));
-        choose.setText(getString(selected.hasSoundFont() ? R.string.replace_sf2_channel : R.string.import_sf2_channel, channel + 1));
-        choose.setContentDescription(getString(selected.hasSoundFont() ? R.string.replace_sf2_accessibility : R.string.import_sf2_accessibility, channel + 1));
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : getString(R.string.soundfont_missing);
         String preset = selected.getPresetName();
         String instrument = preset == null || preset.trim().isEmpty()
@@ -726,12 +915,15 @@ public class MainActivity extends Activity {
     }
 
     private void setTrackControlsEnabled(boolean enabled) {
-        AppUi.setButtonEnabled(choose, enabled);
         AppUi.setButtonEnabled(selectInstrumentButton, enabled);
         AppUi.setButtonEnabled(trackEnableButton, enabled);
+        AppUi.setButtonEnabled(soloButton, enabled);
         if (trackButtons != null) {
-            for (Button button : trackButtons) {
-                AppUi.setButtonEnabled(button, enabled);
+            for (int i = 0; i < trackButtons.length; i++) {
+                AppUi.setButtonEnabled(trackButtons[i], enabled);
+                AppUi.setButtonEnabled(trackMuteButtons[i], enabled);
+                AppUi.setButtonEnabled(trackSoloButtons[i], enabled);
+                trackVolumeSeekBars[i].setEnabled(enabled);
             }
         }
     }
@@ -751,14 +943,38 @@ public class MainActivity extends Activity {
         statusHandler.postDelayed(hideOperationStatus, 4000L);
     }
 
-    private void showMainScreen(int screen, View midi, View settings, View effects,
-            Button midiTab, Button settingsTab, Button effectsTab) {
+    private void showMainScreen(int screen, View midiWorkspace, View settings,
+            View topControls, Button midiTab, Button settingsTab) {
         showingSettings = screen == 1;
-        showingEffects = screen == 2;
-        ScreenNavigator.show(midi, settings, effects, showingSettings, showingEffects);
+        effectsWorkspaceController.setOpen(false);
+        showingEffects = false;
+        if (showingSettings) {
+            midiWorkspace.setVisibility(View.GONE);
+            topControls.setVisibility(View.GONE);
+            settings.setVisibility(View.VISIBLE);
+        } else {
+            settings.setVisibility(View.GONE);
+            midiWorkspace.setVisibility(View.VISIBLE);
+            topControls.setVisibility(View.VISIBLE);
+        }
         midiTab.setBackground(AppUi.ripple(this, screen == 0 ? ACCENT : CONTROL, 10, 0));
         settingsTab.setBackground(AppUi.ripple(this, screen == 1 ? ACCENT : CONTROL, 10, 0));
-        effectsTab.setBackground(AppUi.ripple(this, screen == 2 ? ACCENT : CONTROL, 10, 0));
+        midiTab.setSelected(screen == 0);
+        settingsTab.setSelected(screen == 1);
+        midiTab.setContentDescription(getString(R.string.tab_midi_accessibility,
+                screen == 0 ? getString(R.string.tab_selected) : ""));
+        settingsTab.setContentDescription(getString(R.string.tab_settings_accessibility,
+                screen == 1 ? getString(R.string.tab_selected) : ""));
+    }
+
+    private void applyEffectParameters(int effect) {
+        float[] values = effectsScreen.values(effect);
+        if (effect == EffectsScreen.REVERB) {
+            nativeBridge.nativeSetReverb(values[0], values[1], values[2], values[3]);
+        } else {
+            nativeBridge.nativeSetChorus(Math.round(values[0]), values[1], values[2], values[3]);
+        }
+        EffectsSettingsStore.saveValues(this, effect, values);
     }
 
     private void restoreEffectsSettings() {
@@ -810,12 +1026,15 @@ public class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(STATE_SHOWING_SETTINGS, showingSettings);
-        outState.putBoolean(STATE_SHOWING_EFFECTS, showingEffects);
+        outState.putBoolean(STATE_SHOWING_EFFECTS,
+                effectsWorkspaceController != null && effectsWorkspaceController.isOpen());
         super.onSaveInstanceState(outState);
     }
 
     @Override public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
+        if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
         getWindow().getDecorView().requestApplyInsets();
     }
 
