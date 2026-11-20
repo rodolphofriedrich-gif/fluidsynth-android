@@ -27,6 +27,18 @@ public final class SettingsScreen {
     public final TextView importProgressText;
     public final ProgressBar importProgressBar;
 
+    private static void styleConnectionStatus(Context context, TextView status) {
+        status.setTextColor(AppUi.MUTED);
+        status.setTextSize(12);
+        status.setMaxLines(2);
+        status.setPadding(AppUi.dp(context, 10), AppUi.dp(context, 7),
+                AppUi.dp(context, 10), AppUi.dp(context, 7));
+        status.setBackground(AppUi.rounded(context, AppUi.CONTROL,
+                VisualTheme.RADIUS_CONTROL, AppUi.CONTROL_BORDER));
+        status.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+    }
+
     public SettingsScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -46,16 +58,16 @@ public final class SettingsScreen {
 
         usbStatus = new TextView(context);
         usbStatus.setText(context.getString(R.string.midi_waiting));
-        usbStatus.setTextColor(AppUi.MUTED);
-        usbStatus.setTextSize(12);
+        styleConnectionStatus(context, usbStatus);
         controllerPanel.addView(usbStatus);
 
         bleStatus = new TextView(context);
         bleStatus.setText(context.getString(R.string.ble_search_off));
-        bleStatus.setTextColor(AppUi.MUTED);
-        bleStatus.setTextSize(12);
-        bleStatus.setPadding(0, AppUi.dp(context, 3), 0, 0);
-        controllerPanel.addView(bleStatus);
+        styleConnectionStatus(context, bleStatus);
+        LinearLayout.LayoutParams bleStatusParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bleStatusParams.topMargin = AppUi.dp(context, 6);
+        controllerPanel.addView(bleStatus, bleStatusParams);
 
         LinearLayout audioPanel = AppUi.panel(context, root);
         audioPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.polyphony_label)));
@@ -68,9 +80,7 @@ public final class SettingsScreen {
 
         polyphonyValue = new TextView(context);
         polyphonyValue.setText(context.getString(R.string.polyphony_value, 512));
-        polyphonyValue.setTextColor(AppUi.TEXT);
-        polyphonyValue.setTextSize(16);
-        polyphonyValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        AppUi.styleHeading(polyphonyValue);
         audioPanel.addView(polyphonyValue);
 
         polyphonySeekBar = new SeekBar(context);
@@ -86,7 +96,8 @@ public final class SettingsScreen {
         actionsPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.midi_connection_actions)));
         bleSearchButton = new Button(context);
         bleSearchButton.setText(context.getString(R.string.ble_search_off));
-        AppUi.styleButton(context, bleSearchButton, AppUi.CONTROL, AppUi.TEXT, 48, 14);
+        bleSearchButton.setContentDescription(context.getString(R.string.ble_search_accessibility_off));
+        AppUi.styleButton(context, bleSearchButton, AppUi.CONTROL, AppUi.TEXT, 48, 13);
         actionsPanel.addView(bleSearchButton);
 
         LinearLayout librariesPanel = AppUi.panel(context, root);
@@ -100,7 +111,8 @@ public final class SettingsScreen {
 
         importLibraryButton = new Button(context);
         importLibraryButton.setText(R.string.import_library);
-        AppUi.styleButton(context, importLibraryButton, AppUi.ACCENT, Color.WHITE, 48, 14);
+        importLibraryButton.setContentDescription(context.getString(R.string.import_library));
+        AppUi.styleButton(context, importLibraryButton, AppUi.ACCENT, Color.WHITE, 48, 13);
         librariesPanel.addView(importLibraryButton);
 
         importProgressPanel = AppUi.panel(context, librariesPanel);
