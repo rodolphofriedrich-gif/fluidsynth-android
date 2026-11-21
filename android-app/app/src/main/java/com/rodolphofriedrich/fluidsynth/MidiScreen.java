@@ -68,7 +68,7 @@ public final class MidiScreen {
         effectsToggleButton.setTextColor(AppUi.MUTED);
         effectsToggleButton.setGravity(Gravity.CENTER);
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
-        effectsToggleButton.setBackground(AppUi.ripple(c, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
+        effectsToggleButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, AppUi.CONTROL_BORDER));
         LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
         ep.leftMargin=AppUi.dp(c,12);
         topControls.addView(effectsToggleButton,ep);
@@ -124,7 +124,7 @@ public final class MidiScreen {
             LinearLayout strip=new LinearLayout(c);
             strip.setOrientation(LinearLayout.HORIZONTAL);
             strip.setGravity(Gravity.CENTER_VERTICAL);
-            strip.setPadding(0,AppUi.dp(c,3),0,AppUi.dp(c,3));
+            strip.setPadding(0,AppUi.dp(c,1),0,AppUi.dp(c,1));
             strip.setBackgroundColor(android.graphics.Color.TRANSPARENT);
 
             // Identificação do canal à esquerda; volume e ações permanecem na mesma linha.
@@ -141,7 +141,7 @@ public final class MidiScreen {
             ch.setMinHeight(0); ch.setMinimumHeight(0);
             ch.setBackground(AppUi.ripple(c,android.graphics.Color.TRANSPARENT,8,0));
             ch.setContentDescription(c.getString(R.string.track_accessibility,i+1));
-            strip.addView(ch,new LinearLayout.LayoutParams(AppUi.dp(c,54),AppUi.dp(c,38)));
+            strip.addView(ch,new LinearLayout.LayoutParams(AppUi.dp(c,54),AppUi.dp(c,34)));
             trackButtons[i]=ch;
 
             LinearLayout volumeGroup=new LinearLayout(c);
@@ -149,7 +149,7 @@ public final class MidiScreen {
             volumeGroup.setGravity(Gravity.CENTER_VERTICAL);
             volumeGroup.setPadding(AppUi.dp(c,2),0,AppUi.dp(c,4),0);
             SeekBar vol=slider(c,100,100,c.getString(R.string.channel_volume_accessibility,i+1));
-            volumeGroup.addView(vol,new LinearLayout.LayoutParams(0,AppUi.dp(c,38),1f));
+            volumeGroup.addView(vol,new LinearLayout.LayoutParams(0,AppUi.dp(c,34),1f));
             trackVolumeSeekBars[i]=vol;
             TextView vl=value(c,"100%");
             vl.setVisibility(View.GONE);
@@ -170,18 +170,18 @@ public final class MidiScreen {
             mute.setBackground(AppUi.ripple(c,idleAction,10,AppUi.CONTROL_BORDER));
             solo.setBackground(AppUi.ripple(c,idleAction,10,AppUi.CONTROL_BORDER));
             LinearLayout.LayoutParams actionButtonParams =
-                    new LinearLayout.LayoutParams(AppUi.dp(c,32),AppUi.dp(c,32));
+                    new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
             actions.addView(mute,actionButtonParams);
             LinearLayout.LayoutParams soloParams =
                     new LinearLayout.LayoutParams(AppUi.dp(c,32),AppUi.dp(c,32));
-            soloParams.leftMargin=AppUi.dp(c,4);
+            soloParams.leftMargin=AppUi.dp(c,3);
             actions.addView(solo,soloParams);
-            strip.addView(actions,new LinearLayout.LayoutParams(AppUi.dp(c,72),AppUi.dp(c,38)));
+            strip.addView(actions,new LinearLayout.LayoutParams(AppUi.dp(c,68),AppUi.dp(c,34)));
             trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;
 
             LinearLayout rowContainer=new LinearLayout(c);
             rowContainer.setOrientation(LinearLayout.VERTICAL);
-            rowContainer.setPadding(0,AppUi.dp(c,2),0,AppUi.dp(c,3));
+            rowContainer.setPadding(0,AppUi.dp(c,1),0,AppUi.dp(c,1));
             rowContainer.addView(strip,new LinearLayout.LayoutParams(-1,-2));
 
             TextView instrument=new TextView(c);
@@ -190,9 +190,9 @@ public final class MidiScreen {
             instrument.setTextSize(11);
             instrument.setSingleLine(true);
             instrument.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            instrument.setGravity(Gravity.CENTER_VERTICAL);
-            instrument.setPadding(AppUi.dp(c,54),0,AppUi.dp(c,8),0);
-            rowContainer.addView(instrument,new LinearLayout.LayoutParams(-1,AppUi.dp(c,20)));
+            instrument.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+            instrument.setPadding(0,0,AppUi.dp(c,8),0);
+            rowContainer.addView(instrument,new LinearLayout.LayoutParams(-1,AppUi.dp(c,17)));
             trackInstrumentLabels[i]=instrument;
 
             if(i<15){
