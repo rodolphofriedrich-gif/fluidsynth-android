@@ -158,7 +158,9 @@ public class MainActivity extends Activity {
 
         operationStatus = new TextView(this);
         operationStatus.setTextColor(MUTED);
-        operationStatus.setTextSize(12);
+        operationStatus.setTextSize(10);
+        operationStatus.setGravity(Gravity.CENTER);
+        operationStatus.setMaxLines(1);
 
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
@@ -271,7 +273,7 @@ public class MainActivity extends Activity {
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentVelocity = progress + 1;
-                velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
+                velocityValue.setText(String.valueOf(currentVelocity));
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
@@ -357,12 +359,12 @@ public class MainActivity extends Activity {
         workspace.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
         midiScreen.topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
 
-        operationStatus.setPadding(AppUi.dp(this, 16), AppUi.dp(this, 8), AppUi.dp(this, 16), AppUi.dp(this, 8));
-        operationStatus.setBackground(rounded(PANEL, 10, AppUi.BORDER));
+        operationStatus.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 3), AppUi.dp(this, 12), AppUi.dp(this, 3));
+        operationStatus.setBackgroundColor(Color.TRANSPARENT);
         operationStatus.setVisibility(View.GONE);
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 4), AppUi.dp(this, 16), AppUi.dp(this, 8));
+        operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 2), AppUi.dp(this, 16), AppUi.dp(this, 2));
         operationStatus.setMaxLines(2);
         operationStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
         operationStatus.setGravity(Gravity.CENTER_VERTICAL);
@@ -371,8 +373,8 @@ public class MainActivity extends Activity {
 
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
-        navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 8), AppUi.dp(this, 12), AppUi.dp(this, 8));
-        navigation.setBackground(rounded(PANEL, 14, AppUi.BORDER));
+        navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 2), AppUi.dp(this, 12), AppUi.dp(this, 2));
+        navigation.setBackgroundColor(Color.TRANSPARENT);
 
         Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
                 !showingSettings, getString(R.string.tab_midi_accessibility,
