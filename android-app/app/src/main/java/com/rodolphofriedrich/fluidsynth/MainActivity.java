@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private SettingsScreen settingsScreen;
     private EffectsScreen effectsScreen;
     private final Object keyboardMidiSource = new Object();
+    private final Object channelControlsMidiSource = new Object();
     private MidiRouter midiRouter;
     private AudioEngine audioEngine;
     private TextView status;
@@ -206,6 +207,44 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        midiScreen.channelControlsButton.setOnClickListener(v -> {
+            if (!initialized || midiRouter == null || trackManager == null) {
+                showOperationStatus("Motor MIDI ainda não está pronto.");
+                return;
+            }
+            int channel = trackManager.getActiveChannel();
+            int[] values = ChannelMidiSettingsStore.load(this, channel);
+            new ChannelMidiControlsDialog(this, channel, values,
+                    new ChannelMidiControlsDialog.Listener() {
+                @Override public void onControlChanged(int targetChannel, int controller, int value) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | targetChannel, controller, value);
+                }
+                @Override public void onControlCommitted(int targetChannel, int controller, int value) {
+                    ChannelMidiSettingsStore.save(MainActivity.this, targetChannel, controller, value);
+                }
+                @Override public void onSustainChanged(int targetChannel, boolean active) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | targetChannel, 64, active ? 127 : 0);
+                }
+                @Override public void onDismissed() {
+                    if (midiRouter != null) midiRouter.releaseSource(channelControlsMidiSource);
+                }
+            }).show();
+        });
+        midiScreen.panicButton.setOnClickListener(v -> {
+            if (midiRouter == null) return;
+            new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Panic MIDI")
+                    .setMessage("Interromper todas as notas e liberar o sustain nos 16 canais?")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Interromper", (dialog, which) -> {
+                        if (midiRouter != null) midiRouter.panic();
+                        showOperationStatus("Panic executado: todas as notas foram interrompidas.");
+                    })
+                    .show();
+        });
 
         selectInstrumentButton.setOnClickListener(v -> {
             if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
