@@ -420,6 +420,9 @@ public class MainActivity extends Activity {
                             updateTrackControls();
                         }
                     }));
+            for (int channel = 0; channel < 16; channel++) {
+                midiRouter.setVelocityCurve(channel, VelocityCurveSettingsStore.load(this, channel));
+            }
             midiRouter.setActivityListener((channel, command) ->
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && midiScreen != null) {
@@ -468,6 +471,9 @@ public class MainActivity extends Activity {
                 @Override public void onSustainChanged(int channel, boolean active) {
                     if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
                             0xB0 | channel, 64, active ? 127 : 0);
+                }
+                @Override public void onVelocityCurveChanged(int channel, int curve) {
+                    if (midiRouter != null) midiRouter.setVelocityCurve(channel, curve);
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
