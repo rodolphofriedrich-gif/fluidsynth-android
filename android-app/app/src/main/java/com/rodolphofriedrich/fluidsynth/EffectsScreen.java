@@ -167,6 +167,7 @@ public final class EffectsScreen {
         values[effect][param] = safe;
         knobs[effect][param].setValue(spec.norm(safe));
         labels[effect][param].setText(spec.format(safe));
+        updateKnobAccessibility(effect, param, safe);
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
@@ -322,7 +323,7 @@ public final class EffectsScreen {
             cell.addView(name);
 
             KnobView knob = new KnobView(context);
-            knob.setContentDescription(spec.name);
+            knob.setContentDescription(spec.name + ", " + spec.format(spec.def));
             knob.setValue(spec.norm(spec.def));
             knob.setListener((view, value, tracking) -> onKnob(effect, parameter, value, tracking));
             LinearLayout.LayoutParams knobParams = new LinearLayout.LayoutParams(dp(92), dp(92));
@@ -361,7 +362,7 @@ public final class EffectsScreen {
         reset.setMinimumHeight(0);
         reset.setPadding(dp(14), dp(8), dp(14), dp(8));
         LinearLayout.LayoutParams resetParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
         resetParams.topMargin = dp(8);
         page.addView(reset, resetParams);
         reset.setOnClickListener(v -> restoreDefaults(effect));
@@ -390,6 +391,11 @@ public final class EffectsScreen {
 
     private void notifyPresetApplied(int effect) {
         if (listener != null) listener.onPresetApplied(effect);
+    }
+
+    private void updateKnobAccessibility(int effect, int param, float value) {
+        knobs[effect][param].setContentDescription(SPECS[effect][param].name
+                + ", " + SPECS[effect][param].format(value));
     }
 
     private void onKnob(int effect, int param, float normalized, boolean tracking) {
