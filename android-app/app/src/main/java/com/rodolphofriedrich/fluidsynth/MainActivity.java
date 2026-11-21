@@ -373,7 +373,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 2), AppUi.dp(this, 16), AppUi.dp(this, 2));
-        operationStatus.setMaxLines(2);
+        operationStatus.setMaxLines(1);
         operationStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
         operationStatus.setGravity(Gravity.CENTER_VERTICAL);
         operationStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -470,7 +470,7 @@ public class MainActivity extends Activity {
             });
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
-            velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
+            velocityValue.setText(String.valueOf(currentVelocity));
             soundFontManager = new SoundFontManager(this);
             soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
             refreshSoundFontLibraryList();
