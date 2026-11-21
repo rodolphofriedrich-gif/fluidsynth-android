@@ -162,7 +162,7 @@ public final class EffectsScreen {
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
         scrollView.setClipToPadding(false);
-        scrollView.setPadding(0, 0, 0, dp(16));
+        scrollView.setPadding(0, 0, 0, dp(88));
         scrollView.addView(root);
         selectTab(REVERB);
     }
