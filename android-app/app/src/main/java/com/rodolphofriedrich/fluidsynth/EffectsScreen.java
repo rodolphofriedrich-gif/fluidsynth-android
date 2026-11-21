@@ -403,6 +403,7 @@ public final class EffectsScreen {
                 SPECS[effect][param].toValue(normalized));
         labels[effect][param].setText(SPECS[effect][param].format(value));
         values[effect][param] = value;
+        updateKnobAccessibility(effect, param, value);
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
