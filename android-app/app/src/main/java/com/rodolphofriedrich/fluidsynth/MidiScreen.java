@@ -155,7 +155,7 @@ public final class MidiScreen {
             vl.setVisibility(View.GONE);
             trackVolumeValues[i]=vl;
             volumeGroup.addView(vl,new LinearLayout.LayoutParams(0,AppUi.dp(c,1)));
-            strip.addView(volumeGroup,new LinearLayout.LayoutParams(0,AppUi.dp(c,38),1f));
+            strip.addView(volumeGroup,new LinearLayout.LayoutParams(0,AppUi.dp(c,34),1f));
 
             LinearLayout actions=new LinearLayout(c);
             actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -173,7 +173,7 @@ public final class MidiScreen {
                     new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
             actions.addView(mute,actionButtonParams);
             LinearLayout.LayoutParams soloParams =
-                    new LinearLayout.LayoutParams(AppUi.dp(c,32),AppUi.dp(c,32));
+                    new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
             soloParams.leftMargin=AppUi.dp(c,3);
             actions.addView(solo,soloParams);
             strip.addView(actions,new LinearLayout.LayoutParams(AppUi.dp(c,68),AppUi.dp(c,34)));
