@@ -16,7 +16,8 @@ O seletor de SoundFont associado ao canal MIDI deve seguir sempre esta regra:
 
 - A navegação inferior permanece fixa.
 - Conteúdos roláveis reservam espaço inferior suficiente para que o último item fique totalmente visível.
-- Em tablets, aproveitar a largura com divisão proporcional, sem sobrepor a lista MIDI e os controles de efeitos.
+- Em celulares em paisagem, dividir a área principal entre MIDI à esquerda e efeitos à direita, com rolagem independente.
+- Em tablets, manter a divisão proporcional entre MIDI e efeitos em qualquer orientação, sem sobreposição.
 - Em telefones, evitar controles excessivamente largos e preservar áreas de toque acessíveis.
 
 ## Controles MIDI
