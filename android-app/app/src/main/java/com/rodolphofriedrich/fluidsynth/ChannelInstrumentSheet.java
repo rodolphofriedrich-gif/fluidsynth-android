@@ -18,7 +18,6 @@ import android.widget.TextView;
  */
 public final class ChannelInstrumentSheet {
     private static Dialog activeDialog;
-    private static Context activeContext;
 
     public interface Listener {
         void onLibrarySelected(int index);
@@ -119,12 +118,10 @@ public final class ChannelInstrumentSheet {
         dialog.setOnDismissListener(ignored -> {
             if (activeDialog == dialog) {
                 activeDialog = null;
-                activeContext = null;
             }
         });
         dialog.show();
         activeDialog = dialog;
-        activeContext = context;
         applyResponsiveWindow(dialog, context);
     }
 
@@ -136,7 +133,6 @@ public final class ChannelInstrumentSheet {
     public static void onConfigurationChanged(Context context) {
         Dialog dialog = activeDialog;
         if (dialog == null || !dialog.isShowing()) return;
-        activeContext = context;
         applyResponsiveWindow(dialog, context);
     }
 
@@ -165,7 +161,6 @@ public final class ChannelInstrumentSheet {
         params.dimAmount = 0f;
         if (sidePanel) {
             params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-            params.flags |= WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
         } else {
             params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         }
