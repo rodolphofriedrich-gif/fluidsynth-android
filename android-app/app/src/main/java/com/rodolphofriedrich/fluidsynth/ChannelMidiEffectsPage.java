@@ -143,6 +143,7 @@ public final class ChannelMidiEffectsPage {
     public void setListener(Listener listener) { this.listener = listener; }
 
     public void setChannel(int channel, int[] storedValues) {
+        releaseSustain();
         this.channel = Math.max(0, Math.min(15, channel));
         int[] safe = storedValues == null
                 ? ChannelMidiSettingsStore.load(context, this.channel) : storedValues;
