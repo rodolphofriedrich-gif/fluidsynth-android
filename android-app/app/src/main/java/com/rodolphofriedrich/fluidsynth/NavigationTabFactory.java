@@ -51,7 +51,7 @@ public final class NavigationTabFactory {
         button.setTypeface(Typeface.DEFAULT,
                 selected ? Typeface.BOLD : Typeface.NORMAL);
         button.setBackground(AppUi.ripple(context,
-                selected ? VisualTheme.ACCENT_SOFT : Color.TRANSPARENT,
+                selected ? Color.argb(58, 57, 139, 255) : Color.TRANSPARENT,
                 VisualTheme.RADIUS_CONTROL,
                 0));
         button.setElevation(0);
