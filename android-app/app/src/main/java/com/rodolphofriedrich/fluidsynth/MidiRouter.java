@@ -24,6 +24,7 @@ public final class MidiRouter implements AutoCloseable {
     private final Map<Object, SourceState> sources = new IdentityHashMap<>();
     private final int[][] noteOwners = new int[16][128];
     private final int[][] pendingNoteOffs = new int[16][128];
+    private final int[] velocityCurves = new int[16];
     @SuppressWarnings("unchecked")
     private final IdentityHashMap<Object, Boolean>[] sustainOwners =
             new IdentityHashMap[16];
@@ -50,6 +51,12 @@ public final class MidiRouter implements AutoCloseable {
         activityListener = listener;
     }
 
+    /** Applies the selected velocity response independently to one MIDI channel. */
+    public synchronized void setVelocityCurve(int channel, int curve) {
+        if (channel < 0 || channel > 15) return;
+        velocityCurves[channel] = VelocityCurveSettingsStore.normalize(curve);
+    }
+
     /** Routes one MIDI channel message while updating source-owned note state. */
     public synchronized void send(Object source, int status, int data1, int data2) {
         if (closed || source == null || status < 0x80 || status > 0xEF) return;
@@ -72,7 +79,8 @@ public final class MidiRouter implements AutoCloseable {
         if (command == 0x90 && second > 0) {
             state.activeNotes[channel][first]++;
             noteOwners[channel][first]++;
-            nativeBridge.nativeMidiEvent(status, first, second);
+            nativeBridge.nativeMidiEvent(status, first,
+                    VelocityCurveSettingsStore.apply(second, velocityCurves[channel]));
             return;
         }
 
