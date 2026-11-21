@@ -21,6 +21,7 @@ public final class EffectsScreen {
     public static final int CHORUS = 1;
 
     public interface Listener {
+        void onMidiPageSelected();
         void onEffectActive(int effect, boolean active);
         void onParamChanged(int effect, int param, float value);
         void onPresetApplied(int effect);
@@ -98,7 +99,8 @@ public final class EffectsScreen {
     private final TextView[][] labels = new TextView[2][4];
     private final Switch[] active = new Switch[2];
     private final View[] pages = new View[2];
-    private final Button[] tabs = new Button[2];
+    private final Button[] tabs = new Button[3];
+    private final ChannelMidiEffectsPage midiPage;
     private final Button[] resetButtons = new Button[2];
     private final Button[][] presetButtons = new Button[2][];
     private final GridLayout[] parameterGrids = new GridLayout[2];
@@ -133,10 +135,10 @@ public final class EffectsScreen {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tabRowParams.topMargin = dp(12);
         header.addView(tabRow, tabRowParams);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             final int effect = i;
             Button tab = new Button(context);
-            tab.setText(NAMES[i]);
+            tab.setText(i == 2 ? "MIDI" : NAMES[i]);
             AppUi.styleButton(context, tab, AppUi.CONTROL, AppUi.TEXT, 44, 13);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
             params.setMargins(dp(3), 0, dp(3), 0);
@@ -146,6 +148,9 @@ public final class EffectsScreen {
         }
 
         for (int i = 0; i < 2; i++) buildPage(root, i);
+        midiPage = new ChannelMidiEffectsPage(context);
+        root.addView(midiPage.view());
+        midiPage.view().setVisibility(View.GONE);
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
         scrollView.addView(root);
@@ -155,6 +160,12 @@ public final class EffectsScreen {
     public void setListener(Listener listener) {
         this.listener = listener;
     }
+
+    public void setMidiListener(ChannelMidiEffectsPage.Listener listener) { midiPage.setListener(listener); }
+
+    public void setMidiChannel(int channel, int[] values) { midiPage.setChannel(channel, values); }
+
+    public void releaseMidiSustain() { midiPage.releaseSustain(); }
 
     public float[] values(int effect) {
         return values[effect].clone();
@@ -449,15 +460,17 @@ public final class EffectsScreen {
     }
 
     private void selectTab(int selected) {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; i++) pages[i].setVisibility(i == selected ? View.VISIBLE : View.GONE);
+        midiPage.view().setVisibility(selected == 2 ? View.VISIBLE : View.GONE);
+        for (int i = 0; i < 3; i++) {
             boolean on = i == selected;
-            pages[i].setVisibility(on ? View.VISIBLE : View.GONE);
             tabs[i].setBackground(AppUi.ripple(context,
                     on ? Color.argb(58, 152, 116, 232) : AppUi.CONTROL,
                     12, on ? VisualTheme.EFFECTS : AppUi.CONTROL_BORDER));
             tabs[i].setTextColor(on ? VisualTheme.EFFECTS : AppUi.TEXT);
             tabs[i].setSelected(on);
         }
+        if (selected == 2 && listener != null) listener.onMidiPageSelected();
     }
 
     private int dp(float value) {
