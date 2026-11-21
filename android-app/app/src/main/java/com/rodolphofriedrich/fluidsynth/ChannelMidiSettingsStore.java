@@ -7,7 +7,7 @@ import android.content.SharedPreferences;
 public final class ChannelMidiSettingsStore {
     private static final String PREFS = "channel_midi_controls";
     public static final int[] CONTROLLERS = {1, 11, 10, 91, 93, 74, 71};
-    private static final int[] DEFAULTS = {0, 127, 64, 40, 0, 127, 64};
+    private static final int[] DEFAULTS = {0, 127, 64, 40, 0, 64, 64};
 
     private ChannelMidiSettingsStore() {}
 
