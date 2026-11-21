@@ -113,7 +113,7 @@ public final class EffectsScreen {
         this.context = context;
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(16), dp(16), dp(20));
+        root.setPadding(dp(16), dp(16), dp(16), dp(36));
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout header = AppUi.flatSection(context, root);
@@ -161,6 +161,8 @@ public final class EffectsScreen {
         midiPage.view().setVisibility(View.GONE);
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
+        scrollView.setClipToPadding(false);
+        scrollView.setPadding(0, 0, 0, dp(16));
         scrollView.addView(root);
         selectTab(REVERB);
     }
@@ -216,14 +218,19 @@ public final class EffectsScreen {
     public void onConfigurationChanged(Configuration configuration) {
         boolean landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE;
         for (int effect = 0; effect < parameterGrids.length; effect++) {
-            reflowParameterGrid(effect, landscape);
+            final int index = effect;
+            parameterGrids[effect].post(() -> reflowParameterGrid(index, landscape));
         }
     }
 
     private void reflowParameterGrid(int effect, boolean landscape) {
         GridLayout grid = parameterGrids[effect];
         if (grid == null) return;
-        int columns = landscape ? 4 : 2;
+        float density = context.getResources().getDisplayMetrics().density;
+        int availableWidthDp = Math.round(grid.getWidth() / density);
+        // Quatro colunas só quando cada knob e seu rótulo têm espaço real para respirar.
+        int columns = landscape && availableWidthDp >= 520 ? 4 : 2;
+        if (grid.getColumnCount() == columns) return;
         grid.setColumnCount(columns);
         for (int param = 0; param < 4; param++) {
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
@@ -232,6 +239,7 @@ public final class EffectsScreen {
             params.width = 0;
             parameterCells[effect][param].setLayoutParams(params);
         }
+        grid.requestLayout();
     }
 
     private void buildPage(LinearLayout root, int effect) {
@@ -323,12 +331,18 @@ public final class EffectsScreen {
         GridLayout grid = new GridLayout(context);
         boolean landscape = context.getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
-        grid.setColumnCount(landscape ? 4 : 2);
+        grid.setColumnCount(2);
         parameterGrids[effect] = grid;
         LinearLayout.LayoutParams gridParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         gridParams.topMargin = dp(16);
         page.addView(grid, gridParams);
+        grid.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            boolean currentLandscape = context.getResources().getConfiguration().orientation
+                    == Configuration.ORIENTATION_LANDSCAPE;
+            reflowParameterGrid(effect, currentLandscape);
+        });
 
         for (int param = 0; param < 4; param++) {
             final int parameter = param;
@@ -369,8 +383,8 @@ public final class EffectsScreen {
             knobs[effect][param] = knob;
             labels[effect][param] = value;
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                    GridLayout.spec(param / (landscape ? 4 : 2), 1f),
-                    GridLayout.spec(param % (landscape ? 4 : 2), 1f));
+                    GridLayout.spec(param / 2, 1f),
+                    GridLayout.spec(param % 2, 1f));
             params.width = 0;
             grid.addView(cell, params);
         }
