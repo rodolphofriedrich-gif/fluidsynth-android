@@ -9,7 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 
-/** Controles MIDI por canal: todos os CCs contínuos usam knobs, sem SeekBars. */
+/** Controles MIDI por canal, incluindo sensibilidade Pitch Bend via RPN 0,0. */
 public final class ChannelMidiEffectsPage {
     public interface Listener {
         void onControlChanged(int channel, int controller, int value);
@@ -28,6 +28,8 @@ public final class ChannelMidiEffectsPage {
     private final TextView[] values = new TextView[ChannelMidiSettingsStore.CONTROLLERS.length];
     private final KnobView[] knobs = new KnobView[ChannelMidiSettingsStore.CONTROLLERS.length];
     private final Switch sustain;
+    private final KnobView pitchBendRangeKnob;
+    private final TextView pitchBendRangeValue;
     private Listener listener;
     private int channel;
     private boolean binding;
@@ -151,6 +153,67 @@ public final class ChannelMidiEffectsPage {
             row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
         }
 
+        AppUi.addDivider(context, root);
+        TextView pitchTitle = AppUi.sectionLabel(context, "SENSIBILIDADE DO PITCH BEND");
+        LinearLayout.LayoutParams pitchTitleParams = new LinearLayout.LayoutParams(-1, -2);
+        pitchTitleParams.topMargin = dp(14);
+        root.addView(pitchTitle, pitchTitleParams);
+
+        LinearLayout pitchRow = new LinearLayout(context);
+        pitchRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams pitchRowParams = new LinearLayout.LayoutParams(-1, -2);
+        pitchRowParams.topMargin = dp(8);
+        root.addView(pitchRow, pitchRowParams);
+
+        LinearLayout pitchCell = new LinearLayout(context);
+        pitchCell.setOrientation(LinearLayout.VERTICAL);
+        pitchCell.setGravity(Gravity.CENTER_HORIZONTAL);
+        pitchCell.setPadding(dp(4), dp(4), dp(4), dp(6));
+
+        TextView pitchLabel = new TextView(context);
+        pitchLabel.setText("Faixa em semitons");
+        pitchLabel.setTextColor(AppUi.MUTED);
+        pitchLabel.setTextSize(11);
+        pitchLabel.setGravity(Gravity.CENTER);
+        pitchCell.addView(pitchLabel, new LinearLayout.LayoutParams(-1, -2));
+
+        pitchBendRangeKnob = new KnobView(context, 76);
+        pitchBendRangeKnob.setContentDescription("Faixa de Pitch Bend em semitons");
+        LinearLayout.LayoutParams pitchKnobParams = new LinearLayout.LayoutParams(dp(76), dp(76));
+        pitchKnobParams.topMargin = dp(4);
+        pitchCell.addView(pitchBendRangeKnob, pitchKnobParams);
+
+        pitchBendRangeValue = new TextView(context);
+        AppUi.styleValue(pitchBendRangeValue);
+        pitchBendRangeValue.setTextSize(12);
+        pitchBendRangeValue.setTextColor(AppUi.TEXT);
+        pitchBendRangeValue.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams pitchValueParams = new LinearLayout.LayoutParams(-1, -2);
+        pitchValueParams.topMargin = dp(3);
+        pitchCell.addView(pitchBendRangeValue, pitchValueParams);
+
+        TextView pitchHint = new TextView(context);
+        pitchHint.setText("Ajuste independente por canal · padrão: 2 semitons");
+        pitchHint.setTextColor(AppUi.MUTED);
+        pitchHint.setTextSize(10);
+        pitchHint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams pitchHintParams = new LinearLayout.LayoutParams(-1, -2);
+        pitchHintParams.topMargin = dp(2);
+        pitchCell.addView(pitchHint, pitchHintParams);
+        pitchRow.addView(pitchCell, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        pitchBendRangeKnob.setListener((view, normalized, tracking) -> {
+            int range = ChannelMidiSettingsStore.MIN_PITCH_BEND_RANGE
+                    + Math.round(normalized * (ChannelMidiSettingsStore.MAX_PITCH_BEND_RANGE
+                    - ChannelMidiSettingsStore.MIN_PITCH_BEND_RANGE));
+            pitchBendRangeValue.setText(range + (range == 1 ? " semitom" : " semitons"));
+            view.setContentDescription("Faixa de Pitch Bend: " + range + " semitons");
+            if (!tracking) {
+                ChannelMidiSettingsStore.savePitchBendRange(context, channel, range);
+                applyPitchBendRange(channel, range);
+            }
+        });
+
         setChannel(0, ChannelMidiSettingsStore.load(context, 0));
     }
 
@@ -173,8 +236,29 @@ public final class ChannelMidiEffectsPage {
                     + ChannelMidiSettingsStore.CONTROLLERS[i] + ", " + value);
             values[i].setText(String.valueOf(value));
         }
+        int pitchRange = ChannelMidiSettingsStore.loadPitchBendRange(context, this.channel);
+        pitchBendRangeKnob.setValue((pitchRange - ChannelMidiSettingsStore.MIN_PITCH_BEND_RANGE)
+                / (float) (ChannelMidiSettingsStore.MAX_PITCH_BEND_RANGE
+                - ChannelMidiSettingsStore.MIN_PITCH_BEND_RANGE));
+        pitchBendRangeValue.setText(pitchRange
+                + (pitchRange == 1 ? " semitom" : " semitons"));
+        pitchBendRangeKnob.setContentDescription("Faixa de Pitch Bend: "
+                + pitchRange + " semitons");
         sustain.setChecked(false);
         binding = false;
+        applyPitchBendRange(this.channel, pitchRange);
+    }
+
+    /** RPN 0,0: Pitch Bend Sensitivity (semitons + cents), seguido de RPN null. */
+    private void applyPitchBendRange(int targetChannel, int semitones) {
+        if (listener == null) return;
+        int safeRange = ChannelMidiSettingsStore.clampPitchBendRange(semitones);
+        listener.onControlChanged(targetChannel, 101, 0);
+        listener.onControlChanged(targetChannel, 100, 0);
+        listener.onControlChanged(targetChannel, 6, safeRange);
+        listener.onControlChanged(targetChannel, 38, 0);
+        listener.onControlChanged(targetChannel, 101, 127);
+        listener.onControlChanged(targetChannel, 100, 127);
     }
 
     public void releaseSustain() {
