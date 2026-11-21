@@ -50,7 +50,7 @@ public final class MidiScreen {
         LinearLayout master = knobGroup(c, c.getString(R.string.master_volume_label));
         masterVolumeValue = value(c, "100%");
         masterVolumeValue.setGravity(Gravity.CENTER);
-        masterVolumeValue.setTextColor(AppUi.TEXT);
+        masterVolumeValue.setTextColor(android.graphics.Color.WHITE);
         masterVolumeValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         masterVolumeValue.setTextSize(12);
         masterVolumeKnob = new KnobView(c, 64);
@@ -62,7 +62,7 @@ public final class MidiScreen {
         LinearLayout velocity = knobGroup(c, c.getString(R.string.velocity_label));
         velocityValue = value(c, "100");
         velocityValue.setGravity(Gravity.CENTER);
-        velocityValue.setTextColor(AppUi.TEXT);
+        velocityValue.setTextColor(android.graphics.Color.WHITE);
         velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         velocityValue.setTextSize(12);
         velocityKnob = new KnobView(c, 64);
@@ -129,7 +129,7 @@ public final class MidiScreen {
             Button ch=new Button(c);
             ch.setText("CH " + (i + 1));
             ch.setTextSize(11);
-            ch.setTextColor(i == 0 ? VisualTheme.ACCENT : AppUi.TEXT);
+            ch.setTextColor(android.graphics.Color.WHITE);
             ch.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
             ch.setAllCaps(false);
             ch.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
@@ -164,9 +164,9 @@ public final class MidiScreen {
             Button solo=smallButton(c,"S");
             solo.setTextSize(11);
             solo.setContentDescription(c.getString(R.string.solo_accessibility,i+1));
-            int idleAction = android.graphics.Color.argb(24,154,170,194);
-            mute.setBackground(AppUi.ripple(c,idleAction,10,AppUi.CONTROL_BORDER));
-            solo.setBackground(AppUi.ripple(c,idleAction,10,AppUi.CONTROL_BORDER));
+            int idleAction = android.graphics.Color.TRANSPARENT;
+            mute.setBackground(AppUi.ripple(c,idleAction,4,AppUi.CONTROL_BORDER));
+            solo.setBackground(AppUi.ripple(c,idleAction,4,AppUi.CONTROL_BORDER));
             LinearLayout.LayoutParams actionButtonParams =
                     new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
             actions.addView(mute,actionButtonParams);
@@ -184,7 +184,7 @@ public final class MidiScreen {
 
             TextView instrument=new TextView(c);
             instrument.setText(c.getString(R.string.track_empty_state));
-            instrument.setTextColor(AppUi.MUTED);
+            instrument.setTextColor(android.graphics.Color.WHITE);
             instrument.setTextSize(11);
             instrument.setSingleLine(true);
             instrument.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -195,7 +195,7 @@ public final class MidiScreen {
 
             if(i<15){
                 View divider=new View(c);
-                divider.setBackgroundColor(android.graphics.Color.argb(26,154,170,194));
+                divider.setBackgroundColor(android.graphics.Color.rgb(62,62,62));
                 rowContainer.addView(divider,new LinearLayout.LayoutParams(-1,AppUi.dp(c,1)));
             }
             GridLayout.LayoutParams cell=new GridLayout.LayoutParams();
