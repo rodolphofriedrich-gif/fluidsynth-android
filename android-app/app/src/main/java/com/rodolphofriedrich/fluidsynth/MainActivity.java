@@ -387,7 +387,7 @@ public class MainActivity extends Activity {
         Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
                 !showingSettings, getString(R.string.tab_midi_accessibility,
                         !showingSettings ? getString(R.string.tab_selected) : ""));
-        Button settingsTab = NavigationTabFactory.create(this, "⚙", getString(R.string.tab_settings),
+        Button settingsTab = NavigationTabFactory.create(this, "☷", getString(R.string.tab_settings),
                 showingSettings, getString(R.string.tab_settings_accessibility,
                         showingSettings ? getString(R.string.tab_selected) : ""));
 
