@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
     private TextView polyphonyValue;
     private SeekBar velocitySeekBar;
     private TextView velocityValue;
+    private KnobView masterVolumeKnob, velocityKnob;
     private int currentVelocity = 100;
     private ProgressBar importProgressBar;
     private TextView importProgressText;
@@ -143,8 +144,10 @@ public class MainActivity extends Activity {
         soloButton = midiScreen.soloButton;
         masterVolumeSeekBar = midiScreen.masterVolumeSeekBar;
         masterVolumeValue = midiScreen.masterVolumeValue;
+        masterVolumeKnob = midiScreen.masterVolumeKnob;
         velocitySeekBar = midiScreen.velocitySeekBar;
         velocityValue = midiScreen.velocityValue;
+        velocityKnob = midiScreen.velocityKnob;
 
         deviceSelector = settingsScreen.deviceSelector;
         usbStatus = settingsScreen.usbStatus;
@@ -272,30 +275,30 @@ public class MainActivity extends Activity {
             bleMidiInput.setScanningEnabled(checked);
             updateBleSearchButton();
         });
-        velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                currentVelocity = progress + 1;
-                velocityValue.setText(String.valueOf(currentVelocity));
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+        velocityKnob.setValue((currentVelocity - 1) / 126f);
+        velocityValue.setText(String.valueOf(currentVelocity));
+        velocityKnob.setListener((knob, value, tracking) -> {
+            currentVelocity = Math.max(1, Math.min(127, 1 + Math.round(value * 126f)));
+            velocityValue.setText(String.valueOf(currentVelocity));
+            velocitySeekBar.setProgress(currentVelocity - 1);
+            if (!tracking) {
                 VelocitySettingsStore.save(MainActivity.this, currentVelocity);
                 showOperationStatus(getString(R.string.operation_velocity_saved, currentVelocity));
             }
         });
 
         int savedMasterVolume = MasterVolumeSettingsStore.load(this);
+        masterVolumeKnob.setValue(savedMasterVolume / 100f);
         masterVolumeSeekBar.setProgress(savedMasterVolume);
         masterVolumeValue.setText(getString(R.string.master_volume_value, savedMasterVolume));
-        masterVolumeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                masterVolumeValue.setText(getString(R.string.master_volume_value, progress));
-                if (fromUser && audioEngine != null) audioEngine.setMasterVolume(progress / 100f);
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {
-                MasterVolumeSettingsStore.save(MainActivity.this, seekBar.getProgress());
-                showOperationStatus(getString(R.string.master_volume_saved, seekBar.getProgress()));
+        masterVolumeKnob.setListener((knob, value, tracking) -> {
+            int volume = Math.max(0, Math.min(100, Math.round(value * 100f)));
+            masterVolumeValue.setText(getString(R.string.master_volume_value, volume));
+            masterVolumeSeekBar.setProgress(volume);
+            if (audioEngine != null) audioEngine.setMasterVolume(volume / 100f);
+            if (!tracking) {
+                MasterVolumeSettingsStore.save(MainActivity.this, volume);
+                showOperationStatus(getString(R.string.master_volume_saved, volume));
             }
         });
 
