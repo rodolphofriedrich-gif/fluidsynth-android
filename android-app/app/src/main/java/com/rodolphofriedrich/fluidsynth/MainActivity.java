@@ -909,26 +909,25 @@ public class MainActivity extends Activity {
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
-            trackButtons[i].setTextColor(TEXT);
+            trackButtons[i].setTextColor(i == channel ? VisualTheme.ACCENT : TEXT);
             trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
-            trackButtons[i].setBackground(AppUi.ripple(this,
-                    i == channel ? VisualTheme.ACCENT_SOFT : CONTROL, 12,
-                    i == channel ? ACCENT : AppUi.CONTROL_BORDER));
+            trackButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackButtons[i].setElevation(0);
             trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-            trackButtons[i].setPadding(AppUi.dp(this, 6), AppUi.dp(this, 4),
-                    AppUi.dp(this, 6), AppUi.dp(this, 4));
+            trackButtons[i].setPadding(AppUi.dp(this, 2), AppUi.dp(this, 4),
+                    AppUi.dp(this, 2), AppUi.dp(this, 4));
             boolean enabled = item.isEnabled();
-            trackMuteButtons[i].setText(enabled ? "CH ✓" : "CH ×");
-            trackMuteButtons[i].setBackground(AppUi.ripple(this,
-                    enabled ? CONTROL : VisualTheme.MUTE, 10,
-                    enabled ? AppUi.CONTROL_BORDER : VisualTheme.MUTE));
+            trackMuteButtons[i].setText(enabled ? "M" : "M");
+            trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
+            trackMuteButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
-            trackSoloButtons[i].setText(solo ? "SOLO ✓" : "SOLO");
-            trackSoloButtons[i].setBackground(AppUi.ripple(this,
-                    solo ? VisualTheme.SOLO : CONTROL, 10,
-                    solo ? VisualTheme.SOLO : AppUi.CONTROL_BORDER));
+            trackSoloButtons[i].setText("S");
+            trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
+            trackSoloButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
             int volume = ChannelVolumeSettingsStore.load(this, i);
