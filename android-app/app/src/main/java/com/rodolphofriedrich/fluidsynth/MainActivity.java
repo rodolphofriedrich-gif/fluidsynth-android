@@ -1084,10 +1084,19 @@ public class MainActivity extends Activity {
 
     @Override public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+
+        // Recalcular todas as áreas que dependem da largura/orientação sem reiniciar o motor MIDI.
         if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
         if (effectsScreen != null) effectsScreen.onConfigurationChanged(newConfig);
         if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
-        getWindow().getDecorView().requestApplyInsets();
+
+        // O painel SoundFont permanece aberto e muda de painel lateral para tela cheia
+        // (ou vice-versa) conforme a nova orientação e o menor tamanho da tela.
+        ChannelInstrumentSheet.onConfigurationChanged(this);
+
+        View decor = getWindow().getDecorView();
+        decor.requestLayout();
+        decor.requestApplyInsets();
     }
 
     @Override protected void onDestroy() {
