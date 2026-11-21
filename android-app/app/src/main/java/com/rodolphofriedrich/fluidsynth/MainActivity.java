@@ -920,7 +920,7 @@ public class MainActivity extends Activity {
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
             if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
-            String prefix = "";
+            String prefix = "☷ ";
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
