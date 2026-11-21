@@ -2,6 +2,7 @@ package com.rodolphofriedrich.fluidsynth;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.WindowManager;
@@ -10,7 +11,11 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Seletor de SoundFont do canal ativo, apresentado como painel inferior. */
+/**
+ * Painel permanente de seleção/configuração do SoundFont.
+ * Regra de layout: telefone em retrato = tela cheia; paisagem ou tablet = painel lateral
+ * retrátil à direita, preservando a tela MIDI ao fundo. Não converter para bottom sheet.
+ */
 public final class ChannelInstrumentSheet {
     public interface Listener {
         void onLibrarySelected(int index);
@@ -89,21 +94,29 @@ public final class ChannelInstrumentSheet {
         dialog.setContentView(root);
         dialog.setCanceledOnTouchOutside(true);
         Window window = dialog.getWindow();
+        boolean landscape = context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        boolean tablet = context.getResources().getConfiguration().smallestScreenWidthDp >= 600;
+        boolean sidePanel = landscape || tablet;
+        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+        int sideWidth = Math.min(AppUi.dp(context, 480), Math.max(
+                AppUi.dp(context, 280), Math.round(screenWidth * 0.48f)));
+        int panelWidth = sidePanel ? sideWidth : WindowManager.LayoutParams.MATCH_PARENT;
+        int panelHeight = WindowManager.LayoutParams.MATCH_PARENT;
         if (window != null) {
             window.setBackgroundDrawableResource(android.R.color.transparent);
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             WindowManager.LayoutParams params = window.getAttributes();
-            params.width = WindowManager.LayoutParams.MATCH_PARENT;
-            params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            params.gravity = Gravity.BOTTOM;
-            params.dimAmount = 0.42f;
+            params.width = panelWidth;
+            params.height = panelHeight;
+            params.gravity = sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL;
+            params.dimAmount = sidePanel ? 0.22f : 0.08f;
             window.setAttributes(params);
         }
         dialog.show();
         if (window != null) {
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT);
-            window.setGravity(Gravity.BOTTOM);
+            window.setLayout(panelWidth, panelHeight);
+            window.setGravity(sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL);
         }
     }
 }
