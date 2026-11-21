@@ -22,10 +22,12 @@ public final class ChannelMidiEffectsPage {
             "Modulação", "Expression", "Pan", "Envio Reverb",
             "Envio Chorus", "Cutoff", "Resonance"
     };
+    private static final int KNOB_COUNT = 3;
     private final Context context;
     private final LinearLayout root;
     private final TextView channelLabel;
     private final TextView[] values = new TextView[ChannelMidiSettingsStore.CONTROLLERS.length];
+    private final KnobView[] knobs = new KnobView[KNOB_COUNT];
     private final SeekBar[] sliders = new SeekBar[ChannelMidiSettingsStore.CONTROLLERS.length];
     private final Switch sustain;
     private Listener listener;
@@ -36,7 +38,7 @@ public final class ChannelMidiEffectsPage {
         this.context = context;
         root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(0, dp(12), 0, dp(12));
+        root.setPadding(0, dp(12), 0, dp(32));
         root.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         root.setElevation(0);
 
@@ -90,21 +92,78 @@ public final class ChannelMidiEffectsPage {
             if (!binding && listener != null) listener.onSustainChanged(channel, checked);
         });
 
-        TextView controlsTitle = AppUi.sectionLabel(context, "CONTROLADORES MIDI");
+        TextView controlsTitle = AppUi.sectionLabel(context, "CONTROLES CONTÍNUOS");
         LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(-1, -2);
-        controlsParams.topMargin = dp(18);
+        controlsParams.topMargin = dp(14);
         root.addView(controlsTitle, controlsParams);
 
-        for (int i = 0; i < ChannelMidiSettingsStore.CONTROLLERS.length; i++) {
+        LinearLayout knobRow = new LinearLayout(context);
+        knobRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams knobRowParams = new LinearLayout.LayoutParams(-1, -2);
+        knobRowParams.topMargin = dp(8);
+        root.addView(knobRow, knobRowParams);
+
+        for (int i = 0; i < KNOB_COUNT; i++) {
+            final int index = i;
+            final int cc = ChannelMidiSettingsStore.CONTROLLERS[i];
+            LinearLayout cell = new LinearLayout(context);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setPadding(dp(2), dp(4), dp(2), dp(4));
+
+            TextView label = new TextView(context);
+            label.setText(LABELS[i]);
+            label.setTextColor(AppUi.MUTED);
+            label.setTextSize(10);
+            label.setGravity(Gravity.CENTER);
+            label.setMaxLines(1);
+            cell.addView(label, new LinearLayout.LayoutParams(-1, -2));
+
+            KnobView knob = new KnobView(context, 68);
+            knob.setContentDescription(LABELS[i] + ", CC " + cc);
+            knob.setValue(0f);
+            LinearLayout.LayoutParams knobParams = new LinearLayout.LayoutParams(dp(68), dp(68));
+            knobParams.topMargin = dp(2);
+            cell.addView(knob, knobParams);
+
+            TextView value = new TextView(context);
+            AppUi.styleValue(value);
+            value.setTextSize(11);
+            value.setTextColor(AppUi.MUTED);
+            value.setGravity(Gravity.CENTER);
+            cell.addView(value, new LinearLayout.LayoutParams(-1, -2));
+
+            values[i] = value;
+            knobs[i] = knob;
+            knob.setListener((view, normalized, tracking) -> {
+                int progress = Math.round(normalized * 127f);
+                value.setText(String.valueOf(progress));
+                view.setContentDescription(LABELS[index] + ", CC " + cc + ", " + progress);
+                if (listener != null) {
+                    listener.onControlChanged(channel, cc, progress);
+                    if (!tracking) listener.onControlCommitted(channel, cc, progress);
+                }
+            });
+
+            knobRow.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
+
+        AppUi.addDivider(context, root);
+        TextView sendsTitle = AppUi.sectionLabel(context, "ENVIOS E FILTROS");
+        LinearLayout.LayoutParams sendsParams = new LinearLayout.LayoutParams(-1, -2);
+        sendsParams.topMargin = dp(8);
+        root.addView(sendsTitle, sendsParams);
+
+        for (int i = KNOB_COUNT; i < ChannelMidiSettingsStore.CONTROLLERS.length; i++) {
             final int index = i;
             final int cc = ChannelMidiSettingsStore.CONTROLLERS[i];
             LinearLayout group = new LinearLayout(context);
             group.setOrientation(LinearLayout.VERTICAL);
-            group.setPadding(0, dp(11), 0, dp(11));
+            group.setPadding(0, dp(10), 0, dp(10));
             LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(-1, -2);
             groupParams.topMargin = dp(2);
             root.addView(group, groupParams);
-            if (i > 0) AppUi.addDivider(context, root);
+            if (i > KNOB_COUNT) AppUi.addDivider(context, root);
 
             LinearLayout heading = new LinearLayout(context);
             heading.setGravity(Gravity.CENTER_VERTICAL);
@@ -116,7 +175,8 @@ public final class ChannelMidiEffectsPage {
             heading.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView value = new TextView(context);
             AppUi.styleValue(value);
-            value.setTextSize(13);
+            value.setTextSize(12);
+            value.setTextColor(AppUi.MUTED);
             heading.addView(value);
             group.addView(heading);
             values[i] = value;
@@ -126,7 +186,7 @@ public final class ChannelMidiEffectsPage {
             slider.setContentDescription(LABELS[i] + ", CC " + cc);
             AppUi.tint(slider);
             LinearLayout.LayoutParams sliderParams = new LinearLayout.LayoutParams(-1, dp(48));
-            sliderParams.topMargin = dp(5);
+            sliderParams.topMargin = dp(7);
             group.addView(slider, sliderParams);
             sliders[i] = slider;
             slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -154,9 +214,15 @@ public final class ChannelMidiEffectsPage {
                 ? ChannelMidiSettingsStore.load(context, this.channel) : storedValues;
         channelLabel.setText("Ajustes em tempo real · Canal " + (this.channel + 1));
         binding = true;
-        for (int i = 0; i < sliders.length; i++) {
+        for (int i = 0; i < ChannelMidiSettingsStore.CONTROLLERS.length; i++) {
             int value = i < safe.length ? Math.max(0, Math.min(127, safe[i])) : 0;
-            sliders[i].setProgress(value);
+            if (i < KNOB_COUNT) {
+                knobs[i].setValue(value / 127f);
+                knobs[i].setContentDescription(LABELS[i] + ", CC "
+                        + ChannelMidiSettingsStore.CONTROLLERS[i] + ", " + value);
+            } else if (sliders[i] != null) {
+                sliders[i].setProgress(value);
+            }
             values[i].setText(String.valueOf(value));
         }
         sustain.setChecked(false);
