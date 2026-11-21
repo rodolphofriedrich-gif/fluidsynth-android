@@ -42,9 +42,9 @@ public final class MidiScreen {
 
         topControls=new LinearLayout(c);
         topControls.setGravity(Gravity.CENTER_VERTICAL);
-        topControls.setPadding(AppUi.dp(c,12),AppUi.dp(c,8),AppUi.dp(c,12),AppUi.dp(c,8));
-        topControls.setBackground(AppUi.rounded(c,AppUi.PANEL,VisualTheme.RADIUS_CARD,AppUi.BORDER));
-        topControls.setElevation(AppUi.dp(c,1));
+        topControls.setPadding(0,AppUi.dp(c,8),0,AppUi.dp(c,8));
+        topControls.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        topControls.setElevation(0);
         LinearLayout master=sliderGroup(c,c.getString(R.string.master_volume_label));
         masterVolumeValue=value(c,"100%");
         master.addView(masterVolumeValue);
@@ -69,7 +69,7 @@ public final class MidiScreen {
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
         status.setVisibility(View.GONE); audioDiagnostics.setVisibility(View.GONE); midiActivity.setVisibility(View.GONE);
 
-        LinearLayout panel=AppUi.panel(c,root);
+        LinearLayout panel=AppUi.flatSection(c,root);
         panel.addView(AppUi.sectionLabel(c,c.getString(R.string.tracks_title)));
         TextView hint=new TextView(c); hint.setText(c.getString(R.string.track_hint));
         hint.setTextColor(AppUi.MUTED); hint.setTextSize(12);
@@ -82,7 +82,8 @@ public final class MidiScreen {
         panicButton.setTextSize(11);
         panicButton.setTextColor(0xFFFFD8DC);
         panicButton.setContentDescription("Interromper todas as notas e liberar sustain");
-        panicButton.setBackground(AppUi.ripple(c, VisualTheme.MUTE, 10, VisualTheme.MUTE));
+        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 10, 0));
+        panicButton.setElevation(0);
         LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(-1, AppUi.dp(c, 44));
         panicParams.setMargins(0, 0, 0, AppUi.dp(c, 8));
         midiTools.addView(panicButton, panicParams);
@@ -90,35 +91,61 @@ public final class MidiScreen {
 
         trackGrid=new GridLayout(c); trackGrid.setUseDefaultMargins(false); panel.addView(trackGrid);
         for(int i=0;i<16;i++){
-            LinearLayout strip=new LinearLayout(c); strip.setOrientation(LinearLayout.VERTICAL);
-            strip.setPadding(AppUi.dp(c,6),AppUi.dp(c,6),AppUi.dp(c,6),AppUi.dp(c,7));
-            strip.setBackground(AppUi.rounded(c,AppUi.PANEL,12,AppUi.BORDER));
-            strip.setElevation(AppUi.dp(c,1));
-            Button ch=new Button(c); ch.setText(c.getString(R.string.track_channel_empty,i+1));
-            ch.setTextSize(11); ch.setTextColor(AppUi.TEXT); ch.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD); ch.setAllCaps(false);
+            LinearLayout strip=new LinearLayout(c);
+            strip.setOrientation(LinearLayout.HORIZONTAL);
+            strip.setGravity(Gravity.CENTER_VERTICAL);
+            strip.setPadding(0,AppUi.dp(c,5),0,AppUi.dp(c,5));
+            strip.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+            Button ch=new Button(c);
+            ch.setText(c.getString(R.string.track_channel_empty,i+1));
+            ch.setTextSize(10);
+            ch.setTextColor(i == 0 ? VisualTheme.ACCENT : AppUi.TEXT);
+            ch.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+            ch.setAllCaps(false);
             ch.setGravity(Gravity.CENTER);
-            ch.setPadding(AppUi.dp(c,5),AppUi.dp(c,4),AppUi.dp(c,5),AppUi.dp(c,4)); ch.setMinHeight(0); ch.setMinimumHeight(0);
-            ch.setBackground(AppUi.ripple(c,AppUi.CONTROL,10,AppUi.CONTROL_BORDER));
+            ch.setPadding(AppUi.dp(c,2),AppUi.dp(c,3),AppUi.dp(c,2),AppUi.dp(c,3));
+            ch.setMinHeight(0); ch.setMinimumHeight(0);
+            ch.setBackground(AppUi.ripple(c,android.graphics.Color.TRANSPARENT,8,0));
             ch.setContentDescription(c.getString(R.string.track_accessibility,i+1));
-            strip.addView(ch,new LinearLayout.LayoutParams(-1,AppUi.dp(c,48))); trackButtons[i]=ch;
-            TextView vl=value(c,"100%"); vl.setGravity(Gravity.CENTER); vl.setPadding(0,AppUi.dp(c,3),0,AppUi.dp(c,1)); strip.addView(vl); trackVolumeValues[i]=vl;
+            strip.addView(ch,new LinearLayout.LayoutParams(AppUi.dp(c,88),AppUi.dp(c,48)));
+            trackButtons[i]=ch;
+
+            LinearLayout volumeGroup=new LinearLayout(c);
+            volumeGroup.setOrientation(LinearLayout.VERTICAL);
+            volumeGroup.setPadding(AppUi.dp(c,8),0,AppUi.dp(c,8),0);
+            TextView vl=value(c,"100%");
+            vl.setGravity(Gravity.CENTER_VERTICAL);
+            volumeGroup.addView(vl);
+            trackVolumeValues[i]=vl;
             SeekBar vol=slider(c,100,100,c.getString(R.string.channel_volume_accessibility,i+1));
-            strip.addView(vol,new LinearLayout.LayoutParams(-1,AppUi.dp(c,48))); trackVolumeSeekBars[i]=vol;
+            volumeGroup.addView(vol,new LinearLayout.LayoutParams(-1,AppUi.dp(c,36)));
+            trackVolumeSeekBars[i]=vol;
+            strip.addView(volumeGroup,new LinearLayout.LayoutParams(0,-2,1f));
+
             LinearLayout actions=new LinearLayout(c);
-            Button mute=smallButton(c,"CH ✓"); mute.setContentDescription(c.getString(R.string.channel_toggle_accessibility,i+1));
-            Button solo=smallButton(c,"SOLO"); solo.setContentDescription(c.getString(R.string.solo_accessibility,i+1));
-            LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,AppUi.dp(c,48),1f);
-            ap.setMargins(AppUi.dp(c,2),AppUi.dp(c,2),AppUi.dp(c,2),0);
-            actions.addView(mute,ap); actions.addView(solo,new LinearLayout.LayoutParams(ap));
-            strip.addView(actions); trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;
+            actions.setOrientation(LinearLayout.HORIZONTAL);
+            Button mute=smallButton(c,"M");
+            mute.setContentDescription(c.getString(R.string.channel_toggle_accessibility,i+1));
+            Button solo=smallButton(c,"S");
+            solo.setContentDescription(c.getString(R.string.solo_accessibility,i+1));
+            mute.setBackground(AppUi.ripple(c,android.graphics.Color.TRANSPARENT,8,0));
+            solo.setBackground(AppUi.ripple(c,android.graphics.Color.TRANSPARENT,8,0));
+            LinearLayout.LayoutParams actionParams=new LinearLayout.LayoutParams(AppUi.dp(c,38),AppUi.dp(c,44));
+            actions.addView(mute,actionParams);
+            actions.addView(solo,new LinearLayout.LayoutParams(AppUi.dp(c,38),AppUi.dp(c,44)));
+            strip.addView(actions);
+            trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;
+
             GridLayout.LayoutParams cell=new GridLayout.LayoutParams();
-            cell.width=0; cell.height=GridLayout.LayoutParams.WRAP_CONTENT;
-            cell.setMargins(AppUi.dp(c,3),AppUi.dp(c,3),AppUi.dp(c,3),AppUi.dp(c,3));
+            cell.width=-1; cell.height=GridLayout.LayoutParams.WRAP_CONTENT;
+            cell.setMargins(0,0,0,0);
             trackGrid.addView(strip,cell);
+            if(i<15) AppUi.addDivider(c,panel);
         }
         updateTrackGridOrientation(c.getResources().getConfiguration());
 
-        importProgressPanel=AppUi.panel(c,root); importProgressPanel.setVisibility(View.GONE);
+        importProgressPanel=AppUi.flatSection(c,root); importProgressPanel.setVisibility(View.GONE);
         importProgressPanel.addView(AppUi.sectionLabel(c,c.getString(R.string.import_progress_title)));
         importProgressText=new TextView(c); importProgressText.setTextColor(AppUi.MUTED);
         importProgressText.setTextSize(12); importProgressPanel.addView(importProgressText);
@@ -129,7 +156,8 @@ public final class MidiScreen {
         selectInstrumentButton=new Button(c); trackEnableButton=new Button(c); soloButton=new Button(c);
         selectInstrumentButton.setVisibility(View.GONE); trackEnableButton.setVisibility(View.GONE); soloButton.setVisibility(View.GONE);
 
-        LinearLayout keyboard=AppUi.panel(c,root);
+        AppUi.addDivider(c, root);
+        LinearLayout keyboard=AppUi.flatSection(c,root);
         keyboard.addView(AppUi.sectionLabel(c,c.getString(R.string.virtual_keyboard)));
         TextView kh=new TextView(c); kh.setText(c.getString(R.string.keyboard_hint));
         kh.setTextColor(AppUi.MUTED); kh.setTextSize(12); kh.setPadding(0,AppUi.dp(c,3),0,AppUi.dp(c,8)); keyboard.addView(kh);
@@ -166,8 +194,7 @@ public final class MidiScreen {
 
     /** Reorganiza os 16 canais sem deixar a GridLayout com parâmetros da orientação anterior. */
     public void updateTrackGridOrientation(Configuration cfg){
-        int columns = cfg.screenWidthDp >= 600
-                || cfg.orientation != Configuration.ORIENTATION_PORTRAIT ? 4 : 2;
+        int columns = 1;
         int childCount=trackGrid.getChildCount();
         View[] channelViews=new View[childCount];
         for(int i=0;i<childCount;i++) channelViews[i]=trackGrid.getChildAt(i);
