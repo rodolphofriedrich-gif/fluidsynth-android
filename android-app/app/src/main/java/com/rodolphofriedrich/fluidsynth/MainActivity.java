@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
     private Button[] trackSoloButtons = new Button[16];
     private SeekBar[] trackVolumeSeekBars = new SeekBar[16];
     private TextView[] trackVolumeValues = new TextView[16];
+    private TextView[] trackInstrumentLabels = new TextView[16];
     private LinearLayout workspace;
     private EffectsWorkspaceController effectsWorkspaceController;
     private SeekBar polyphonySeekBar;
