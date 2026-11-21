@@ -53,7 +53,8 @@ public class MainActivity extends Activity {
     private SeekBar masterVolumeSeekBar;
     private TextView masterVolumeValue;
     private ChannelMixController channelMixController;
-    private Button bleSearchButton;
+    private Switch bleSearchButton;
+    private boolean updatingBleSearchSwitch;
     private Button[] trackButtons = new Button[16];
     private Button[] trackMuteButtons = new Button[16];
     private Button[] trackSoloButtons = new Button[16];
@@ -258,10 +259,13 @@ public class MainActivity extends Activity {
             }
         });
 
-        bleSearchButton.setOnClickListener(v -> {
-            if (bleMidiInput == null) return;
-            boolean enabled = !bleMidiInput.isScanningEnabled();
-            bleMidiInput.setScanningEnabled(enabled);
+        bleSearchButton.setOnCheckedChangeListener((button, checked) -> {
+            if (updatingBleSearchSwitch) return;
+            if (bleMidiInput == null) {
+                updateBleSearchButton();
+                return;
+            }
+            bleMidiInput.setScanningEnabled(checked);
             updateBleSearchButton();
         });
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -706,22 +710,22 @@ public class MainActivity extends Activity {
             name.setText(soundFontManager.getDisplayName(library));
             name.setTextColor(TEXT);
             name.setTextSize(14);
-            name.setMaxLines(2);
+            name.setMaxLines(1);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             row.addView(name, new LinearLayout.LayoutParams(0,
                     LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
             Switch enabledSwitch = new Switch(this);
             boolean enabled = soundFontLibraryStore.isEnabled(library);
-            enabledSwitch.setText(enabled ? getString(R.string.library_active) : getString(R.string.library_disabled_label));
+            enabledSwitch.setText(getString(R.string.library_active));
             AppUi.tint(enabledSwitch);
             enabledSwitch.setContentDescription(getString(R.string.library_toggle_accessibility, soundFontManager.getDisplayName(library)));
             enabledSwitch.setTextColor(enabled ? TEXT : MUTED);
             enabledSwitch.setChecked(enabled);
             enabledSwitch.setOnCheckedChangeListener((button, checked) -> {
                 soundFontLibraryStore.setEnabled(library, checked);
-                button.setText(checked ? getString(R.string.library_active) : getString(R.string.library_disabled_label));
-                button.setTextColor(checked ? TEXT : MUTED);
+                button.setText(getString(R.string.library_active));
+                button.setTextColor(TEXT);
                 showOperationStatus(getString(checked ? R.string.library_enabled : R.string.library_disabled));
             });
             row.addView(enabledSwitch, new LinearLayout.LayoutParams(
@@ -731,13 +735,13 @@ public class MainActivity extends Activity {
             deleteButton.setText(R.string.library_delete);
             deleteButton.setTextSize(10);
             deleteButton.setAllCaps(false);
-            deleteButton.setTextColor(Color.WHITE);
+            deleteButton.setTextColor(Color.rgb(185, 75, 88));
             deleteButton.setPadding(AppUi.dp(this, 6), 0, AppUi.dp(this, 6), 0);
-            deleteButton.setBackground(AppUi.ripple(this, Color.rgb(145, 55, 65), 8, 0));
+            deleteButton.setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
             deleteButton.setContentDescription(getString(R.string.library_delete_accessibility,
                     soundFontManager.getDisplayName(library)));
             LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
-                    AppUi.dp(this, 72), AppUi.dp(this, 38));
+                    AppUi.dp(this, 64), AppUi.dp(this, 38));
             deleteParams.leftMargin = AppUi.dp(this, 6);
             row.addView(deleteButton, deleteParams);
             deleteButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this,
@@ -905,35 +909,36 @@ public class MainActivity extends Activity {
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
             if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
-            String prefix = i == channel ? "● " : "";
+            String prefix = "";
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
-            trackButtons[i].setTextColor(TEXT);
+            trackButtons[i].setTextColor(i == channel ? VisualTheme.ACCENT : TEXT);
             trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
-            trackButtons[i].setBackground(AppUi.ripple(this,
-                    i == channel ? VisualTheme.ACCENT_SOFT : CONTROL, 12,
-                    i == channel ? ACCENT : AppUi.CONTROL_BORDER));
+            trackButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackButtons[i].setElevation(0);
             trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-            trackButtons[i].setPadding(AppUi.dp(this, 6), AppUi.dp(this, 4),
-                    AppUi.dp(this, 6), AppUi.dp(this, 4));
+            trackButtons[i].setPadding(AppUi.dp(this, 2), AppUi.dp(this, 4),
+                    AppUi.dp(this, 2), AppUi.dp(this, 4));
             boolean enabled = item.isEnabled();
-            trackMuteButtons[i].setText(enabled ? "CH ✓" : "CH ×");
-            trackMuteButtons[i].setBackground(AppUi.ripple(this,
-                    enabled ? CONTROL : VisualTheme.MUTE, 10,
-                    enabled ? AppUi.CONTROL_BORDER : VisualTheme.MUTE));
+            trackMuteButtons[i].setText(enabled ? "M" : "M");
+            trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
+            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
-            trackSoloButtons[i].setText(solo ? "SOLO ✓" : "SOLO");
-            trackSoloButtons[i].setBackground(AppUi.ripple(this,
-                    solo ? VisualTheme.SOLO : CONTROL, 10,
-                    solo ? VisualTheme.SOLO : AppUi.CONTROL_BORDER));
+            trackSoloButtons[i].setText("S");
+            trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
+            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
             int volume = ChannelVolumeSettingsStore.load(this, i);
             if (trackVolumeSeekBars[i].getProgress() != volume) trackVolumeSeekBars[i].setProgress(volume);
             trackVolumeValues[i].setText(volume + "%");
+            trackVolumeValues[i].setTextSize(9);
+            trackVolumeValues[i].setTextColor(Color.rgb(160, 160, 160));
         }
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : getString(R.string.soundfont_missing);
         String preset = selected.getPresetName();
@@ -962,14 +967,14 @@ public class MainActivity extends Activity {
     private void updateBleSearchButton() {
         if (bleSearchButton == null) return;
         boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
-        bleSearchButton.setText(getString(enabled ? R.string.ble_search_on : R.string.ble_search_off));
+        updatingBleSearchSwitch = true;
+        bleSearchButton.setChecked(enabled);
         bleSearchButton.setContentDescription(getString(enabled ? R.string.ble_search_accessibility_on : R.string.ble_search_accessibility_off));
-        bleSearchButton.setTextColor(enabled ? Color.WHITE : TEXT);
-        bleSearchButton.setBackground(AppUi.ripple(this,
-                enabled ? VisualTheme.SUCCESS : CONTROL,
-                VisualTheme.RADIUS_CONTROL,
-                enabled ? VisualTheme.SUCCESS : AppUi.BORDER));
-        bleSearchButton.setElevation(enabled ? AppUi.dp(this, 2) : 0);
+        bleSearchButton.setThumbTintList(android.content.res.ColorStateList.valueOf(
+                enabled ? VisualTheme.SUCCESS : AppUi.MUTED));
+        bleSearchButton.setTrackTintList(android.content.res.ColorStateList.valueOf(
+                enabled ? 0x6040B98A : AppUi.CONTROL_BORDER));
+        updatingBleSearchSwitch = false;
     }
 
     private void showOperationStatus(String message) {

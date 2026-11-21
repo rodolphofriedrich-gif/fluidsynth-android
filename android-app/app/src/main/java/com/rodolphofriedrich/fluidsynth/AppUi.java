@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.view.View;
 
 /**
  * Componentes visuais compartilhados pelas telas.
@@ -117,6 +118,31 @@ public final class AppUi {
         view.setTextSize(13);
         view.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         view.setFontFeatureSettings("tnum");
+    }
+
+    /** Seção contínua: organiza conteúdo por espaço, sem cartão ou borda fechada. */
+    public static LinearLayout flatSection(Context context, LinearLayout parent) {
+        LinearLayout section = new LinearLayout(context);
+        section.setOrientation(LinearLayout.VERTICAL);
+        section.setPadding(0, dp(context, 12), 0, dp(context, 12));
+        section.setBackgroundColor(Color.TRANSPARENT);
+        section.setElevation(0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dp(context, 8);
+        parent.addView(section, params);
+        return section;
+    }
+
+    /** Divisor hairline discreto entre grupos relacionados. */
+    public static void addDivider(Context context, LinearLayout parent) {
+        View divider = new View(context);
+        divider.setBackgroundColor(Color.argb(26, 154, 170, 194));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(context, 1)));
+        params.topMargin = dp(context, 8);
+        params.bottomMargin = dp(context, 8);
+        parent.addView(divider, params);
     }
 
     public static LinearLayout panel(Context context, LinearLayout parent) {
