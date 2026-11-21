@@ -28,7 +28,7 @@ public final class MidiScreen {
     public final TextView importProgressText;
     public final ProgressBar importProgressBar;
     public final Button effectsToggleButton;
-    public final Button channelControlsButton, panicButton;
+    public final Button panicButton;
     public final Button[] keyboardKeys=new Button[NOTES.length];
     private final GridLayout trackGrid;
     private final Context context;
@@ -78,20 +78,13 @@ public final class MidiScreen {
         LinearLayout midiTools = new LinearLayout(c);
         midiTools.setOrientation(LinearLayout.HORIZONTAL);
         midiTools.setGravity(Gravity.CENTER_VERTICAL);
-        channelControlsButton = smallButton(c, "CONTROLES MIDI");
-        channelControlsButton.setTextSize(11);
-        channelControlsButton.setContentDescription("Abrir controles MIDI do canal selecionado");
-        channelControlsButton.setBackground(AppUi.ripple(c, AppUi.CONTROL, 10, AppUi.BORDER));
         panicButton = smallButton(c, "PANIC");
         panicButton.setTextSize(11);
         panicButton.setTextColor(0xFFFFD8DC);
         panicButton.setContentDescription("Interromper todas as notas e liberar sustain");
         panicButton.setBackground(AppUi.ripple(c, VisualTheme.MUTE, 10, VisualTheme.MUTE));
-        LinearLayout.LayoutParams toolParams = new LinearLayout.LayoutParams(0, AppUi.dp(c, 44), 1f);
-        toolParams.setMargins(0, 0, AppUi.dp(c, 6), AppUi.dp(c, 8));
-        midiTools.addView(channelControlsButton, toolParams);
-        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(0, AppUi.dp(c, 44), 1f);
-        panicParams.setMargins(AppUi.dp(c, 6), 0, 0, AppUi.dp(c, 8));
+        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(-1, AppUi.dp(c, 44));
+        panicParams.setMargins(0, 0, 0, AppUi.dp(c, 8));
         midiTools.addView(panicButton, panicParams);
         panel.addView(midiTools);
 
