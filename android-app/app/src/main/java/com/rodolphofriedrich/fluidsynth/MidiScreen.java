@@ -37,11 +37,11 @@ public final class MidiScreen {
         context=c;
         LinearLayout root=new LinearLayout(c);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(AppUi.dp(c,12),AppUi.dp(c,16),AppUi.dp(c,12),AppUi.dp(c,16));
+        root.setPadding(AppUi.dp(c,12),AppUi.dp(c,16),AppUi.dp(c,12),AppUi.dp(c,32));
         root.setBackgroundColor(AppUi.BG);
 
         topControls=new LinearLayout(c);
-        topControls.setGravity(Gravity.CENTER_VERTICAL);
+        topControls.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
         topControls.setPadding(0,AppUi.dp(c,8),0,AppUi.dp(c,8));
         topControls.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         topControls.setElevation(0);
@@ -63,8 +63,36 @@ public final class MidiScreen {
         effectsToggleButton.setAllCaps(false); effectsToggleButton.setTextColor(AppUi.MUTED);
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
          effectsToggleButton.setBackground(AppUi.ripple(c,android.graphics.Color.argb(22,154,170,194),24,0));
-        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,48),AppUi.dp(c,48));
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
         ep.leftMargin=AppUi.dp(c,8); topControls.addView(effectsToggleButton,ep);
+
+        panicButton = smallButton(c, "×");
+        panicButton.setTextSize(25);
+        panicButton.setTextColor(VisualTheme.MUTE);
+        panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
+        panicButton.setContentDescription("Panic MIDI: interromper todas as notas e liberar sustain");
+        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.argb(34,185,75,88), 24, VisualTheme.MUTE));
+        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
+        panicParams.leftMargin=AppUi.dp(c,6);
+        topControls.addView(panicButton,panicParams);
+
+        topControls.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            int available = topControls.getWidth() - AppUi.dp(c,44 + 44 + 22);
+            int controlWidth = Math.min(AppUi.dp(c,220), Math.max(AppUi.dp(c,112), available / 2));
+            LinearLayout.LayoutParams masterParams = (LinearLayout.LayoutParams) master.getLayoutParams();
+            LinearLayout.LayoutParams velocityParams = (LinearLayout.LayoutParams) velocity.getLayoutParams();
+            if (masterParams.width != controlWidth || masterParams.weight != 0f) {
+                masterParams.width = controlWidth;
+                masterParams.weight = 0f;
+                master.setLayoutParams(masterParams);
+            }
+            if (velocityParams.width != controlWidth || velocityParams.weight != 0f) {
+                velocityParams.width = controlWidth;
+                velocityParams.weight = 0f;
+                velocity.setLayoutParams(velocityParams);
+            }
+        });
 
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
         status.setVisibility(View.GONE); audioDiagnostics.setVisibility(View.GONE); midiActivity.setVisibility(View.GONE);
@@ -79,20 +107,8 @@ public final class MidiScreen {
         hint.setTextColor(AppUi.MUTED);
         hint.setTextSize(12);
         hint.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(0, AppUi.dp(c, 40), 1f);
-        hintParams.rightMargin = AppUi.dp(c, 8);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, AppUi.dp(c, 36));
         instructionRow.addView(hint, hintParams);
-
-        panicButton = smallButton(c, "× PANIC");
-        panicButton.setTextSize(10);
-        panicButton.setTextColor(VisualTheme.MUTE);
-        panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
-        panicButton.setContentDescription("Interromper todas as notas e liberar sustain");
-        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 18, 0));
-        panicButton.setElevation(0);
-        panicButton.setPadding(AppUi.dp(c, 10), 0, AppUi.dp(c, 10), 0);
-        instructionRow.addView(panicButton,
-                new LinearLayout.LayoutParams(-2, AppUi.dp(c, 36)));
         panel.addView(instructionRow);
 
         trackGrid=new GridLayout(c); trackGrid.setUseDefaultMargins(false); panel.addView(trackGrid);
@@ -201,7 +217,7 @@ public final class MidiScreen {
                 line.addView(key,kp); keyboardKeys[index]=key;
             }
         }
-        scrollView=new ScrollView(c); scrollView.setFillViewport(true); scrollView.setClipToPadding(false); scrollView.addView(root);
+        scrollView=new ScrollView(c); scrollView.setFillViewport(true); scrollView.setClipToPadding(false); scrollView.setPadding(0,0,0,AppUi.dp(c,16)); scrollView.addView(root);
     }
     private static LinearLayout sliderGroup(Context c,String label){
         LinearLayout g=new LinearLayout(c); g.setOrientation(LinearLayout.VERTICAL);
