@@ -1,0 +1,7 @@
+<resources>
+    <!-- Animação lateral usada pelo painel retrátil de SoundFont em paisagem/tablets. -->
+    <style name="SoundFontSidePanelAnimation">
+        <item name="android:windowEnterAnimation">@anim/soundfont_panel_enter</item>
+        <item name="android:windowExitAnimation">@anim/soundfont_panel_exit</item>
+    </style>
+</resources>

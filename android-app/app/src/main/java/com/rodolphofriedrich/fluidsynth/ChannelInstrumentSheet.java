@@ -2,6 +2,7 @@ package com.rodolphofriedrich.fluidsynth;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.WindowManager;
@@ -10,8 +11,14 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Seletor de SoundFont do canal ativo, apresentado como painel inferior. */
+/**
+ * Painel permanente de configuração do SoundFont por canal.
+ * Regra: celular em retrato = tela cheia; paisagem ou tablet = painel lateral
+ * retrátil à direita, mantendo a tela MIDI visível. Não converter para bottom sheet.
+ */
 public final class ChannelInstrumentSheet {
+    private static Dialog activeDialog;
+
     public interface Listener {
         void onLibrarySelected(int index);
     }
@@ -20,6 +27,20 @@ public final class ChannelInstrumentSheet {
 
     public static void show(Context context, int channel, String currentInstrument,
             String[] libraries, Listener listener) {
+        showChoices(context, context.getString(R.string.channel_picker_title, channel + 1),
+                currentInstrument, context.getString(R.string.soundfont_libraries_title),
+                libraries, context.getString(R.string.cancel), null, listener);
+    }
+
+    public static void showPresets(Context context, int channel, String libraryName,
+            String[] presets, Runnable onBack, Listener listener) {
+        showChoices(context, "Presets · Canal " + (channel + 1), libraryName,
+                "INSTRUMENTOS DISPONÍVEIS", presets, "Voltar", onBack, listener);
+    }
+
+    private static void showChoices(Context context, String titleText, String subtitleText,
+            String sectionText, String[] choices, String closeText, Runnable onBack,
+            Listener listener) {
         Dialog dialog = new Dialog(context, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -28,14 +49,14 @@ public final class ChannelInstrumentSheet {
         root.setBackground(AppUi.rounded(context, AppUi.PANEL, 20, AppUi.BORDER));
 
         TextView title = new TextView(context);
-        title.setText(context.getString(R.string.channel_picker_title, channel + 1));
+        title.setText(titleText);
         title.setTextColor(AppUi.TEXT);
         title.setTextSize(18);
         title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         root.addView(title);
 
         TextView subtitle = new TextView(context);
-        subtitle.setText(currentInstrument);
+        subtitle.setText(subtitleText);
         subtitle.setTextColor(AppUi.MUTED);
         subtitle.setTextSize(13);
         subtitle.setMaxLines(2);
@@ -45,65 +66,109 @@ public final class ChannelInstrumentSheet {
         subtitleParams.bottomMargin = AppUi.dp(context, 12);
         root.addView(subtitle, subtitleParams);
 
-        TextView section = AppUi.sectionLabel(context,
-                context.getString(R.string.soundfont_libraries_title));
-        root.addView(section);
-        LinearLayout libraryList = new LinearLayout(context);
-        libraryList.setOrientation(LinearLayout.VERTICAL);
-        ScrollView libraryScroll = new ScrollView(context);
-        libraryScroll.setFillViewport(false);
-        libraryScroll.addView(libraryList, new ScrollView.LayoutParams(
+        root.addView(AppUi.sectionLabel(context, sectionText));
+        LinearLayout choiceList = new LinearLayout(context);
+        choiceList.setOrientation(LinearLayout.VERTICAL);
+        ScrollView choiceScroll = new ScrollView(context);
+        choiceScroll.setFillViewport(false);
+        choiceScroll.addView(choiceList, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
-        int maxListHeight = Math.round(context.getResources().getDisplayMetrics().heightPixels * .55f);
-        root.addView(libraryScroll, new LinearLayout.LayoutParams(
+        float displayDensity = context.getResources().getDisplayMetrics().density;
+        int screenHeightDp = Math.round(context.getResources().getDisplayMetrics().heightPixels / displayDensity);
+        int maxListHeight = AppUi.dp(context, Math.max(120, Math.min(420, screenHeightDp - 190)));
+        root.addView(choiceScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                libraries.length == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : maxListHeight));
-        if (libraries.length == 0) {
+                choices.length == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : maxListHeight));
+        if (choices.length == 0) {
             TextView empty = new TextView(context);
             empty.setText(context.getString(R.string.no_active_libraries));
             empty.setTextColor(AppUi.MUTED);
             empty.setTextSize(13);
             empty.setPadding(0, AppUi.dp(context, 10), 0, AppUi.dp(context, 10));
-            libraryList.addView(empty);
+            choiceList.addView(empty);
         } else {
-            for (int i = 0; i < libraries.length; i++) {
+            for (int i = 0; i < choices.length; i++) {
                 final int index = i;
-                Button library = new Button(context);
-                library.setText(libraries[i]);
-                library.setContentDescription(context.getString(R.string.channel_library_accessibility, libraries[i]));
-                AppUi.styleButton(context, library, AppUi.CONTROL, AppUi.TEXT, 48, 13);
-                libraryList.addView(library);
-                library.setOnClickListener(v -> {
+                Button choice = new Button(context);
+                choice.setText(choices[i]);
+                choice.setContentDescription(choices[i]);
+                AppUi.styleButton(context, choice, AppUi.CONTROL, AppUi.TEXT, 48, 13);
+                choiceList.addView(choice);
+                choice.setOnClickListener(v -> {
                     dialog.dismiss();
                     if (listener != null) listener.onLibrarySelected(index);
                 });
             }
         }
 
-        Button cancel = new Button(context);
-        cancel.setText(R.string.cancel);
-        AppUi.styleButton(context, cancel, AppUi.CONTROL, AppUi.MUTED, 44, 13);
-        root.addView(cancel);
-        cancel.setOnClickListener(v -> dialog.dismiss());
+        Button close = new Button(context);
+        close.setText(closeText);
+        AppUi.styleButton(context, close, AppUi.CONTROL, AppUi.MUTED, 44, 13);
+        root.addView(close);
+        close.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onBack != null) onBack.run();
+        });
 
-        dialog.setContentView(root);
+        dialog.setContentView(root, new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT));
         dialog.setCanceledOnTouchOutside(true);
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawableResource(android.R.color.transparent);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            WindowManager.LayoutParams params = window.getAttributes();
-            params.width = WindowManager.LayoutParams.MATCH_PARENT;
-            params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            params.gravity = Gravity.BOTTOM;
-            params.dimAmount = 0.42f;
-            window.setAttributes(params);
-        }
+
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setOnDismissListener(ignored -> {
+            if (activeDialog == dialog) {
+                activeDialog = null;
+            }
+        });
         dialog.show();
-        if (window != null) {
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT);
-            window.setGravity(Gravity.BOTTOM);
+        activeDialog = dialog;
+        applyResponsiveWindow(dialog, context);
+    }
+
+    /**
+     * Recalcula o painel se o aparelho girar enquanto a lista de SoundFonts/presets estiver aberta.
+     * O Activity usa configChanges para preservar o motor de áudio; por isso o diálogo precisa
+     * receber explicitamente as novas dimensões e orientação.
+     */
+    public static void onConfigurationChanged(Context context) {
+        Dialog dialog = activeDialog;
+        if (dialog == null || !dialog.isShowing()) return;
+        applyResponsiveWindow(dialog, context);
+    }
+
+    private static void applyResponsiveWindow(Dialog dialog, Context context) {
+        boolean landscape = context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        boolean tablet = context.getResources().getConfiguration().smallestScreenWidthDp >= 600;
+        boolean sidePanel = landscape || tablet;
+        int screenWidthDp = context.getResources().getConfiguration().screenWidthDp;
+        if (screenWidthDp <= 0) {
+            float density = context.getResources().getDisplayMetrics().density;
+            screenWidthDp = Math.round(context.getResources().getDisplayMetrics().widthPixels / density);
         }
+        int sideWidth = AppUi.dp(context, Math.min(480, Math.max(280,
+                Math.round(screenWidthDp * 0.48f))));
+        int panelWidth = sidePanel ? sideWidth : WindowManager.LayoutParams.MATCH_PARENT;
+        int panelHeight = WindowManager.LayoutParams.MATCH_PARENT;
+
+        Window window = dialog.getWindow();
+        if (window == null) return;
+        window.setBackgroundDrawableResource(android.R.color.transparent);
+        WindowManager.LayoutParams params = window.getAttributes();
+        params.width = panelWidth;
+        params.height = panelHeight;
+        params.gravity = sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL;
+        params.dimAmount = 0f;
+        if (sidePanel) {
+            params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        } else {
+            params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        }
+        params.flags &= ~WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+        window.setAttributes(params);
+        window.setWindowAnimations(sidePanel ? R.style.SoundFontSidePanelAnimation : 0);
+        window.setLayout(panelWidth, panelHeight);
+        window.setGravity(params.gravity);
+        dialog.getWindow().getDecorView().requestLayout();
     }
 }

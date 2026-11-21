@@ -53,7 +53,8 @@ public class MainActivity extends Activity {
     private SeekBar masterVolumeSeekBar;
     private TextView masterVolumeValue;
     private ChannelMixController channelMixController;
-    private Button bleSearchButton;
+    private Switch bleSearchButton;
+    private boolean updatingBleSearchSwitch;
     private Button[] trackButtons = new Button[16];
     private Button[] trackMuteButtons = new Button[16];
     private Button[] trackSoloButtons = new Button[16];
@@ -157,7 +158,9 @@ public class MainActivity extends Activity {
 
         operationStatus = new TextView(this);
         operationStatus.setTextColor(MUTED);
-        operationStatus.setTextSize(12);
+        operationStatus.setTextSize(10);
+        operationStatus.setGravity(Gravity.CENTER);
+        operationStatus.setMaxLines(1);
 
         deviceSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
@@ -258,16 +261,19 @@ public class MainActivity extends Activity {
             }
         });
 
-        bleSearchButton.setOnClickListener(v -> {
-            if (bleMidiInput == null) return;
-            boolean enabled = !bleMidiInput.isScanningEnabled();
-            bleMidiInput.setScanningEnabled(enabled);
+        bleSearchButton.setOnCheckedChangeListener((button, checked) -> {
+            if (updatingBleSearchSwitch) return;
+            if (bleMidiInput == null) {
+                updateBleSearchButton();
+                return;
+            }
+            bleMidiInput.setScanningEnabled(checked);
             updateBleSearchButton();
         });
         velocitySeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentVelocity = progress + 1;
-                velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
+                velocityValue.setText(String.valueOf(currentVelocity));
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
@@ -324,6 +330,14 @@ public class MainActivity extends Activity {
         ScrollView midiScroll = midiScreen.scrollView;
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
+        // Safe area: mantém a última faixa e o fim das páginas acima da navegação fixa.
+        int navigationSafeSpace = AppUi.dp(this, 72);
+        midiScroll.setClipToPadding(false);
+        midiScroll.setPadding(0, 0, 0, navigationSafeSpace);
+        effectsScroll.setClipToPadding(false);
+        effectsScroll.setPadding(0, 0, 0, navigationSafeSpace);
+        settingsScroll.setClipToPadding(false);
+        settingsScroll.setPadding(0, 0, 0, navigationSafeSpace);
         workspace = new LinearLayout(this);
         workspace.setOrientation(LinearLayout.HORIZONTAL);
         workspace.setBackgroundColor(BG);
@@ -353,13 +367,13 @@ public class MainActivity extends Activity {
         workspace.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
         midiScreen.topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
 
-        operationStatus.setPadding(AppUi.dp(this, 16), AppUi.dp(this, 8), AppUi.dp(this, 16), AppUi.dp(this, 8));
-        operationStatus.setBackground(rounded(PANEL, 10, AppUi.BORDER));
+        operationStatus.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 3), AppUi.dp(this, 12), AppUi.dp(this, 3));
+        operationStatus.setBackgroundColor(Color.TRANSPARENT);
         operationStatus.setVisibility(View.GONE);
         LinearLayout.LayoutParams operationStatusParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 4), AppUi.dp(this, 16), AppUi.dp(this, 8));
-        operationStatus.setMaxLines(2);
+        operationStatusParams.setMargins(AppUi.dp(this, 16), AppUi.dp(this, 2), AppUi.dp(this, 16), AppUi.dp(this, 2));
+        operationStatus.setMaxLines(1);
         operationStatus.setEllipsize(android.text.TextUtils.TruncateAt.END);
         operationStatus.setGravity(Gravity.CENTER_VERTICAL);
         operationStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -367,8 +381,8 @@ public class MainActivity extends Activity {
 
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
-        navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 8), AppUi.dp(this, 12), AppUi.dp(this, 8));
-        navigation.setBackground(rounded(PANEL, 14, AppUi.BORDER));
+        navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 2), AppUi.dp(this, 12), AppUi.dp(this, 2));
+        navigation.setBackgroundColor(Color.TRANSPARENT);
 
         Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
                 !showingSettings, getString(R.string.tab_midi_accessibility,
@@ -456,7 +470,7 @@ public class MainActivity extends Activity {
             });
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
-            velocityValue.setText(getString(R.string.velocity_value, currentVelocity));
+            velocityValue.setText(String.valueOf(currentVelocity));
             soundFontManager = new SoundFontManager(this);
             soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
             refreshSoundFontLibraryList();
@@ -706,22 +720,22 @@ public class MainActivity extends Activity {
             name.setText(soundFontManager.getDisplayName(library));
             name.setTextColor(TEXT);
             name.setTextSize(14);
-            name.setMaxLines(2);
+            name.setMaxLines(1);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             row.addView(name, new LinearLayout.LayoutParams(0,
                     LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
             Switch enabledSwitch = new Switch(this);
             boolean enabled = soundFontLibraryStore.isEnabled(library);
-            enabledSwitch.setText(enabled ? getString(R.string.library_active) : getString(R.string.library_disabled_label));
+            enabledSwitch.setText(getString(R.string.library_active));
             AppUi.tint(enabledSwitch);
             enabledSwitch.setContentDescription(getString(R.string.library_toggle_accessibility, soundFontManager.getDisplayName(library)));
             enabledSwitch.setTextColor(enabled ? TEXT : MUTED);
             enabledSwitch.setChecked(enabled);
             enabledSwitch.setOnCheckedChangeListener((button, checked) -> {
                 soundFontLibraryStore.setEnabled(library, checked);
-                button.setText(checked ? getString(R.string.library_active) : getString(R.string.library_disabled_label));
-                button.setTextColor(checked ? TEXT : MUTED);
+                button.setText(getString(R.string.library_active));
+                button.setTextColor(TEXT);
                 showOperationStatus(getString(checked ? R.string.library_enabled : R.string.library_disabled));
             });
             row.addView(enabledSwitch, new LinearLayout.LayoutParams(
@@ -731,13 +745,13 @@ public class MainActivity extends Activity {
             deleteButton.setText(R.string.library_delete);
             deleteButton.setTextSize(10);
             deleteButton.setAllCaps(false);
-            deleteButton.setTextColor(Color.WHITE);
+            deleteButton.setTextColor(Color.rgb(185, 75, 88));
             deleteButton.setPadding(AppUi.dp(this, 6), 0, AppUi.dp(this, 6), 0);
-            deleteButton.setBackground(AppUi.ripple(this, Color.rgb(145, 55, 65), 8, 0));
+            deleteButton.setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
             deleteButton.setContentDescription(getString(R.string.library_delete_accessibility,
                     soundFontManager.getDisplayName(library)));
             LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
-                    AppUi.dp(this, 72), AppUi.dp(this, 38));
+                    AppUi.dp(this, 64), AppUi.dp(this, 38));
             deleteParams.leftMargin = AppUi.dp(this, 6);
             row.addView(deleteButton, deleteParams);
             deleteButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this,
@@ -829,33 +843,34 @@ public class MainActivity extends Activity {
                             ? getString(R.string.preset_bank_program, fields[2], fields[0], fields[1])
                             : presets[i];
                 }
-                new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle(soundFontManager.getDisplayName(library))
-                    .setItems(labels, (dialog, which) -> {
-                        try {
-                            String[] fields = presets[which].split("\\|", 3);
-                            int bank = Integer.parseInt(fields[0]);
-                            int program = Integer.parseInt(fields[1]);
-                            String presetName = fields[2];
-                            loader.execute(() -> {
-                                boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
-                                        soundFontManager.getDisplayName(library));
-                                boolean selected = loaded && nativeBridge.nativeSelectTrackPreset(channel, bank, program);
-                                runOnUiThread(() -> {
-                                    if (isFinishing() || isDestroyed()) return;
-                                    if (selected) {
-                                        trackManager.updatePreset(channel, bank, program, presetName);
-                                        showOperationStatus(getString(R.string.preset_selected, presetName));
-                                        updateTrackControls();
-                                    } else {
-                                        showOperationStatus(getString(R.string.preset_load_failed));
-                                    }
-                                });
+                ChannelInstrumentSheet.showPresets(this, channel,
+                        soundFontManager.getDisplayName(library), labels,
+                        () -> showSoundFontLibraryPicker(channel), which -> {
+                    if (which < 0 || which >= presets.length) return;
+                    try {
+                        String[] fields = presets[which].split("\\|", 3);
+                        int bank = Integer.parseInt(fields[0]);
+                        int program = Integer.parseInt(fields[1]);
+                        String presetName = fields[2];
+                        loader.execute(() -> {
+                            boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
+                                    soundFontManager.getDisplayName(library));
+                            boolean selected = loaded && nativeBridge.nativeSelectTrackPreset(channel, bank, program);
+                            runOnUiThread(() -> {
+                                if (isFinishing() || isDestroyed()) return;
+                                if (selected) {
+                                    trackManager.updatePreset(channel, bank, program, presetName);
+                                    showOperationStatus(getString(R.string.preset_selected, presetName));
+                                    updateTrackControls();
+                                } else {
+                                    showOperationStatus(getString(R.string.preset_load_failed));
+                                }
                             });
-                        } catch (Exception error) {
-                            showOperationStatus(getString(R.string.preset_select_error, error.getMessage()));
-                        }
-                    }).setNegativeButton(R.string.back, (dialog, which) -> showSoundFontLibraryPicker(channel)).show();
+                        });
+                    } catch (Exception error) {
+                        showOperationStatus(getString(R.string.preset_select_error, error.getMessage()));
+                    }
+                });
             });
         });
     }
@@ -905,35 +920,36 @@ public class MainActivity extends Activity {
             String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
             if (!item.isEnabled()) state += getString(R.string.mute_suffix);
             if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
-            String prefix = i == channel ? "● " : "";
+            String prefix = "☷ ";
             trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
             trackButtons[i].setMaxLines(2);
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
-            trackButtons[i].setTextColor(TEXT);
+            trackButtons[i].setTextColor(i == channel ? VisualTheme.ACCENT : TEXT);
             trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
-            trackButtons[i].setBackground(AppUi.ripple(this,
-                    i == channel ? VisualTheme.ACCENT_SOFT : CONTROL, 12,
-                    i == channel ? ACCENT : AppUi.CONTROL_BORDER));
+            trackButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackButtons[i].setElevation(0);
             trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-            trackButtons[i].setPadding(AppUi.dp(this, 6), AppUi.dp(this, 4),
-                    AppUi.dp(this, 6), AppUi.dp(this, 4));
+            trackButtons[i].setPadding(AppUi.dp(this, 2), AppUi.dp(this, 4),
+                    AppUi.dp(this, 2), AppUi.dp(this, 4));
             boolean enabled = item.isEnabled();
-            trackMuteButtons[i].setText(enabled ? "CH ✓" : "CH ×");
-            trackMuteButtons[i].setBackground(AppUi.ripple(this,
-                    enabled ? CONTROL : VisualTheme.MUTE, 10,
-                    enabled ? AppUi.CONTROL_BORDER : VisualTheme.MUTE));
+            trackMuteButtons[i].setText(enabled ? "M" : "M");
+            trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
+            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
-            trackSoloButtons[i].setText(solo ? "SOLO ✓" : "SOLO");
-            trackSoloButtons[i].setBackground(AppUi.ripple(this,
-                    solo ? VisualTheme.SOLO : CONTROL, 10,
-                    solo ? VisualTheme.SOLO : AppUi.CONTROL_BORDER));
+            trackSoloButtons[i].setText("S");
+            trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
+            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
             int volume = ChannelVolumeSettingsStore.load(this, i);
             if (trackVolumeSeekBars[i].getProgress() != volume) trackVolumeSeekBars[i].setProgress(volume);
             trackVolumeValues[i].setText(volume + "%");
+            trackVolumeValues[i].setTextSize(9);
+            trackVolumeValues[i].setTextColor(Color.rgb(160, 160, 160));
         }
         String soundFont = selected.hasSoundFont() ? selected.getSoundFontName() : getString(R.string.soundfont_missing);
         String preset = selected.getPresetName();
@@ -962,14 +978,14 @@ public class MainActivity extends Activity {
     private void updateBleSearchButton() {
         if (bleSearchButton == null) return;
         boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
-        bleSearchButton.setText(getString(enabled ? R.string.ble_search_on : R.string.ble_search_off));
+        updatingBleSearchSwitch = true;
+        bleSearchButton.setChecked(enabled);
         bleSearchButton.setContentDescription(getString(enabled ? R.string.ble_search_accessibility_on : R.string.ble_search_accessibility_off));
-        bleSearchButton.setTextColor(enabled ? Color.WHITE : TEXT);
-        bleSearchButton.setBackground(AppUi.ripple(this,
-                enabled ? VisualTheme.SUCCESS : CONTROL,
-                VisualTheme.RADIUS_CONTROL,
-                enabled ? VisualTheme.SUCCESS : AppUi.BORDER));
-        bleSearchButton.setElevation(enabled ? AppUi.dp(this, 2) : 0);
+        bleSearchButton.setThumbTintList(android.content.res.ColorStateList.valueOf(
+                enabled ? VisualTheme.SUCCESS : AppUi.MUTED));
+        bleSearchButton.setTrackTintList(android.content.res.ColorStateList.valueOf(
+                enabled ? 0x6040B98A : AppUi.CONTROL_BORDER));
+        updatingBleSearchSwitch = false;
     }
 
     private void showOperationStatus(String message) {
@@ -1068,10 +1084,19 @@ public class MainActivity extends Activity {
 
     @Override public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+
+        // Recalcular todas as áreas que dependem da largura/orientação sem reiniciar o motor MIDI.
         if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
         if (effectsScreen != null) effectsScreen.onConfigurationChanged(newConfig);
         if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
-        getWindow().getDecorView().requestApplyInsets();
+
+        // O painel SoundFont permanece aberto e muda de painel lateral para tela cheia
+        // (ou vice-versa) conforme a nova orientação e o menor tamanho da tela.
+        ChannelInstrumentSheet.onConfigurationChanged(this);
+
+        View decor = getWindow().getDecorView();
+        decor.requestLayout();
+        decor.requestApplyInsets();
     }
 
     @Override protected void onDestroy() {

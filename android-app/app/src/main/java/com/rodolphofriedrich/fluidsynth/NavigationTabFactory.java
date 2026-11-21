@@ -51,9 +51,9 @@ public final class NavigationTabFactory {
         button.setTypeface(Typeface.DEFAULT,
                 selected ? Typeface.BOLD : Typeface.NORMAL);
         button.setBackground(AppUi.ripple(context,
-                selected ? VisualTheme.ACCENT_SOFT : AppUi.PANEL,
+                selected ? VisualTheme.ACCENT_SOFT : Color.TRANSPARENT,
                 VisualTheme.RADIUS_CONTROL,
-                selected ? VisualTheme.ACCENT : AppUi.BORDER));
-        button.setElevation(selected ? AppUi.dp(context, 2) : 0);
+                0));
+        button.setElevation(0);
     }
 }
