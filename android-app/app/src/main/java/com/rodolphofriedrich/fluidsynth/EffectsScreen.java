@@ -116,7 +116,7 @@ public final class EffectsScreen {
         root.setPadding(dp(16), dp(16), dp(16), dp(20));
         root.setBackgroundColor(AppUi.BG);
 
-        LinearLayout header = AppUi.panel(context, root);
+        LinearLayout header = AppUi.flatSection(context, root);
         TextView title = AppUi.sectionLabel(context, "PROCESSAMENTO DE ÁUDIO");
         title.setTextColor(VisualTheme.EFFECTS);
         header.addView(title);
@@ -131,6 +131,8 @@ public final class EffectsScreen {
 
         LinearLayout tabRow = new LinearLayout(context);
         tabRow.setGravity(Gravity.CENTER);
+        tabRow.setPadding(dp(3), dp(3), dp(3), dp(3));
+        tabRow.setBackground(AppUi.rounded(context, AppUi.CONTROL, 22, 0));
         LinearLayout.LayoutParams tabRowParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tabRowParams.topMargin = dp(12);
@@ -139,9 +141,15 @@ public final class EffectsScreen {
             final int effect = i;
             Button tab = new Button(context);
             tab.setText(i == 2 ? "MIDI" : NAMES[i]);
-            AppUi.styleButton(context, tab, AppUi.CONTROL, AppUi.TEXT, 44, 13);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
-            params.setMargins(dp(3), 0, dp(3), 0);
+            tab.setAllCaps(false);
+            tab.setTextSize(12);
+            tab.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            tab.setMinHeight(0);
+            tab.setMinimumHeight(0);
+            tab.setPadding(dp(4), dp(8), dp(4), dp(8));
+            tab.setElevation(0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            params.setMargins(dp(1), 0, dp(1), 0);
             tabRow.addView(tab, params);
             tabs[i] = tab;
             tab.setOnClickListener(v -> selectTab(effect));
@@ -227,7 +235,7 @@ public final class EffectsScreen {
     }
 
     private void buildPage(LinearLayout root, int effect) {
-        LinearLayout page = AppUi.panel(context, root);
+        LinearLayout page = AppUi.flatSection(context, root);
         pages[effect] = page;
 
         TextView pageTitle = new TextView(context);
@@ -238,8 +246,8 @@ public final class EffectsScreen {
 
         LinearLayout activeRow = new LinearLayout(context);
         activeRow.setGravity(Gravity.CENTER_VERTICAL);
-        activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
-        activeRow.setPadding(dp(14), dp(8), dp(10), dp(8));
+        activeRow.setBackgroundColor(Color.TRANSPARENT);
+        activeRow.setPadding(0, dp(8), 0, dp(8));
         // A altura acompanha as linhas de texto e respeita fontes ampliadas.
         // O mínimo mantém a área de toque confortável sem cortar a descrição.
         activeRow.setMinimumHeight(dp(64));
@@ -301,7 +309,8 @@ public final class EffectsScreen {
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setMinHeight(0);
             button.setMinimumHeight(0);
-            button.setPadding(dp(4), dp(4), dp(4), dp(4));
+            button.setPadding(dp(10), dp(4), dp(10), dp(4));
+            button.setElevation(0);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
             params.setMargins(dp(3), dp(6), dp(3), dp(2));
             presetsRow.addView(button, params);
@@ -433,8 +442,8 @@ public final class EffectsScreen {
             boolean selected = i == selectedPreset[effect];
             buttons[i].setTextColor(selected ? Color.WHITE : AppUi.TEXT);
             buttons[i].setBackground(AppUi.ripple(context,
-                    selected ? Color.argb(58, 152, 116, 232) : AppUi.CONTROL,
-                    10, selected ? VisualTheme.EFFECTS : AppUi.CONTROL_BORDER));
+                    selected ? Color.argb(54, 152, 116, 232) : Color.argb(24, 154, 170, 194),
+                    18, selected ? VisualTheme.EFFECTS : 0));
             buttons[i].setSelected(selected);
             buttons[i].setContentDescription(buttons[i].getText()
                     + (selected ? ", predefinição selecionada" : ""));
@@ -465,10 +474,10 @@ public final class EffectsScreen {
         midiPage.view().setVisibility(selected == 2 ? View.VISIBLE : View.GONE);
         for (int i = 0; i < 3; i++) {
             boolean on = i == selected;
-            tabs[i].setBackground(AppUi.ripple(context,
-                    on ? Color.argb(58, 152, 116, 232) : AppUi.CONTROL,
-                    12, on ? VisualTheme.EFFECTS : AppUi.CONTROL_BORDER));
-            tabs[i].setTextColor(on ? VisualTheme.EFFECTS : AppUi.TEXT);
+            tabs[i].setBackground(on
+                    ? AppUi.ripple(context, VisualTheme.EFFECTS, 18, 0)
+                    : AppUi.ripple(context, Color.TRANSPARENT, 18, 0));
+            tabs[i].setTextColor(on ? Color.WHITE : AppUi.MUTED);
             tabs[i].setSelected(on);
         }
         if (selected == 2 && listener != null) listener.onMidiPageSelected();
