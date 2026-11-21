@@ -475,6 +475,7 @@ public class MainActivity extends Activity {
             });
             currentVelocity = VelocitySettingsStore.load(this);
             velocitySeekBar.setProgress(currentVelocity - 1);
+            velocityKnob.setValue((currentVelocity - 1) / 126f);
             velocityValue.setText(String.valueOf(currentVelocity));
             soundFontManager = new SoundFontManager(this);
             soundFontLibraryStore = new SoundFontLibraryStore(this, soundFontManager);
