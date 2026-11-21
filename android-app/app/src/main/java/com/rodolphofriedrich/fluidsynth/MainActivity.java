@@ -330,6 +330,14 @@ public class MainActivity extends Activity {
         ScrollView midiScroll = midiScreen.scrollView;
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
+        // Safe area: mantém a última faixa e o fim das páginas acima da navegação fixa.
+        int navigationSafeSpace = AppUi.dp(this, 72);
+        midiScroll.setClipToPadding(false);
+        midiScroll.setPadding(0, 0, 0, navigationSafeSpace);
+        effectsScroll.setClipToPadding(false);
+        effectsScroll.setPadding(0, 0, 0, navigationSafeSpace);
+        settingsScroll.setClipToPadding(false);
+        settingsScroll.setPadding(0, 0, 0, navigationSafeSpace);
         workspace = new LinearLayout(this);
         workspace.setOrientation(LinearLayout.HORIZONTAL);
         workspace.setBackgroundColor(BG);
