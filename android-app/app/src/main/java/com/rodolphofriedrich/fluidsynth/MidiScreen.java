@@ -60,9 +60,9 @@ public final class MidiScreen {
         topControls.addView(velocity,vp);
         effectsToggleButton=new Button(c);
         effectsToggleButton.setText("≋"); effectsToggleButton.setTextSize(24);
-        effectsToggleButton.setAllCaps(false); effectsToggleButton.setTextColor(AppUi.TEXT);
+        effectsToggleButton.setAllCaps(false); effectsToggleButton.setTextColor(AppUi.MUTED);
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
-        effectsToggleButton.setBackground(AppUi.ripple(c,AppUi.CONTROL,24,0));
+         effectsToggleButton.setBackground(AppUi.ripple(c,android.graphics.Color.argb(22,154,170,194),24,0));
         LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,48),AppUi.dp(c,48));
         ep.leftMargin=AppUi.dp(c,8); topControls.addView(effectsToggleButton,ep);
 
@@ -83,9 +83,10 @@ public final class MidiScreen {
         hintParams.rightMargin = AppUi.dp(c, 8);
         instructionRow.addView(hint, hintParams);
 
-        panicButton = smallButton(c, "PANIC");
+        panicButton = smallButton(c, "× PANIC");
         panicButton.setTextSize(10);
         panicButton.setTextColor(VisualTheme.MUTE);
+        panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
         panicButton.setContentDescription("Interromper todas as notas e liberar sustain");
         panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 18, 0));
         panicButton.setElevation(0);
@@ -127,8 +128,8 @@ public final class MidiScreen {
             volumeGroup.addView(vol,new LinearLayout.LayoutParams(0,AppUi.dp(c,40),1f));
             trackVolumeSeekBars[i]=vol;
             TextView vl=value(c,"100%");
-            vl.setTextSize(10);
-            vl.setTextColor(AppUi.MUTED);
+            vl.setTextSize(9);
+            vl.setTextColor(android.graphics.Color.rgb(160,160,160));
             vl.setTypeface(android.graphics.Typeface.MONOSPACE,android.graphics.Typeface.NORMAL);
             vl.setGravity(Gravity.CENTER);
             volumeGroup.addView(vl,new LinearLayout.LayoutParams(AppUi.dp(c,34),AppUi.dp(c,40)));
