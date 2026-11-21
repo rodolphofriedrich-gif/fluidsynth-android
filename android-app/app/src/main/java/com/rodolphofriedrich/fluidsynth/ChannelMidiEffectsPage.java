@@ -34,8 +34,11 @@ public final class ChannelMidiEffectsPage {
 
     public ChannelMidiEffectsPage(Context context) {
         this.context = context;
-        root = AppUi.panel(context, null);
+        root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(16), dp(14), dp(16), dp(14));
+        root.setBackground(AppUi.rounded(context, AppUi.PANEL, VisualTheme.RADIUS_CARD, AppUi.BORDER));
+        root.setElevation(dp(2));
 
         TextView title = new TextView(context);
         title.setText("Controles MIDI por canal");
