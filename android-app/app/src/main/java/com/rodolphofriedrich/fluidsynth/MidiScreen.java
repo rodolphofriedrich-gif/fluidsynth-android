@@ -86,7 +86,7 @@ public final class MidiScreen {
 
         topControls.addOnLayoutChangeListener((view, left, top, right, bottom,
                 oldLeft, oldTop, oldRight, oldBottom) -> {
-            int available = topControls.getWidth() - AppUi.dp(c,40 + 44 + 32);
+            int available = topControls.getWidth() - AppUi.dp(c,44 + 44 + 32);
             int controlWidth = Math.min(AppUi.dp(c,196), Math.max(AppUi.dp(c,76), available / 2));
             LinearLayout.LayoutParams masterParams = (LinearLayout.LayoutParams) master.getLayoutParams();
             LinearLayout.LayoutParams velocityParams = (LinearLayout.LayoutParams) velocity.getLayoutParams();
