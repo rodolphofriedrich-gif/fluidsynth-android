@@ -356,7 +356,8 @@ public final class EffectsScreen {
             TextView value = new TextView(context);
             value.setText(spec.format(spec.def));
             AppUi.styleValue(value);
-            value.setTextSize(14);
+            value.setTextSize(12);
+            value.setTextColor(AppUi.MUTED);
             value.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams valueParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
