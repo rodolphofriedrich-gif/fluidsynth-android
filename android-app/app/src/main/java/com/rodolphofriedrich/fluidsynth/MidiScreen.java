@@ -24,6 +24,7 @@ public final class MidiScreen {
     public final TextView[] trackInstrumentLabels=new TextView[16];
     public final Button selectInstrumentButton, trackEnableButton, soloButton;
     public final SeekBar masterVolumeSeekBar, velocitySeekBar;
+    public final KnobView masterVolumeKnob, velocityKnob;
     public final TextView masterVolumeValue, velocityValue;
     public final LinearLayout importProgressPanel;
     public final TextView importProgressText;
@@ -46,30 +47,45 @@ public final class MidiScreen {
         topControls.setPadding(0,AppUi.dp(c,8),0,AppUi.dp(c,8));
         topControls.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         topControls.setElevation(0);
-        LinearLayout master=sliderGroup(c,c.getString(R.string.master_volume_label));
-        masterVolumeValue=value(c,"100%");
-        masterVolumeValue.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        master.addView(masterVolumeValue, new LinearLayout.LayoutParams(-1,AppUi.dp(c,24)));
-        masterVolumeSeekBar=slider(c,100,100,c.getString(R.string.master_volume_accessibility));
-        master.addView(masterVolumeSeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,40)));
-        topControls.addView(master,new LinearLayout.LayoutParams(0,-2,1f));
-        LinearLayout velocity=sliderGroup(c,c.getString(R.string.velocity_label));
-        velocityValue=value(c,"100");
-        velocityValue.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        velocity.addView(velocityValue, new LinearLayout.LayoutParams(-1,AppUi.dp(c,24)));
-        velocitySeekBar=slider(c,126,99,c.getString(R.string.velocity_accessibility));
-        velocity.addView(velocitySeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,40)));
-        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1f); vp.leftMargin=AppUi.dp(c,16);
-        topControls.addView(velocity,vp);
+        LinearLayout master = knobGroup(c, c.getString(R.string.master_volume_label));
+        masterVolumeValue = value(c, "100%");
+        masterVolumeValue.setGravity(Gravity.CENTER);
+        masterVolumeValue.setTextColor(AppUi.TEXT);
+        masterVolumeValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        masterVolumeValue.setTextSize(12);
+        masterVolumeKnob = new KnobView(c, 64);
+        masterVolumeKnob.setContentDescription(c.getString(R.string.master_volume_accessibility));
+        master.addView(masterVolumeKnob, new LinearLayout.LayoutParams(AppUi.dp(c, 64), AppUi.dp(c, 64)));
+        master.addView(masterVolumeValue, new LinearLayout.LayoutParams(-1, AppUi.dp(c, 20)));
+        topControls.addView(master, new LinearLayout.LayoutParams(AppUi.dp(c, 82), -2));
+
+        LinearLayout velocity = knobGroup(c, c.getString(R.string.velocity_label));
+        velocityValue = value(c, "100");
+        velocityValue.setGravity(Gravity.CENTER);
+        velocityValue.setTextColor(AppUi.TEXT);
+        velocityValue.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        velocityValue.setTextSize(12);
+        velocityKnob = new KnobView(c, 64);
+        velocityKnob.setContentDescription(c.getString(R.string.velocity_accessibility));
+        velocity.addView(velocityKnob, new LinearLayout.LayoutParams(AppUi.dp(c, 64), AppUi.dp(c, 64)));
+        velocity.addView(velocityValue, new LinearLayout.LayoutParams(-1, AppUi.dp(c, 20)));
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(AppUi.dp(c, 82), -2);
+        vp.leftMargin = AppUi.dp(c, 6);
+        topControls.addView(velocity, vp);
+
+        masterVolumeSeekBar = slider(c, 100, 100, c.getString(R.string.master_volume_accessibility));
+        velocitySeekBar = slider(c, 126, 99, c.getString(R.string.velocity_accessibility));
+        masterVolumeSeekBar.setVisibility(View.GONE);
+        velocitySeekBar.setVisibility(View.GONE);
         effectsToggleButton=new Button(c);
         effectsToggleButton.setText("☰");
-        effectsToggleButton.setTextSize(21);
+        effectsToggleButton.setTextSize(20);
         effectsToggleButton.setAllCaps(false);
         effectsToggleButton.setTextColor(AppUi.MUTED);
         effectsToggleButton.setGravity(Gravity.CENTER);
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
-        effectsToggleButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, AppUi.CONTROL_BORDER));
-        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
+        effectsToggleButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, android.graphics.Color.TRANSPARENT));
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,36),AppUi.dp(c,40));
         ep.leftMargin=AppUi.dp(c,12);
         topControls.addView(effectsToggleButton,ep);
 
@@ -79,28 +95,10 @@ public final class MidiScreen {
         panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
         panicButton.setGravity(Gravity.CENTER);
         panicButton.setContentDescription("Alerta Panic MIDI: interromper todas as notas e liberar sustain");
-        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, AppUi.CONTROL_BORDER));
-        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
+        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, 0x668C3948));
+        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,36),AppUi.dp(c,40));
         panicParams.leftMargin=AppUi.dp(c,6);
         topControls.addView(panicButton,panicParams);
-
-        topControls.addOnLayoutChangeListener((view, left, top, right, bottom,
-                oldLeft, oldTop, oldRight, oldBottom) -> {
-            int available = topControls.getWidth() - AppUi.dp(c,44 + 44 + 32);
-            int controlWidth = Math.min(AppUi.dp(c,196), Math.max(AppUi.dp(c,76), available / 2));
-            LinearLayout.LayoutParams masterParams = (LinearLayout.LayoutParams) master.getLayoutParams();
-            LinearLayout.LayoutParams velocityParams = (LinearLayout.LayoutParams) velocity.getLayoutParams();
-            if (masterParams.width != controlWidth || masterParams.weight != 0f) {
-                masterParams.width = controlWidth;
-                masterParams.weight = 0f;
-                master.setLayoutParams(masterParams);
-            }
-            if (velocityParams.width != controlWidth || velocityParams.weight != 0f) {
-                velocityParams.width = controlWidth;
-                velocityParams.weight = 0f;
-                velocity.setLayoutParams(velocityParams);
-            }
-        });
 
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
         status.setVisibility(View.GONE); audioDiagnostics.setVisibility(View.GONE); midiActivity.setVisibility(View.GONE);
@@ -243,6 +241,20 @@ public final class MidiScreen {
     private static TextView value(Context c,String text){
         TextView v=new TextView(c); v.setText(text); AppUi.styleValue(v); return v;
     }
+    private static LinearLayout knobGroup(Context context, String title) {
+        LinearLayout group = new LinearLayout(context);
+        group.setOrientation(LinearLayout.VERTICAL);
+        group.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView label = new TextView(context);
+        label.setText(title.toUpperCase(java.util.Locale.ROOT));
+        label.setTextColor(AppUi.MUTED);
+        label.setTextSize(9);
+        label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        label.setGravity(Gravity.CENTER);
+        group.addView(label, new LinearLayout.LayoutParams(-1, AppUi.dp(context, 16)));
+        return group;
+    }
+
     private static SeekBar slider(Context c,int max,int progress,String description){
         SeekBar b=new SeekBar(c); b.setMax(max); b.setProgress(progress); b.setContentDescription(description);
         b.setPadding(AppUi.dp(c,4),0,AppUi.dp(c,4),0); AppUi.tint(b); return b;
