@@ -41,7 +41,7 @@ public final class SettingsScreen {
     public SettingsScreen(Context context) {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(AppUi.dp(context, 16), AppUi.dp(context, 16), AppUi.dp(context, 16), AppUi.dp(context, 24));
+        root.setPadding(AppUi.dp(context, 16), AppUi.dp(context, 16), AppUi.dp(context, 16), AppUi.dp(context, 40));
         root.setBackgroundColor(AppUi.BG);
 
         LinearLayout controllerPanel = AppUi.flatSection(context, root);
@@ -143,6 +143,7 @@ public final class SettingsScreen {
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
         scrollView.setClipToPadding(false);
+        scrollView.setPadding(0, 0, 0, AppUi.dp(context, 16));
         scrollView.addView(root);
     }
 }
