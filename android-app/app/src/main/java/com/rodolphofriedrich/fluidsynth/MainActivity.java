@@ -843,33 +843,34 @@ public class MainActivity extends Activity {
                             ? getString(R.string.preset_bank_program, fields[2], fields[0], fields[1])
                             : presets[i];
                 }
-                new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle(soundFontManager.getDisplayName(library))
-                    .setItems(labels, (dialog, which) -> {
-                        try {
-                            String[] fields = presets[which].split("\\|", 3);
-                            int bank = Integer.parseInt(fields[0]);
-                            int program = Integer.parseInt(fields[1]);
-                            String presetName = fields[2];
-                            loader.execute(() -> {
-                                boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
-                                        soundFontManager.getDisplayName(library));
-                                boolean selected = loaded && nativeBridge.nativeSelectTrackPreset(channel, bank, program);
-                                runOnUiThread(() -> {
-                                    if (isFinishing() || isDestroyed()) return;
-                                    if (selected) {
-                                        trackManager.updatePreset(channel, bank, program, presetName);
-                                        showOperationStatus(getString(R.string.preset_selected, presetName));
-                                        updateTrackControls();
-                                    } else {
-                                        showOperationStatus(getString(R.string.preset_load_failed));
-                                    }
-                                });
+                ChannelInstrumentSheet.showPresets(this, channel,
+                        soundFontManager.getDisplayName(library), labels,
+                        () -> showSoundFontLibraryPicker(channel), which -> {
+                    if (which < 0 || which >= presets.length) return;
+                    try {
+                        String[] fields = presets[which].split("\\|", 3);
+                        int bank = Integer.parseInt(fields[0]);
+                        int program = Integer.parseInt(fields[1]);
+                        String presetName = fields[2];
+                        loader.execute(() -> {
+                            boolean loaded = trackManager.loadSoundFont(channel, library.getAbsolutePath(),
+                                    soundFontManager.getDisplayName(library));
+                            boolean selected = loaded && nativeBridge.nativeSelectTrackPreset(channel, bank, program);
+                            runOnUiThread(() -> {
+                                if (isFinishing() || isDestroyed()) return;
+                                if (selected) {
+                                    trackManager.updatePreset(channel, bank, program, presetName);
+                                    showOperationStatus(getString(R.string.preset_selected, presetName));
+                                    updateTrackControls();
+                                } else {
+                                    showOperationStatus(getString(R.string.preset_load_failed));
+                                }
                             });
-                        } catch (Exception error) {
-                            showOperationStatus(getString(R.string.preset_select_error, error.getMessage()));
-                        }
-                    }).setNegativeButton(R.string.back, (dialog, which) -> showSoundFontLibraryPicker(channel)).show();
+                        });
+                    } catch (Exception error) {
+                        showOperationStatus(getString(R.string.preset_select_error, error.getMessage()));
+                    }
+                });
             });
         });
     }
