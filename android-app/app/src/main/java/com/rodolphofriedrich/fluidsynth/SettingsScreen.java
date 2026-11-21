@@ -90,7 +90,7 @@ public final class SettingsScreen {
         AppUi.tint(polyphonySeekBar);
         audioPanel.addView(polyphonySeekBar, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                AppUi.dp(context, 42)));
+                AppUi.dp(context, 48)));
 
         LinearLayout actionsPanel = AppUi.panel(context, root);
         actionsPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.midi_connection_actions)));

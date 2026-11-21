@@ -48,7 +48,7 @@ public final class MidiScreen {
         masterVolumeValue=value(c,"100%");
         master.addView(masterVolumeValue);
         masterVolumeSeekBar=slider(c,100,100,c.getString(R.string.master_volume_accessibility));
-        master.addView(masterVolumeSeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,34)));
+        master.addView(masterVolumeSeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,48)));
         topControls.addView(master,new LinearLayout.LayoutParams(0,-2,1f));
         LinearLayout velocity=sliderGroup(c,c.getString(R.string.velocity_label));
         velocityValue=value(c,"100");
@@ -88,11 +88,11 @@ public final class MidiScreen {
             strip.addView(ch,new LinearLayout.LayoutParams(-1,AppUi.dp(c,48))); trackButtons[i]=ch;
             TextView vl=value(c,"100%"); vl.setGravity(Gravity.CENTER); vl.setPadding(0,AppUi.dp(c,3),0,AppUi.dp(c,1)); strip.addView(vl); trackVolumeValues[i]=vl;
             SeekBar vol=slider(c,100,100,c.getString(R.string.channel_volume_accessibility,i+1));
-            strip.addView(vol,new LinearLayout.LayoutParams(-1,AppUi.dp(c,36))); trackVolumeSeekBars[i]=vol;
+            strip.addView(vol,new LinearLayout.LayoutParams(-1,AppUi.dp(c,48))); trackVolumeSeekBars[i]=vol;
             LinearLayout actions=new LinearLayout(c);
             Button mute=smallButton(c,"CH ✓"); mute.setContentDescription(c.getString(R.string.channel_toggle_accessibility,i+1));
             Button solo=smallButton(c,"SOLO"); solo.setContentDescription(c.getString(R.string.solo_accessibility,i+1));
-            LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,AppUi.dp(c,36),1f);
+            LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,AppUi.dp(c,48),1f);
             ap.setMargins(AppUi.dp(c,2),AppUi.dp(c,2),AppUi.dp(c,2),0);
             actions.addView(mute,ap); actions.addView(solo,new LinearLayout.LayoutParams(ap));
             strip.addView(actions); trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;

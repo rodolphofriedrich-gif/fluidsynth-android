@@ -167,6 +167,7 @@ public final class EffectsScreen {
         values[effect][param] = safe;
         knobs[effect][param].setValue(spec.norm(safe));
         labels[effect][param].setText(spec.format(safe));
+        updateKnobAccessibility(effect, param, safe);
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
@@ -228,8 +229,11 @@ public final class EffectsScreen {
         activeRow.setGravity(Gravity.CENTER_VERTICAL);
         activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
         activeRow.setPadding(dp(14), dp(8), dp(10), dp(8));
+        // A altura acompanha as linhas de texto e respeita fontes ampliadas.
+        // O mínimo mantém a área de toque confortável sem cortar a descrição.
+        activeRow.setMinimumHeight(dp(64));
         LinearLayout.LayoutParams activeParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         activeParams.topMargin = dp(12);
         page.addView(activeRow, activeParams);
 
@@ -322,7 +326,7 @@ public final class EffectsScreen {
             cell.addView(name);
 
             KnobView knob = new KnobView(context);
-            knob.setContentDescription(spec.name);
+            knob.setContentDescription(spec.name + ", " + spec.format(spec.def));
             knob.setValue(spec.norm(spec.def));
             knob.setListener((view, value, tracking) -> onKnob(effect, parameter, value, tracking));
             LinearLayout.LayoutParams knobParams = new LinearLayout.LayoutParams(dp(92), dp(92));
@@ -361,7 +365,7 @@ public final class EffectsScreen {
         reset.setMinimumHeight(0);
         reset.setPadding(dp(14), dp(8), dp(14), dp(8));
         LinearLayout.LayoutParams resetParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
         resetParams.topMargin = dp(8);
         page.addView(reset, resetParams);
         reset.setOnClickListener(v -> restoreDefaults(effect));
@@ -392,11 +396,17 @@ public final class EffectsScreen {
         if (listener != null) listener.onPresetApplied(effect);
     }
 
+    private void updateKnobAccessibility(int effect, int param, float value) {
+        knobs[effect][param].setContentDescription(SPECS[effect][param].name
+                + ", " + SPECS[effect][param].format(value));
+    }
+
     private void onKnob(int effect, int param, float normalized, boolean tracking) {
         float value = EffectsSettingsStore.normalize(effect, param,
                 SPECS[effect][param].toValue(normalized));
         labels[effect][param].setText(SPECS[effect][param].format(value));
         values[effect][param] = value;
+        updateKnobAccessibility(effect, param, value);
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
