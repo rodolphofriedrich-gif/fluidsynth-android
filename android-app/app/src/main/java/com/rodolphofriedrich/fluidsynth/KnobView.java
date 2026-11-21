@@ -30,6 +30,7 @@ public final class KnobView extends View {
     private final RectF oval = new RectF();
     private final float density;
     private final float dragRange;
+    private final int preferredSizeDp;
 
     private float value;
     private float downY;
@@ -38,7 +39,12 @@ public final class KnobView extends View {
     private Listener listener;
 
     public KnobView(Context context) {
+        this(context, 92);
+    }
+
+    public KnobView(Context context, int preferredSizeDp) {
         super(context);
+        this.preferredSizeDp = Math.max(48, preferredSizeDp);
         density = getResources().getDisplayMetrics().density;
         dragRange = 180f * density;
 
@@ -91,7 +97,7 @@ public final class KnobView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int size = Math.round(92 * density);
+        int size = Math.round(preferredSizeDp * density);
         setMeasuredDimension(resolveSize(size, widthMeasureSpec),
                 resolveSize(size, heightMeasureSpec));
     }
