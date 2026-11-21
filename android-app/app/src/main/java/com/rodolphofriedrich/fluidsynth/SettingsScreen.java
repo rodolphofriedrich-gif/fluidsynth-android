@@ -31,10 +31,8 @@ public final class SettingsScreen {
         status.setTextColor(AppUi.MUTED);
         status.setTextSize(12);
         status.setMaxLines(2);
-        status.setPadding(AppUi.dp(context, 10), AppUi.dp(context, 7),
-                AppUi.dp(context, 10), AppUi.dp(context, 7));
-        status.setBackground(AppUi.rounded(context, AppUi.CONTROL,
-                VisualTheme.RADIUS_CONTROL, AppUi.CONTROL_BORDER));
+        status.setPadding(0, AppUi.dp(context, 4), 0, AppUi.dp(context, 4));
+        status.setBackgroundColor(Color.TRANSPARENT);
         status.setGravity(android.view.Gravity.CENTER_VERTICAL);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
     }
@@ -45,7 +43,7 @@ public final class SettingsScreen {
         root.setPadding(AppUi.dp(context, 16), AppUi.dp(context, 12), AppUi.dp(context, 16), AppUi.dp(context, 24));
         root.setBackgroundColor(AppUi.BG);
 
-        LinearLayout controllerPanel = AppUi.panel(context, root);
+        LinearLayout controllerPanel = AppUi.flatSection(context, root);
         controllerPanel.addView(AppUi.sectionLabel(context, context.getString(R.string.controller_midi)));
         deviceSelector = new Spinner(context);
         deviceSelector.setPadding(AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4), AppUi.dp(context, 4));
@@ -115,7 +113,7 @@ public final class SettingsScreen {
         AppUi.styleButton(context, importLibraryButton, AppUi.ACCENT, Color.WHITE, 48, 13);
         librariesPanel.addView(importLibraryButton);
 
-        importProgressPanel = AppUi.panel(context, librariesPanel);
+        importProgressPanel = AppUi.flatSection(context, librariesPanel);
         importProgressPanel.setVisibility(View.GONE);
         importProgressText = new TextView(context);
         importProgressText.setTextColor(AppUi.MUTED);
