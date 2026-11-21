@@ -35,7 +35,7 @@ public final class NavigationTabFactory {
     }
 
     private static SpannableString createTabText(String icon, String label) {
-        String text = icon + "\\n" + label;
+        String text = icon + "\n" + label;
         SpannableString styled = new SpannableString(text);
         int iconEnd = icon.length();
         styled.setSpan(new RelativeSizeSpan(ICON_SIZE_MULTIPLIER),
