@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private SettingsScreen settingsScreen;
     private EffectsScreen effectsScreen;
     private final Object keyboardMidiSource = new Object();
+    private final Object channelControlsMidiSource = new Object();
     private MidiRouter midiRouter;
     private AudioEngine audioEngine;
     private TextView status;
@@ -207,6 +208,19 @@ public class MainActivity extends Activity {
             });
         }
 
+        midiScreen.panicButton.setOnClickListener(v -> {
+            if (midiRouter == null) return;
+            new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("Panic MIDI")
+                    .setMessage("Interromper todas as notas e liberar o sustain nos 16 canais?")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Interromper", (dialog, which) -> {
+                        if (midiRouter != null) midiRouter.panic();
+                        showOperationStatus("Panic executado: todas as notas foram interrompidas.");
+                    })
+                    .show();
+        });
+
         selectInstrumentButton.setOnClickListener(v -> {
             if (trackManager != null) showSoundFontLibraryPicker(trackManager.getActiveChannel());
         });
@@ -356,30 +370,18 @@ public class MainActivity extends Activity {
         navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 8), AppUi.dp(this, 12), AppUi.dp(this, 8));
         navigation.setBackground(rounded(PANEL, 14, AppUi.BORDER));
 
-        Button midiTab = new Button(this);
-        midiTab.setText(getString(R.string.tab_midi));
-        midiTab.setAllCaps(false);
-        midiTab.setTextColor(Color.WHITE);
-        midiTab.setBackground(AppUi.ripple(this, showingSettings ? CONTROL : ACCENT, 10, 0));
-
-        Button settingsTab = new Button(this);
-        settingsTab.setText(getString(R.string.tab_settings));
-        settingsTab.setAllCaps(false);
-        settingsTab.setTextColor(TEXT);
-        settingsTab.setBackground(AppUi.ripple(this, showingSettings ? ACCENT : CONTROL, 10, 0));
-
-        Button effectsTab = new Button(this);
-        effectsTab.setText(getString(R.string.tab_effects));
-        effectsTab.setAllCaps(false);
-        effectsTab.setTextColor(TEXT);
-        effectsTab.setBackground(AppUi.ripple(this, showingEffects ? ACCENT : CONTROL, 10, 0));
+        Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
+                !showingSettings, getString(R.string.tab_midi_accessibility,
+                        !showingSettings ? getString(R.string.tab_selected) : ""));
+        Button settingsTab = NavigationTabFactory.create(this, "⚙", getString(R.string.tab_settings),
+                showingSettings, getString(R.string.tab_settings_accessibility,
+                        showingSettings ? getString(R.string.tab_selected) : ""));
 
         LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
-                AppUi.dp(this, 48), 1f);
-        tabParams.setMargins(AppUi.dp(this, 3), 0, AppUi.dp(this, 3), 0);
+                AppUi.dp(this, 56), 1f);
+        tabParams.setMargins(AppUi.dp(this, 4), 0, AppUi.dp(this, 4), 0);
         navigation.addView(midiTab, tabParams);
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
-        effectsTab.setVisibility(View.GONE);
         midiTab.setOnClickListener(v -> showMainScreen(0, workspace, settingsScroll,
                 midiScreen.topControls, midiTab, settingsTab));
         settingsTab.setOnClickListener(v -> showMainScreen(1, workspace, settingsScroll,
@@ -421,6 +423,12 @@ public class MainActivity extends Activity {
             }
             restoreEffectsSettings();
             effectsScreen.setListener(new EffectsScreen.Listener() {
+                @Override public void onMidiPageSelected() {
+                    if (trackManager != null) {
+                        int channel = trackManager.getActiveChannel();
+                        effectsScreen.setMidiChannel(channel, ChannelMidiSettingsStore.load(MainActivity.this, channel));
+                    }
+                }
                 @Override public void onEffectActive(int effect, boolean active) {
                     EffectsSettingsStore.saveActive(MainActivity.this, effect, active);
                     if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverbActive(active);
@@ -431,6 +439,19 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onPresetApplied(int effect) {
                     applyEffectParameters(effect);
+                }
+            });
+            effectsScreen.setMidiListener(new ChannelMidiEffectsPage.Listener() {
+                @Override public void onControlChanged(int channel, int controller, int value) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | channel, controller, value);
+                }
+                @Override public void onControlCommitted(int channel, int controller, int value) {
+                    ChannelMidiSettingsStore.save(MainActivity.this, channel, controller, value);
+                }
+                @Override public void onSustainChanged(int channel, boolean active) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | channel, 64, active ? 127 : 0);
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
@@ -873,7 +894,9 @@ public class MainActivity extends Activity {
         if (soloButton != null) {
             boolean solo = channelMixController != null && channelMixController.isSolo(channel);
             soloButton.setText(getString(solo ? R.string.solo_active : R.string.solo_channel));
-            soloButton.setBackground(AppUi.ripple(this, solo ? ACCENT : CONTROL, 12, 0));
+            soloButton.setBackground(AppUi.ripple(this,
+                    solo ? VisualTheme.SOLO : CONTROL, 12,
+                    solo ? VisualTheme.SOLO : AppUi.CONTROL_BORDER));
             soloButton.setContentDescription(getString(solo ? R.string.solo_accessibility_active : R.string.solo_accessibility, channel + 1));
         }
         if (channelMixController != null) channelMixController.applyIfSoloActive();
@@ -888,16 +911,24 @@ public class MainActivity extends Activity {
             trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
             trackButtons[i].setTextColor(TEXT);
             trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
-            trackButtons[i].setBackground(AppUi.ripple(this, i == channel ? ACCENT : CONTROL, 10,
+            trackButtons[i].setBackground(AppUi.ripple(this,
+                    i == channel ? VisualTheme.ACCENT_SOFT : CONTROL, 12,
                     i == channel ? ACCENT : AppUi.CONTROL_BORDER));
+            trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+            trackButtons[i].setPadding(AppUi.dp(this, 6), AppUi.dp(this, 4),
+                    AppUi.dp(this, 6), AppUi.dp(this, 4));
             boolean enabled = item.isEnabled();
             trackMuteButtons[i].setText(enabled ? "CH ✓" : "CH ×");
-            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? CONTROL : Color.rgb(145, 55, 65), 7, 0));
+            trackMuteButtons[i].setBackground(AppUi.ripple(this,
+                    enabled ? CONTROL : VisualTheme.MUTE, 10,
+                    enabled ? AppUi.CONTROL_BORDER : VisualTheme.MUTE));
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
             trackSoloButtons[i].setText(solo ? "SOLO ✓" : "SOLO");
-            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? ACCENT : CONTROL, 7, 0));
+            trackSoloButtons[i].setBackground(AppUi.ripple(this,
+                    solo ? VisualTheme.SOLO : CONTROL, 10,
+                    solo ? VisualTheme.SOLO : AppUi.CONTROL_BORDER));
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
             int volume = ChannelVolumeSettingsStore.load(this, i);
@@ -933,6 +964,12 @@ public class MainActivity extends Activity {
         boolean enabled = bleMidiInput != null && bleMidiInput.isScanningEnabled();
         bleSearchButton.setText(getString(enabled ? R.string.ble_search_on : R.string.ble_search_off));
         bleSearchButton.setContentDescription(getString(enabled ? R.string.ble_search_accessibility_on : R.string.ble_search_accessibility_off));
+        bleSearchButton.setTextColor(enabled ? Color.WHITE : TEXT);
+        bleSearchButton.setBackground(AppUi.ripple(this,
+                enabled ? VisualTheme.SUCCESS : CONTROL,
+                VisualTheme.RADIUS_CONTROL,
+                enabled ? VisualTheme.SUCCESS : AppUi.BORDER));
+        bleSearchButton.setElevation(enabled ? AppUi.dp(this, 2) : 0);
     }
 
     private void showOperationStatus(String message) {
@@ -957,10 +994,8 @@ public class MainActivity extends Activity {
             midiWorkspace.setVisibility(View.VISIBLE);
             topControls.setVisibility(View.VISIBLE);
         }
-        midiTab.setBackground(AppUi.ripple(this, screen == 0 ? ACCENT : CONTROL, 10, 0));
-        settingsTab.setBackground(AppUi.ripple(this, screen == 1 ? ACCENT : CONTROL, 10, 0));
-        midiTab.setSelected(screen == 0);
-        settingsTab.setSelected(screen == 1);
+        NavigationTabFactory.update(this, midiTab, screen == 0);
+        NavigationTabFactory.update(this, settingsTab, screen == 1);
         midiTab.setContentDescription(getString(R.string.tab_midi_accessibility,
                 screen == 0 ? getString(R.string.tab_selected) : ""));
         settingsTab.setContentDescription(getString(R.string.tab_settings_accessibility,
@@ -1034,6 +1069,7 @@ public class MainActivity extends Activity {
     @Override public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
+        if (effectsScreen != null) effectsScreen.onConfigurationChanged(newConfig);
         if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
         getWindow().getDecorView().requestApplyInsets();
     }

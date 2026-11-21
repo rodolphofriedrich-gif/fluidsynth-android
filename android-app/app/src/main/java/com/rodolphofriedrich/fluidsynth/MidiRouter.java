@@ -197,10 +197,20 @@ public final class MidiRouter implements AutoCloseable {
         return Math.max(0, Math.min(127, value));
     }
 
-    /** Sends Note Off and releases sustain for every source without closing the router. */
+    /**
+     * Stops every active voice on all 16 channels, clears source ownership and
+     * releases sustain without closing the router. CC 120 is sent as a final
+     * safety net for voices that are not represented in the Java note ledger.
+     */
     public synchronized void panic() {
         Object[] activeSources = sources.keySet().toArray();
         for (Object source : activeSources) releaseSource(source);
+        for (int channel = 0; channel < 16; channel++) {
+            clearChannelNotes(channel);
+            clearChannelSustain(channel);
+            nativeBridge.nativeMidiEvent(0xB0 | channel, 120, 0);
+            nativeBridge.nativeMidiEvent(0xB0 | channel, 64, 0);
+        }
     }
 
     @Override
