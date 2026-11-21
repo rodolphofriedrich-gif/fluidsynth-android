@@ -43,8 +43,10 @@ public final class EffectsWorkspaceController {
 
     private boolean splitMode() {
         Configuration configuration = activity.getResources().getConfiguration();
-        // A divisão simultânea é reservada a tablets; telefones em paisagem usam largura integral.
-        return configuration.smallestScreenWidthDp >= 600;
+        // Em paisagem, telefones também usam MIDI + efeitos lado a lado.
+        // Tablets mantêm a divisão em qualquer orientação.
+        return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                || configuration.smallestScreenWidthDp >= 600;
     }
 
     private void apply(boolean animate) {
