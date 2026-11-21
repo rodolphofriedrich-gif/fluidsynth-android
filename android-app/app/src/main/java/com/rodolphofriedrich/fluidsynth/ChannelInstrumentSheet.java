@@ -91,7 +91,8 @@ public final class ChannelInstrumentSheet {
         root.addView(cancel);
         cancel.setOnClickListener(v -> dialog.dismiss());
 
-        dialog.setContentView(root);
+        dialog.setContentView(root, new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT));
         dialog.setCanceledOnTouchOutside(true);
         Window window = dialog.getWindow();
         boolean landscape = context.getResources().getConfiguration().orientation
@@ -112,6 +113,7 @@ public final class ChannelInstrumentSheet {
             params.gravity = sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL;
             params.dimAmount = sidePanel ? 0.22f : 0.08f;
             window.setAttributes(params);
+            if (sidePanel) window.setWindowAnimations(R.style.SoundFontSidePanelAnimation);
         }
         dialog.show();
         if (window != null) {
