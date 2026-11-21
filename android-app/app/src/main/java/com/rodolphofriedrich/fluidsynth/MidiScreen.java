@@ -137,11 +137,18 @@ public final class MidiScreen {
             strip.addView(actions);
             trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;
 
+            LinearLayout rowContainer=new LinearLayout(c);
+            rowContainer.setOrientation(LinearLayout.VERTICAL);
+            rowContainer.addView(strip,new LinearLayout.LayoutParams(-1,-2));
+            if(i<15){
+                View divider=new View(c);
+                divider.setBackgroundColor(android.graphics.Color.argb(26,154,170,194));
+                rowContainer.addView(divider,new LinearLayout.LayoutParams(-1,AppUi.dp(c,1)));
+            }
             GridLayout.LayoutParams cell=new GridLayout.LayoutParams();
             cell.width=-1; cell.height=GridLayout.LayoutParams.WRAP_CONTENT;
             cell.setMargins(0,0,0,0);
-            trackGrid.addView(strip,cell);
-            if(i<15) AppUi.addDivider(c,panel);
+            trackGrid.addView(rowContainer,cell);
         }
         updateTrackGridOrientation(c.getResources().getConfiguration());
 
