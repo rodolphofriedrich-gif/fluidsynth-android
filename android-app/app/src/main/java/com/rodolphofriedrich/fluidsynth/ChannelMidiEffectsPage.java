@@ -36,9 +36,9 @@ public final class ChannelMidiEffectsPage {
         this.context = context;
         root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(14), dp(16), dp(14));
-        root.setBackground(AppUi.rounded(context, AppUi.PANEL, VisualTheme.RADIUS_CARD, AppUi.BORDER));
-        root.setElevation(dp(2));
+        root.setPadding(0, dp(12), 0, dp(12));
+        root.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        root.setElevation(0);
 
         TextView title = new TextView(context);
         title.setText("Controles MIDI por canal");
@@ -55,8 +55,8 @@ public final class ChannelMidiEffectsPage {
 
         LinearLayout activeRow = new LinearLayout(context);
         activeRow.setGravity(Gravity.CENTER_VERTICAL);
-        activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
-        activeRow.setPadding(dp(14), dp(8), dp(10), dp(8));
+        activeRow.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        activeRow.setPadding(0, dp(8), 0, dp(8));
         activeRow.setMinimumHeight(dp(64));
         LinearLayout.LayoutParams activeParams = new LinearLayout.LayoutParams(-1, -2);
         activeParams.topMargin = dp(12);
@@ -100,11 +100,11 @@ public final class ChannelMidiEffectsPage {
             final int cc = ChannelMidiSettingsStore.CONTROLLERS[i];
             LinearLayout group = new LinearLayout(context);
             group.setOrientation(LinearLayout.VERTICAL);
-            group.setPadding(dp(12), dp(9), dp(12), dp(7));
-            group.setBackground(AppUi.rounded(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
+            group.setPadding(0, dp(8), 0, dp(8));
             LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(-1, -2);
-            groupParams.topMargin = dp(8);
+            groupParams.topMargin = dp(2);
             root.addView(group, groupParams);
+            if (i > 0) AppUi.addDivider(context, root);
 
             LinearLayout heading = new LinearLayout(context);
             heading.setGravity(Gravity.CENTER_VERTICAL);
