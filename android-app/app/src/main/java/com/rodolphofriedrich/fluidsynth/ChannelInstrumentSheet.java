@@ -17,6 +17,9 @@ import android.widget.TextView;
  * retrátil à direita, mantendo a tela MIDI visível. Não converter para bottom sheet.
  */
 public final class ChannelInstrumentSheet {
+    private static Dialog activeDialog;
+    private static Context activeContext;
+
     public interface Listener {
         void onLibrarySelected(int index);
     }
@@ -112,33 +115,65 @@ public final class ChannelInstrumentSheet {
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT));
         dialog.setCanceledOnTouchOutside(true);
 
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setOnDismissListener(ignored -> {
+            if (activeDialog == dialog) {
+                activeDialog = null;
+                activeContext = null;
+            }
+        });
+        dialog.show();
+        activeDialog = dialog;
+        activeContext = context;
+        applyResponsiveWindow(dialog, context);
+    }
+
+    /**
+     * Recalcula o painel se o aparelho girar enquanto a lista de SoundFonts/presets estiver aberta.
+     * O Activity usa configChanges para preservar o motor de áudio; por isso o diálogo precisa
+     * receber explicitamente as novas dimensões e orientação.
+     */
+    public static void onConfigurationChanged(Context context) {
+        Dialog dialog = activeDialog;
+        if (dialog == null || !dialog.isShowing()) return;
+        activeContext = context;
+        applyResponsiveWindow(dialog, context);
+    }
+
+    private static void applyResponsiveWindow(Dialog dialog, Context context) {
         boolean landscape = context.getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
         boolean tablet = context.getResources().getConfiguration().smallestScreenWidthDp >= 600;
         boolean sidePanel = landscape || tablet;
-        float density = context.getResources().getDisplayMetrics().density;
-        int screenWidthDp = Math.round(context.getResources().getDisplayMetrics().widthPixels / density);
+        int screenWidthDp = context.getResources().getConfiguration().screenWidthDp;
+        if (screenWidthDp <= 0) {
+            float density = context.getResources().getDisplayMetrics().density;
+            screenWidthDp = Math.round(context.getResources().getDisplayMetrics().widthPixels / density);
+        }
         int sideWidth = AppUi.dp(context, Math.min(480, Math.max(280,
                 Math.round(screenWidthDp * 0.48f))));
         int panelWidth = sidePanel ? sideWidth : WindowManager.LayoutParams.MATCH_PARENT;
         int panelHeight = WindowManager.LayoutParams.MATCH_PARENT;
 
         Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawableResource(android.R.color.transparent);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            WindowManager.LayoutParams params = window.getAttributes();
-            params.width = panelWidth;
-            params.height = panelHeight;
-            params.gravity = sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL;
-            params.dimAmount = sidePanel ? 0.22f : 0.08f;
-            window.setAttributes(params);
-            if (sidePanel) window.setWindowAnimations(R.style.SoundFontSidePanelAnimation);
+        if (window == null) return;
+        window.setBackgroundDrawableResource(android.R.color.transparent);
+        WindowManager.LayoutParams params = window.getAttributes();
+        params.width = panelWidth;
+        params.height = panelHeight;
+        params.gravity = sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL;
+        params.dimAmount = 0f;
+        if (sidePanel) {
+            params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            params.flags |= WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+        } else {
+            params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         }
-        dialog.show();
-        if (window != null) {
-            window.setLayout(panelWidth, panelHeight);
-            window.setGravity(sidePanel ? (Gravity.END | Gravity.CENTER_VERTICAL) : Gravity.FILL);
-        }
+        params.flags &= ~WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+        window.setAttributes(params);
+        window.setWindowAnimations(sidePanel ? R.style.SoundFontSidePanelAnimation : 0);
+        window.setLayout(panelWidth, panelHeight);
+        window.setGravity(params.gravity);
+        dialog.getWindow().getDecorView().requestLayout();
     }
 }
