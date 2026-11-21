@@ -136,6 +136,7 @@ public class MainActivity extends Activity {
         trackSoloButtons = midiScreen.trackSoloButtons;
         trackVolumeSeekBars = midiScreen.trackVolumeSeekBars;
         trackVolumeValues = midiScreen.trackVolumeValues;
+        trackInstrumentLabels = midiScreen.trackInstrumentLabels;
         selectInstrumentButton = midiScreen.selectInstrumentButton;
         trackEnableButton = midiScreen.trackEnableButton;
         soloButton = midiScreen.soloButton;
@@ -917,20 +918,20 @@ public class MainActivity extends Activity {
         if (channelMixController != null) channelMixController.applyIfSoloActive();
         for (int i = 0; i < trackButtons.length; i++) {
             Track item = trackManager.get(i);
-            String state = item.hasSoundFont() ? compactTrackName(item.getPresetName() == null ? item.getSoundFontName() : item.getPresetName()) : getString(R.string.track_empty_state);
-            if (!item.isEnabled()) state += getString(R.string.mute_suffix);
-            if (channelMixController != null && channelMixController.isSolo(i)) state += getString(R.string.solo_suffix);
-            String prefix = "☷ ";
-            trackButtons[i].setText(getString(R.string.track_button_label, prefix, i + 1, state));
-            trackButtons[i].setMaxLines(2);
-            trackButtons[i].setEllipsize(android.text.TextUtils.TruncateAt.END);
+            String state = item.hasSoundFont()
+                    ? compactTrackName(item.getPresetName() == null
+                            ? item.getSoundFontName() : item.getPresetName())
+                    : getString(R.string.track_empty_state);
+            trackButtons[i].setText("CH " + (i + 1));
             trackButtons[i].setTextColor(i == channel ? VisualTheme.ACCENT : TEXT);
-            trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1) + ": " + state);
+            trackButtons[i].setContentDescription(getString(R.string.track_accessibility, i + 1)
+                    + ": " + state);
             trackButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
             trackButtons[i].setElevation(0);
             trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-            trackButtons[i].setPadding(AppUi.dp(this, 2), AppUi.dp(this, 4),
-                    AppUi.dp(this, 2), AppUi.dp(this, 4));
+            trackButtons[i].setPadding(0, 0, 0, 0);
+            trackInstrumentLabels[i].setText(state);
+            trackInstrumentLabels[i].setContentDescription("Instrumento do canal " + (i + 1) + ": " + state);
             boolean enabled = item.isEnabled();
             trackMuteButtons[i].setText(enabled ? "M" : "M");
             trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
