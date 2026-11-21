@@ -100,7 +100,7 @@ public final class ChannelMidiEffectsPage {
             final int cc = ChannelMidiSettingsStore.CONTROLLERS[i];
             LinearLayout group = new LinearLayout(context);
             group.setOrientation(LinearLayout.VERTICAL);
-            group.setPadding(0, dp(8), 0, dp(8));
+            group.setPadding(0, dp(11), 0, dp(11));
             LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(-1, -2);
             groupParams.topMargin = dp(2);
             root.addView(group, groupParams);
@@ -125,7 +125,9 @@ public final class ChannelMidiEffectsPage {
             slider.setMax(127);
             slider.setContentDescription(LABELS[i] + ", CC " + cc);
             AppUi.tint(slider);
-            group.addView(slider, new LinearLayout.LayoutParams(-1, dp(48)));
+            LinearLayout.LayoutParams sliderParams = new LinearLayout.LayoutParams(-1, dp(48));
+            sliderParams.topMargin = dp(5);
+            group.addView(slider, sliderParams);
             sliders[i] = slider;
             slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
