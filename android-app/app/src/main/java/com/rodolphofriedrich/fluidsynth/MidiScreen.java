@@ -56,30 +56,30 @@ public final class MidiScreen {
         velocity.addView(velocityValue);
         velocitySeekBar=slider(c,126,99,c.getString(R.string.velocity_accessibility));
         velocity.addView(velocitySeekBar,new LinearLayout.LayoutParams(-1,AppUi.dp(c,34)));
-        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1f); vp.leftMargin=AppUi.dp(c,8);
+        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1f); vp.leftMargin=AppUi.dp(c,16);
         topControls.addView(velocity,vp);
         effectsToggleButton=new Button(c);
         effectsToggleButton.setText("≋"); effectsToggleButton.setTextSize(24);
         effectsToggleButton.setAllCaps(false); effectsToggleButton.setTextColor(AppUi.MUTED);
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
          effectsToggleButton.setBackground(AppUi.ripple(c,android.graphics.Color.argb(22,154,170,194),24,0));
-        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
-        ep.leftMargin=AppUi.dp(c,8); topControls.addView(effectsToggleButton,ep);
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,40),AppUi.dp(c,44));
+        ep.leftMargin=AppUi.dp(c,12); topControls.addView(effectsToggleButton,ep);
 
-        panicButton = smallButton(c, "×");
-        panicButton.setTextSize(25);
+        panicButton = smallButton(c, "⚠");
+        panicButton.setTextSize(21);
         panicButton.setTextColor(VisualTheme.MUTE);
         panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
-        panicButton.setContentDescription("Panic MIDI: interromper todas as notas e liberar sustain");
-        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.argb(34,185,75,88), 24, VisualTheme.MUTE));
+        panicButton.setContentDescription("Alerta Panic MIDI: interromper todas as notas e liberar sustain");
+        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 24, 0));
         LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,44),AppUi.dp(c,44));
         panicParams.leftMargin=AppUi.dp(c,6);
         topControls.addView(panicButton,panicParams);
 
         topControls.addOnLayoutChangeListener((view, left, top, right, bottom,
                 oldLeft, oldTop, oldRight, oldBottom) -> {
-            int available = topControls.getWidth() - AppUi.dp(c,44 + 44 + 22);
-            int controlWidth = Math.min(AppUi.dp(c,220), Math.max(AppUi.dp(c,80), available / 2));
+            int available = topControls.getWidth() - AppUi.dp(c,40 + 44 + 32);
+            int controlWidth = Math.min(AppUi.dp(c,196), Math.max(AppUi.dp(c,76), available / 2));
             LinearLayout.LayoutParams masterParams = (LinearLayout.LayoutParams) master.getLayoutParams();
             LinearLayout.LayoutParams velocityParams = (LinearLayout.LayoutParams) velocity.getLayoutParams();
             if (masterParams.width != controlWidth || masterParams.weight != 0f) {
@@ -217,7 +217,7 @@ public final class MidiScreen {
                 line.addView(key,kp); keyboardKeys[index]=key;
             }
         }
-        scrollView=new ScrollView(c); scrollView.setFillViewport(true); scrollView.setClipToPadding(false); scrollView.setPadding(0,0,0,AppUi.dp(c,16)); scrollView.addView(root);
+        scrollView=new ScrollView(c); scrollView.setFillViewport(true); scrollView.setClipToPadding(false); scrollView.setPadding(0,0,0,AppUi.dp(c,88)); scrollView.addView(root);
     }
     private static LinearLayout sliderGroup(Context c,String label){
         LinearLayout g=new LinearLayout(c); g.setOrientation(LinearLayout.VERTICAL);
