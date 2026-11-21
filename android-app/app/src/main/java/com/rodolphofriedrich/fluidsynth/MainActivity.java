@@ -183,6 +183,8 @@ public class MainActivity extends Activity {
             trackButtons[i].setOnClickListener(v -> {
                 if (trackManager != null) {
                     trackManager.select(channel);
+                    effectsScreen.setMidiChannel(channel,
+                            ChannelMidiSettingsStore.load(MainActivity.this, channel));
                     updateTrackControls();
                     showSoundFontLibraryPicker(channel);
                 }
