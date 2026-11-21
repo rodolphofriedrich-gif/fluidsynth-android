@@ -71,7 +71,9 @@ public final class ChannelInstrumentSheet {
         choiceScroll.setFillViewport(false);
         choiceScroll.addView(choiceList, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
-        int maxListHeight = Math.round(context.getResources().getDisplayMetrics().heightPixels * .62f);
+        float displayDensity = context.getResources().getDisplayMetrics().density;
+        int screenHeightDp = Math.round(context.getResources().getDisplayMetrics().heightPixels / displayDensity);
+        int maxListHeight = AppUi.dp(context, Math.max(120, Math.min(420, screenHeightDp - 190)));
         root.addView(choiceScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 choices.length == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : maxListHeight));
