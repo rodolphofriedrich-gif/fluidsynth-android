@@ -460,6 +460,7 @@ public final class EffectsScreen {
     }
 
     private void selectTab(int selected) {
+        if (selected != 2) midiPage.releaseSustain();
         for (int i = 0; i < 2; i++) pages[i].setVisibility(i == selected ? View.VISIBLE : View.GONE);
         midiPage.view().setVisibility(selected == 2 ? View.VISIBLE : View.GONE);
         for (int i = 0; i < 3; i++) {
