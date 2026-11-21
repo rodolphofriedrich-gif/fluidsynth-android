@@ -919,14 +919,14 @@ public class MainActivity extends Activity {
             boolean enabled = item.isEnabled();
             trackMuteButtons[i].setText(enabled ? "M" : "M");
             trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
-            trackMuteButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194), 18, 0));
             trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
             trackSoloButtons[i].setText("S");
             trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
-            trackSoloButtons[i].setBackground(AppUi.ripple(this, Color.TRANSPARENT, 8, 0));
+            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194), 18, 0));
             trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
