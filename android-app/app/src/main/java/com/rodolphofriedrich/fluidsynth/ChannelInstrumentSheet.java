@@ -99,9 +99,10 @@ public final class ChannelInstrumentSheet {
                 == Configuration.ORIENTATION_LANDSCAPE;
         boolean tablet = context.getResources().getConfiguration().smallestScreenWidthDp >= 600;
         boolean sidePanel = landscape || tablet;
-        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-        int sideWidth = Math.min(AppUi.dp(context, 480), Math.max(
-                AppUi.dp(context, 280), Math.round(screenWidth * 0.48f)));
+        float density = context.getResources().getDisplayMetrics().density;
+        int screenWidthDp = Math.round(context.getResources().getDisplayMetrics().widthPixels / density);
+        int sideWidth = AppUi.dp(context, Math.min(480, Math.max(280,
+                Math.round(screenWidthDp * 0.48f))));
         int panelWidth = sidePanel ? sideWidth : WindowManager.LayoutParams.MATCH_PARENT;
         int panelHeight = WindowManager.LayoutParams.MATCH_PARENT;
         if (window != null) {
