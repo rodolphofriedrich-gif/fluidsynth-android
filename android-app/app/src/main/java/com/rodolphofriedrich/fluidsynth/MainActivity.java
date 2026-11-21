@@ -333,7 +333,7 @@ public class MainActivity extends Activity {
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
         // Safe area: mantém a última faixa e o fim das páginas acima da navegação fixa.
-        int navigationSafeSpace = AppUi.dp(this, 72);
+        int navigationSafeSpace = AppUi.dp(this, 88);
         midiScroll.setClipToPadding(false);
         midiScroll.setPadding(0, 0, 0, navigationSafeSpace);
         effectsScroll.setClipToPadding(false);
@@ -716,7 +716,7 @@ public class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, AppUi.dp(this, 8), 0, AppUi.dp(this, 8));
+            row.setPadding(0, AppUi.dp(this, 6), 0, AppUi.dp(this, 6));
 
             TextView name = new TextView(this);
             name.setText(soundFontManager.getDisplayName(library));
@@ -740,8 +740,11 @@ public class MainActivity extends Activity {
                 button.setTextColor(TEXT);
                 showOperationStatus(getString(checked ? R.string.library_enabled : R.string.library_disabled));
             });
-            row.addView(enabledSwitch, new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            enabledSwitch.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+            LinearLayout.LayoutParams enabledParams = new LinearLayout.LayoutParams(
+                    AppUi.dp(this, 112), AppUi.dp(this, 40));
+            enabledParams.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+            row.addView(enabledSwitch, enabledParams);
 
             Button deleteButton = new Button(this);
             deleteButton.setText(R.string.library_delete);
@@ -754,7 +757,7 @@ public class MainActivity extends Activity {
                     soundFontManager.getDisplayName(library)));
             LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(
                     AppUi.dp(this, 64), AppUi.dp(this, 38));
-            deleteParams.leftMargin = AppUi.dp(this, 6);
+            deleteParams.leftMargin = 0;
             row.addView(deleteButton, deleteParams);
             deleteButton.setOnClickListener(v -> new android.app.AlertDialog.Builder(this,
                     android.R.style.Theme_DeviceDefault_Dialog_Alert)
@@ -936,14 +939,18 @@ public class MainActivity extends Activity {
             boolean enabled = item.isEnabled();
             trackMuteButtons[i].setText(enabled ? "M" : "M");
             trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
-            trackMuteButtons[i].setBackground(AppUi.ripple(this, enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackMuteButtons[i].setBackground(AppUi.ripple(this,
+                    enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194),
+                    8, AppUi.CONTROL_BORDER));
             trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
             boolean solo = channelMixController != null && channelMixController.isSolo(i);
             trackSoloButtons[i].setText("S");
             trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
-            trackSoloButtons[i].setBackground(AppUi.ripple(this, solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194), 18, 0));
+            trackSoloButtons[i].setBackground(AppUi.ripple(this,
+                    solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194),
+                    8, AppUi.CONTROL_BORDER));
             trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
