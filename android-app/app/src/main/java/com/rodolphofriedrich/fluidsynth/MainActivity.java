@@ -208,31 +208,6 @@ public class MainActivity extends Activity {
             });
         }
 
-        midiScreen.channelControlsButton.setOnClickListener(v -> {
-            if (!initialized || midiRouter == null || trackManager == null) {
-                showOperationStatus("Motor MIDI ainda não está pronto.");
-                return;
-            }
-            int channel = trackManager.getActiveChannel();
-            int[] values = ChannelMidiSettingsStore.load(this, channel);
-            new ChannelMidiControlsDialog(this, channel, values,
-                    new ChannelMidiControlsDialog.Listener() {
-                @Override public void onControlChanged(int targetChannel, int controller, int value) {
-                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
-                            0xB0 | targetChannel, controller, value);
-                }
-                @Override public void onControlCommitted(int targetChannel, int controller, int value) {
-                    ChannelMidiSettingsStore.save(MainActivity.this, targetChannel, controller, value);
-                }
-                @Override public void onSustainChanged(int targetChannel, boolean active) {
-                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
-                            0xB0 | targetChannel, 64, active ? 127 : 0);
-                }
-                @Override public void onDismissed() {
-                    if (midiRouter != null) midiRouter.releaseSource(channelControlsMidiSource);
-                }
-            }).show();
-        });
         midiScreen.panicButton.setOnClickListener(v -> {
             if (midiRouter == null) return;
             new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
@@ -448,6 +423,12 @@ public class MainActivity extends Activity {
             }
             restoreEffectsSettings();
             effectsScreen.setListener(new EffectsScreen.Listener() {
+                @Override public void onMidiPageSelected() {
+                    if (trackManager != null) {
+                        int channel = trackManager.getActiveChannel();
+                        effectsScreen.setMidiChannel(channel, ChannelMidiSettingsStore.load(MainActivity.this, channel));
+                    }
+                }
                 @Override public void onEffectActive(int effect, boolean active) {
                     EffectsSettingsStore.saveActive(MainActivity.this, effect, active);
                     if (effect == EffectsScreen.REVERB) nativeBridge.nativeSetReverbActive(active);
@@ -458,6 +439,19 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onPresetApplied(int effect) {
                     applyEffectParameters(effect);
+                }
+            });
+            effectsScreen.setMidiListener(new ChannelMidiEffectsPage.Listener() {
+                @Override public void onControlChanged(int channel, int controller, int value) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | channel, controller, value);
+                }
+                @Override public void onControlCommitted(int channel, int controller, int value) {
+                    ChannelMidiSettingsStore.save(MainActivity.this, channel, controller, value);
+                }
+                @Override public void onSustainChanged(int channel, boolean active) {
+                    if (midiRouter != null) midiRouter.send(channelControlsMidiSource,
+                            0xB0 | channel, 64, active ? 127 : 0);
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
