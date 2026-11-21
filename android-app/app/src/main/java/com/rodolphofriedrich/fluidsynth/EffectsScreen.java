@@ -229,8 +229,11 @@ public final class EffectsScreen {
         activeRow.setGravity(Gravity.CENTER_VERTICAL);
         activeRow.setBackground(AppUi.ripple(context, AppUi.CONTROL, 12, AppUi.CONTROL_BORDER));
         activeRow.setPadding(dp(14), dp(8), dp(10), dp(8));
+        // A altura acompanha as linhas de texto e respeita fontes ampliadas.
+        // O mínimo mantém a área de toque confortável sem cortar a descrição.
+        activeRow.setMinimumHeight(dp(64));
         LinearLayout.LayoutParams activeParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         activeParams.topMargin = dp(12);
         page.addView(activeRow, activeParams);
 
