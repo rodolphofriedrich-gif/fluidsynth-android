@@ -387,7 +387,7 @@ public class MainActivity extends Activity {
         LinearLayout navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         navigation.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 2), AppUi.dp(this, 12), AppUi.dp(this, 2));
-        navigation.setBackgroundColor(Color.TRANSPARENT);
+        navigation.setBackgroundColor(BG);
 
         Button midiTab = NavigationTabFactory.create(this, "♫", getString(R.string.tab_midi),
                 !showingSettings, getString(R.string.tab_midi_accessibility,
