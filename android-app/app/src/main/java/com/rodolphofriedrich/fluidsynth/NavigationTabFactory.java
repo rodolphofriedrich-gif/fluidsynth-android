@@ -47,13 +47,11 @@ public final class NavigationTabFactory {
 
     public static void update(Context context, Button button, boolean selected) {
         button.setSelected(selected);
-        button.setTextColor(selected ? Color.WHITE : AppUi.MUTED);
+        button.setTextColor(selected ? VisualTheme.ACCENT : AppUi.MUTED);
         button.setTypeface(Typeface.DEFAULT,
                 selected ? Typeface.BOLD : Typeface.NORMAL);
-        button.setBackground(AppUi.ripple(context,
-                selected ? Color.argb(58, 57, 139, 255) : Color.TRANSPARENT,
-                VisualTheme.RADIUS_CONTROL,
-                0));
+        button.setBackground(AppUi.ripple(context, Color.TRANSPARENT,
+                VisualTheme.RADIUS_CONTROL, 0));
         button.setElevation(0);
     }
 }

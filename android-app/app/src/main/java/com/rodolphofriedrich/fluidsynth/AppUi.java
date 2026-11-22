@@ -137,7 +137,7 @@ public final class AppUi {
     /** Divisor hairline discreto entre grupos relacionados. */
     public static void addDivider(Context context, LinearLayout parent) {
         View divider = new View(context);
-        divider.setBackgroundColor(Color.argb(26, 154, 170, 194));
+        divider.setBackgroundColor(Color.argb(26, 189, 189, 189));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(context, 1)));
         params.topMargin = dp(context, 8);
