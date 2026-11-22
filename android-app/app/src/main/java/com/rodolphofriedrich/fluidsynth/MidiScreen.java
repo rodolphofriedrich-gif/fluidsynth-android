@@ -43,7 +43,7 @@ public final class MidiScreen {
         root.setBackgroundColor(AppUi.BG);
 
         topControls=new LinearLayout(c);
-        topControls.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+        topControls.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         topControls.setPadding(0,AppUi.dp(c,8),0,AppUi.dp(c,8));
         topControls.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         topControls.setElevation(0);
@@ -72,6 +72,8 @@ public final class MidiScreen {
         LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(AppUi.dp(c, 82), -2);
         vp.leftMargin = AppUi.dp(c, 6);
         topControls.addView(velocity, vp);
+        View actionSpacer = new View(c);
+        topControls.addView(actionSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
 
         masterVolumeSeekBar = slider(c, 100, 100, c.getString(R.string.master_volume_accessibility));
         velocitySeekBar = slider(c, 126, 99, c.getString(R.string.velocity_accessibility));
@@ -86,7 +88,6 @@ public final class MidiScreen {
         effectsToggleButton.setContentDescription(c.getString(R.string.effects_panel_open));
         effectsToggleButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, android.graphics.Color.TRANSPARENT));
         LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(AppUi.dp(c,36),AppUi.dp(c,40));
-        ep.leftMargin=AppUi.dp(c,12);
         topControls.addView(effectsToggleButton,ep);
 
         panicButton = smallButton(c, "⚠");
@@ -95,9 +96,9 @@ public final class MidiScreen {
         panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
         panicButton.setGravity(Gravity.CENTER);
         panicButton.setContentDescription("Alerta Panic MIDI: interromper todas as notas e liberar sustain");
-        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, 0x668C3948));
+        panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, android.graphics.Color.TRANSPARENT));
         LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,36),AppUi.dp(c,40));
-        panicParams.leftMargin=AppUi.dp(c,6);
+        panicParams.leftMargin=AppUi.dp(c,4);
         topControls.addView(panicButton,panicParams);
 
         status=new TextView(c); audioDiagnostics=new TextView(c); midiActivity=new TextView(c);
@@ -165,14 +166,14 @@ public final class MidiScreen {
             solo.setTextSize(11);
             solo.setContentDescription(c.getString(R.string.solo_accessibility,i+1));
             int idleAction = android.graphics.Color.TRANSPARENT;
-            mute.setBackground(AppUi.ripple(c,idleAction,4,AppUi.CONTROL_BORDER));
-            solo.setBackground(AppUi.ripple(c,idleAction,4,AppUi.CONTROL_BORDER));
+            mute.setBackground(AppUi.ripple(c,idleAction,0,android.graphics.Color.TRANSPARENT));
+            solo.setBackground(AppUi.ripple(c,idleAction,0,android.graphics.Color.TRANSPARENT));
             LinearLayout.LayoutParams actionButtonParams =
-                    new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
+                    new LinearLayout.LayoutParams(AppUi.dp(c,24),AppUi.dp(c,30));
             actions.addView(mute,actionButtonParams);
             LinearLayout.LayoutParams soloParams =
-                    new LinearLayout.LayoutParams(AppUi.dp(c,30),AppUi.dp(c,30));
-            soloParams.leftMargin=AppUi.dp(c,3);
+                    new LinearLayout.LayoutParams(AppUi.dp(c,24),AppUi.dp(c,30));
+            soloParams.leftMargin=AppUi.dp(c,2);
             actions.addView(solo,soloParams);
             strip.addView(actions,new LinearLayout.LayoutParams(AppUi.dp(c,68),AppUi.dp(c,34)));
             trackMuteButtons[i]=mute; trackSoloButtons[i]=solo;
@@ -184,7 +185,7 @@ public final class MidiScreen {
 
             TextView instrument=new TextView(c);
             instrument.setText(c.getString(R.string.track_empty_state));
-            instrument.setTextColor(android.graphics.Color.WHITE);
+            instrument.setTextColor(AppUi.MUTED);
             instrument.setTextSize(11);
             instrument.setSingleLine(true);
             instrument.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -247,7 +248,7 @@ public final class MidiScreen {
         group.setGravity(Gravity.CENTER_HORIZONTAL);
         TextView label = new TextView(context);
         label.setText(title.toUpperCase(java.util.Locale.ROOT));
-        label.setTextColor(AppUi.MUTED);
+        label.setTextColor(android.graphics.Color.rgb(208, 208, 208));
         label.setTextSize(9);
         label.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         label.setGravity(Gravity.CENTER);
