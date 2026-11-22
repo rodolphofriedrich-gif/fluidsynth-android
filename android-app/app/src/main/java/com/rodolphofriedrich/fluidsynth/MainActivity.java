@@ -939,6 +939,7 @@ public class MainActivity extends Activity {
             trackButtons[i].setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
             trackButtons[i].setPadding(0, 0, 0, 0);
             trackInstrumentLabels[i].setText(state);
+            trackInstrumentLabels[i].setTextColor(item.hasSoundFont() ? TEXT : MUTED);
             trackInstrumentLabels[i].setContentDescription("Instrumento do canal " + (i + 1) + ": " + state);
             boolean enabled = item.isEnabled();
             trackMuteButtons[i].setText(enabled ? "M" : "M");
