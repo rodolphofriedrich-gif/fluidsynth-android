@@ -975,6 +975,13 @@ public class MainActivity extends Activity {
         String preset = selected.getPresetName();
         String instrument = preset == null || preset.trim().isEmpty()
                 ? soundFont : preset + " — " + soundFont;
+        midiScreen.selectedChannelLabel.setText(String.format(
+                java.util.Locale.ROOT, "CANAL %02d", channel + 1));
+        midiScreen.selectedInstrumentLabel.setText(compactTrackName(instrument));
+        midiScreen.selectedInstrumentLabel.setTextColor(
+                selected.hasSoundFont() ? TEXT : MUTED);
+        midiScreen.selectedInstrumentLabel.setContentDescription(
+                "Instrumento selecionado do canal " + (channel + 1) + ": " + instrument);
         status.setText(getString(R.string.channel_instrument_status, channel + 1, instrument));
         if (selectInstrumentButton != null) {
             selectInstrumentButton.setText(getString(selected.hasSoundFont() ? R.string.replace_instrument : R.string.choose_instrument));
