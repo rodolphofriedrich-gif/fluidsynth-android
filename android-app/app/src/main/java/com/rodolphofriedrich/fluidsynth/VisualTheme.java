@@ -12,8 +12,8 @@ public final class VisualTheme {
     public static final int BACKGROUND = Color.rgb(18, 18, 18);       // #121212
     public static final int SURFACE = Color.rgb(30, 30, 30);         // #1E1E1E
     public static final int CONTROL = Color.rgb(42, 42, 42);         // #2A2A2A
-    public static final int ACCENT = Color.rgb(57, 139, 255);         // #398BFF
-    public static final int ACCENT_SOFT = Color.argb(76, 57, 139, 255);
+    public static final int ACCENT = Color.rgb(152, 116, 232);        // #9874E8
+    public static final int ACCENT_SOFT = Color.argb(76, 152, 116, 232);
     public static final int TEXT_PRIMARY = Color.WHITE;                    // #FFFFFF
     public static final int TEXT_SECONDARY = Color.rgb(189, 189, 189);// #BDBDBD
     public static final int BORDER = Color.rgb(56, 56, 56);           // #383838
