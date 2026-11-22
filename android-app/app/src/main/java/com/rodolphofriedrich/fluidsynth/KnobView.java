@@ -58,10 +58,10 @@ public final class KnobView extends View {
         arc.setStrokeWidth(5.5f * density);
         arc.setColor(VisualTheme.EFFECTS);
 
-        body.setColor(Color.rgb(33, 28, 45));
+        body.setColor(Color.rgb(34, 45, 66));
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1f * density);
-        rim.setColor(Color.argb(150, 117, 102, 143));
+        rim.setColor(Color.argb(150, 103, 126, 158));
 
         highlight.setStyle(Paint.Style.STROKE);
         highlight.setStrokeWidth(1f * density);
@@ -122,9 +122,9 @@ public final class KnobView extends View {
                 y - innerRadius * .34f,
                 innerRadius * 1.55f,
                 new int[] {
-                    Color.rgb(81, 70, 107),
-                    Color.rgb(51, 43, 72),
-                    Color.rgb(33, 28, 45)
+                    Color.rgb(73, 86, 111),
+                    Color.rgb(39, 52, 75),
+                    Color.rgb(24, 34, 53)
                 },
                 new float[] {0f, .48f, 1f},
                 Shader.TileMode.CLAMP));
