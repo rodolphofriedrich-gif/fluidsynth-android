@@ -58,7 +58,7 @@ public final class KnobView extends View {
         arc.setStrokeWidth(5.5f * density);
         arc.setColor(VisualTheme.EFFECTS);
 
-        body.setColor(Color.rgb(34, 45, 66));
+        body.setColor(Color.rgb(33, 28, 45));
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1f * density);
         rim.setColor(Color.argb(150, 117, 102, 143));
