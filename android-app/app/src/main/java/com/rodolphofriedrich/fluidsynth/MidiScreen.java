@@ -91,13 +91,13 @@ public final class MidiScreen {
         topControls.addView(effectsToggleButton,ep);
 
         panicButton = smallButton(c, "⚠");
-        panicButton.setTextSize(21);
+        panicButton.setTextSize(23);
         panicButton.setTextColor(VisualTheme.MUTE);
         panicButton.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL);
         panicButton.setGravity(Gravity.CENTER);
         panicButton.setContentDescription("Alerta Panic MIDI: interromper todas as notas e liberar sustain");
         panicButton.setBackground(AppUi.ripple(c, android.graphics.Color.TRANSPARENT, 12, android.graphics.Color.TRANSPARENT));
-        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,36),AppUi.dp(c,40));
+        LinearLayout.LayoutParams panicParams = new LinearLayout.LayoutParams(AppUi.dp(c,40),AppUi.dp(c,44));
         panicParams.leftMargin=AppUi.dp(c,4);
         topControls.addView(panicButton,panicParams);
 
