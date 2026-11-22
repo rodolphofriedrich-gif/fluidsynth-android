@@ -6,6 +6,7 @@ import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
 
@@ -15,6 +16,7 @@ public final class ChannelMidiEffectsPage {
         void onControlChanged(int channel, int controller, int value);
         void onControlCommitted(int channel, int controller, int value);
         void onSustainChanged(int channel, boolean active);
+        void onVelocityCurveChanged(int channel, int curve);
     }
 
     private static final String[] LABELS = {
@@ -30,6 +32,7 @@ public final class ChannelMidiEffectsPage {
     private final Switch sustain;
     private final KnobView pitchBendRangeKnob;
     private final TextView pitchBendRangeValue;
+    private final Button[] velocityCurveButtons = new Button[3];
     private Listener listener;
     private int channel;
     private boolean binding;
@@ -214,6 +217,46 @@ public final class ChannelMidiEffectsPage {
             }
         });
 
+        AppUi.addDivider(context, root);
+        TextView velocityCurveTitle = AppUi.sectionLabel(context, "CURVA DE VELOCIDADE");
+        LinearLayout.LayoutParams velocityTitleParams = new LinearLayout.LayoutParams(-1, -2);
+        velocityTitleParams.topMargin = dp(14);
+        root.addView(velocityCurveTitle, velocityTitleParams);
+
+        TextView velocityCurveHint = new TextView(context);
+        velocityCurveHint.setText("Resposta da intensidade das notas · independente por canal");
+        velocityCurveHint.setTextColor(AppUi.MUTED);
+        velocityCurveHint.setTextSize(10);
+        LinearLayout.LayoutParams velocityHintParams = new LinearLayout.LayoutParams(-1, -2);
+        velocityHintParams.topMargin = dp(3);
+        root.addView(velocityCurveHint, velocityHintParams);
+
+        LinearLayout velocityCurveRow = new LinearLayout(context);
+        velocityCurveRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams velocityRowParams = new LinearLayout.LayoutParams(-1, -2);
+        velocityRowParams.topMargin = dp(8);
+        root.addView(velocityCurveRow, velocityRowParams);
+        String[] curveLabels = {"Linear", "Suave", "Forte"};
+        for (int i = 0; i < velocityCurveButtons.length; i++) {
+            final int curve = i;
+            Button button = new Button(context);
+            button.setText(curveLabels[i]);
+            button.setTextSize(11);
+            button.setAllCaps(false);
+            button.setMinHeight(dp(40));
+            button.setMinimumHeight(dp(40));
+            button.setPadding(dp(4), 0, dp(4), 0);
+            button.setOnClickListener(v -> {
+                VelocityCurveSettingsStore.save(context, channel, curve);
+                updateVelocityCurveButtons(curve);
+                if (listener != null) listener.onVelocityCurveChanged(channel, curve);
+            });
+            LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            if (i > 0) buttonParams.leftMargin = dp(6);
+            velocityCurveRow.addView(button, buttonParams);
+            velocityCurveButtons[i] = button;
+        }
+
         setChannel(0, ChannelMidiSettingsStore.load(context, 0));
     }
 
@@ -245,8 +288,24 @@ public final class ChannelMidiEffectsPage {
         pitchBendRangeKnob.setContentDescription("Faixa de Pitch Bend: "
                 + pitchRange + " semitons");
         sustain.setChecked(false);
+        int velocityCurve = VelocityCurveSettingsStore.load(context, this.channel);
+        updateVelocityCurveButtons(velocityCurve);
         binding = false;
         applyPitchBendRange(this.channel, pitchRange);
+    }
+
+    private void updateVelocityCurveButtons(int selected) {
+        String[] labels = {"Linear", "Suave", "Forte"};
+        for (int i = 0; i < velocityCurveButtons.length; i++) {
+            Button button = velocityCurveButtons[i];
+            if (button == null) continue;
+            boolean active = i == selected;
+            button.setText(labels[i]);
+            button.setTextColor(active ? AppUi.TEXT : AppUi.MUTED);
+            button.setBackground(AppUi.ripple(context,
+                    active ? 0x40398BFF : AppUi.CONTROL, 10,
+                    active ? VisualTheme.ACCENT : AppUi.CONTROL_BORDER));
+        }
     }
 
     /** RPN 0,0: Pitch Bend Sensitivity (semitons + cents), seguido de RPN null. */
