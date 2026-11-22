@@ -336,7 +336,7 @@ public class MainActivity extends Activity {
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
         // Safe area: mantém a última faixa e o fim das páginas acima da navegação fixa.
-        int navigationSafeSpace = AppUi.dp(this, 88);
+        int navigationSafeSpace = AppUi.dp(this, 104);
         midiScroll.setClipToPadding(false);
         midiScroll.setPadding(0, 0, 0, navigationSafeSpace);
         effectsScroll.setClipToPadding(false);
@@ -944,8 +944,7 @@ public class MainActivity extends Activity {
             trackMuteButtons[i].setText(enabled ? "M" : "M");
             trackMuteButtons[i].setTextColor(enabled ? AppUi.MUTED : VisualTheme.MUTE);
             trackMuteButtons[i].setBackground(AppUi.ripple(this,
-                    enabled ? Color.argb(42, 185, 75, 88) : Color.argb(24, 154, 170, 194),
-                    8, AppUi.CONTROL_BORDER));
+                    Color.TRANSPARENT, 0, Color.TRANSPARENT));
             trackMuteButtons[i].setElevation(0);
             trackMuteButtons[i].setContentDescription(getString(R.string.channel_toggle_accessibility, i + 1)
                     + (enabled ? getString(R.string.enabled_state) : getString(R.string.muted_state)));
@@ -953,8 +952,7 @@ public class MainActivity extends Activity {
             trackSoloButtons[i].setText("S");
             trackSoloButtons[i].setTextColor(solo ? VisualTheme.SOLO : AppUi.MUTED);
             trackSoloButtons[i].setBackground(AppUi.ripple(this,
-                    solo ? Color.argb(48, 242, 169, 59) : Color.argb(24, 154, 170, 194),
-                    8, AppUi.CONTROL_BORDER));
+                    Color.TRANSPARENT, 0, Color.TRANSPARENT));
             trackSoloButtons[i].setElevation(0);
             trackSoloButtons[i].setContentDescription(getString(solo
                     ? R.string.solo_accessibility_active : R.string.solo_accessibility, i + 1));
