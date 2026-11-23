@@ -100,7 +100,8 @@ public final class EffectsScreen {
     private final TextView[][] labels = new TextView[2][4];
     private final Switch[] active = new Switch[2];
     private final View[] pages = new View[2];
-    private final Button[] tabs = new Button[3];
+    private final Button[] tabs = new Button[4];
+    private View channelEditorPage;
     private final ChannelMidiEffectsPage midiPage;
     private final Button[] resetButtons = new Button[2];
     private final TextView[] effectStateLabels = new TextView[2];
@@ -139,12 +140,13 @@ public final class EffectsScreen {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tabRowParams.topMargin = dp(12);
         header.addView(tabRow, tabRowParams);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             final int effect = i;
             Button tab = new Button(context);
-            tab.setText(i == 2 ? "MIDI" : NAMES[i]);
+            tab.setText(i == 0 ? "REVERB" : i == 1 ? "CHORUS"
+                    : i == 2 ? "MIDI" : "EDIÇÃO\nDE TIMBRE");
             tab.setAllCaps(false);
-            tab.setTextSize(12);
+            tab.setTextSize(10);
             tab.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             tab.setMinHeight(0);
             tab.setMinimumHeight(0);
@@ -172,7 +174,9 @@ public final class EffectsScreen {
     /** Insere os controles de edição por canal no painel global retrátil. */
     public void addChannelEditor(View editor) {
         if (editor == null || editor.getParent() != null) return;
-        root.addView(editor, 1);
+        channelEditorPage = editor;
+        root.addView(editor);
+        channelEditorPage.setVisibility(View.GONE);
     }
 
     public void setListener(Listener listener) {
@@ -531,7 +535,10 @@ public final class EffectsScreen {
         if (selected != 2) midiPage.releaseSustain();
         for (int i = 0; i < 2; i++) pages[i].setVisibility(i == selected ? View.VISIBLE : View.GONE);
         midiPage.view().setVisibility(selected == 2 ? View.VISIBLE : View.GONE);
-        for (int i = 0; i < 3; i++) {
+        if (channelEditorPage != null) {
+            channelEditorPage.setVisibility(selected == 3 ? View.VISIBLE : View.GONE);
+        }
+        for (int i = 0; i < 4; i++) {
             boolean on = i == selected;
             tabs[i].setBackground(on
                     ? AppUi.ripple(context, VisualTheme.EFFECTS, 18, 0)
