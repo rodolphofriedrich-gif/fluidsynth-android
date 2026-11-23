@@ -21,7 +21,7 @@ public final class ChannelMidiEffectsPage {
 
     private static final String[] LABELS = {
             "Modulação", "Expression", "Pan", "Envio Reverb",
-            "Envio Chorus", "Cutoff", "Resonance"
+            "Envio Chorus", "Brilho (CC74)", "Ressonância (CC71)"
     };
     private static final int COLUMNS = 3;
     private final Context context;
@@ -100,6 +100,14 @@ public final class ChannelMidiEffectsPage {
         LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(-1, -2);
         controlsParams.topMargin = dp(12);
         root.addView(controlsTitle, controlsParams);
+
+        TextView controlsHint = new TextView(context);
+        controlsHint.setText("Mensagens MIDI CC por canal · a resposta depende do instrumento e da SoundFont");
+        controlsHint.setTextColor(AppUi.MUTED);
+        controlsHint.setTextSize(10);
+        LinearLayout.LayoutParams controlsHintParams = new LinearLayout.LayoutParams(-1, -2);
+        controlsHintParams.topMargin = dp(3);
+        root.addView(controlsHint, controlsHintParams);
 
         LinearLayout row = null;
         for (int i = 0; i < ChannelMidiSettingsStore.CONTROLLERS.length; i++) {
