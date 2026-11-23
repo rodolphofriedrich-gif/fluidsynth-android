@@ -9,20 +9,28 @@ import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.util.Locale;
 
-/**
- * Estrutura visual inicial do Editor de Timbre.
- *
- * Esta fase não cria nem altera parâmetros sonoros: prepara a navegação e os
- * módulos que receberão controles em etapas futuras.
- */
+/** Editor de timbre por canal; os módulos são ativados em etapas independentes. */
 public final class TimbreScreen {
+    public interface Listener {
+        void onSampleTuningChanged(int channel, int coarseSemitones, int fineCents, boolean tracking);
+    }
+
     public final ScrollView scrollView;
 
     private final Context context;
     private final TextView channelLabel;
     private final TextView instrumentLabel;
     private final GridLayout moduleGrid;
+    private final KnobView transposeKnob;
+    private final KnobView fineTuneKnob;
+    private final TextView transposeValue;
+    private final TextView fineTuneValue;
+    private int activeChannel;
+    private int coarseSemitones;
+    private int fineCents;
+    private Listener listener;
 
     private static final String[] MODULE_TITLES = {
             "FONTE SONORA  ·  SAMPLE",
@@ -33,7 +41,7 @@ public final class TimbreScreen {
     };
 
     private static final String[] MODULE_DETAILS = {
-            "Transposição (Transpose)\nAfinação fina (Fine Tuning)",
+            "",
             "Brilho (Cutoff)\nRessonância (Resonance)",
             "Ataque (Attack) · Decaimento (Decay)\nSustentação (Sustain) · Liberação (Release)",
             "Frequência (Rate)\nIntensidade (Depth)",
@@ -101,7 +109,8 @@ public final class TimbreScreen {
 
         moduleGrid = new GridLayout(context);
         moduleGrid.setUseDefaultMargins(false);
-        for (int i = 0; i < MODULE_TITLES.length; i++) {
+        moduleViews[0] = createSampleModule();
+        for (int i = 1; i < MODULE_TITLES.length; i++) {
             moduleViews[i] = createModule(MODULE_TITLES[i], MODULE_DETAILS[i]);
         }
         root.addView(moduleGrid, new LinearLayout.LayoutParams(
@@ -109,7 +118,7 @@ public final class TimbreScreen {
         updateGridColumns(context.getResources().getConfiguration());
 
         TextView notice = new TextView(context);
-        notice.setText("Estrutura inicial do editor. Os controles sonoros serão habilitados nas próximas etapas, após validação individual.");
+        notice.setText("Transposição e afinação fina são independentes por canal. Os demais módulos serão habilitados nas próximas etapas.");
         notice.setTextColor(AppUi.MUTED);
         notice.setTextSize(11);
         notice.setGravity(Gravity.CENTER);
@@ -122,6 +131,129 @@ public final class TimbreScreen {
         scrollView.setFillViewport(true);
         scrollView.setClipToPadding(false);
         scrollView.addView(root);
+
+        transposeKnob = (KnobView) moduleViews[0].findViewWithTag("sample_transpose_knob");
+        fineTuneKnob = (KnobView) moduleViews[0].findViewWithTag("sample_fine_knob");
+        transposeValue = (TextView) moduleViews[0].findViewWithTag("sample_transpose_value");
+        fineTuneValue = (TextView) moduleViews[0].findViewWithTag("sample_fine_value");
+
+        transposeKnob.setListener((knob, value, tracking) -> {
+            coarseSemitones = SampleTuningSettingsStore.clampCoarse(
+                    Math.round(value * 48f) - 24);
+            updateTuningLabels();
+            dispatchTuning(tracking);
+        });
+        fineTuneKnob.setListener((knob, value, tracking) -> {
+            fineCents = SampleTuningSettingsStore.clampFine(
+                    Math.round(value * 200f) - 100);
+            updateTuningLabels();
+            dispatchTuning(tracking);
+        });
+        setTuning(0, 0);
+    }
+
+    /** Retira o conteúdo para incorporá-lo ao painel retrátil de processamento. */
+    public View detachContent() {
+        View content = scrollView.getChildAt(0);
+        if (content != null) scrollView.removeView(content);
+        return content;
+    }
+
+    public void setListener(Listener listener) {
+        this.listener = listener;
+    }
+
+    private View createSampleModule() {
+        LinearLayout module = new LinearLayout(context);
+        module.setOrientation(LinearLayout.VERTICAL);
+        module.setPadding(AppUi.dp(context, 12), AppUi.dp(context, 12),
+                AppUi.dp(context, 12), AppUi.dp(context, 12));
+        module.setBackground(AppUi.rounded(context, AppUi.PANEL, 10, AppUi.BORDER));
+
+        TextView title = new TextView(context);
+        title.setText(MODULE_TITLES[0]);
+        title.setTextColor(VisualTheme.ACCENT);
+        title.setTextSize(10);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setLetterSpacing(0.04f);
+        module.addView(title);
+
+        LinearLayout controls = new LinearLayout(context);
+        controls.setGravity(Gravity.CENTER);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        controlsParams.topMargin = AppUi.dp(context, 12);
+        module.addView(controls, controlsParams);
+
+        LinearLayout transpose = createSampleControl("Transposição", "(Transpose)");
+        KnobView transposeControl = new KnobView(context, 76);
+        transposeControl.setTag("sample_transpose_knob");
+        TextView transposeNumber = sampleValue("0 st");
+        transposeNumber.setTag("sample_transpose_value");
+        transpose.addView(transposeControl, centeredKnobParams());
+        transpose.addView(transposeNumber, sampleValueParams());
+        controls.addView(transpose, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        LinearLayout fine = createSampleControl("Afinação fina", "(Fine Tuning)");
+        KnobView fineControl = new KnobView(context, 76);
+        fineControl.setTag("sample_fine_knob");
+        TextView fineNumber = sampleValue("0 cents");
+        fineNumber.setTag("sample_fine_value");
+        fine.addView(fineControl, centeredKnobParams());
+        fine.addView(fineNumber, sampleValueParams());
+        controls.addView(fine, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        return module;
+    }
+
+    private LinearLayout createSampleControl(String portuguese, String english) {
+        LinearLayout column = new LinearLayout(context);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER);
+        TextView label = new TextView(context);
+        label.setText(portuguese);
+        label.setTextColor(AppUi.TEXT);
+        label.setTextSize(11);
+        label.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        label.setGravity(Gravity.CENTER);
+        column.addView(label);
+        TextView secondary = new TextView(context);
+        secondary.setText(english);
+        secondary.setTextColor(AppUi.MUTED);
+        secondary.setTextSize(9);
+        secondary.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams secondaryParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        secondaryParams.topMargin = AppUi.dp(context, 1);
+        column.addView(secondary, secondaryParams);
+        return column;
+    }
+
+    private LinearLayout.LayoutParams centeredKnobParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                AppUi.dp(context, 82), AppUi.dp(context, 82));
+        params.gravity = Gravity.CENTER_HORIZONTAL;
+        params.topMargin = AppUi.dp(context, 6);
+        return params;
+    }
+
+    private LinearLayout.LayoutParams sampleValueParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.topMargin = AppUi.dp(context, 3);
+        return params;
+    }
+
+    private TextView sampleValue(String value) {
+        TextView text = new TextView(context);
+        text.setText(value);
+        text.setTextColor(VisualTheme.ACCENT);
+        text.setTextSize(11);
+        text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        text.setGravity(Gravity.CENTER);
+        return text;
     }
 
     private View createModule(String title, String details) {
@@ -162,12 +294,36 @@ public final class TimbreScreen {
         return module;
     }
 
-    public void setChannel(int channel, String instrument, boolean hasSoundFont) {
+    public void setChannel(int channel, String instrument, boolean hasSoundFont,
+            int coarseSemitones, int fineCents) {
         int safeChannel = Math.max(0, Math.min(15, channel));
-        channelLabel.setText(String.format(java.util.Locale.ROOT, "CANAL %02d", safeChannel + 1));
+        channelLabel.setText(String.format(Locale.ROOT, "CANAL %02d", safeChannel + 1));
         instrumentLabel.setText(instrument == null || instrument.trim().isEmpty()
                 ? "Nenhum instrumento selecionado" : instrument);
         instrumentLabel.setTextColor(hasSoundFont ? AppUi.TEXT : AppUi.MUTED);
+        activeChannel = safeChannel;
+        setTuning(coarseSemitones, fineCents);
+    }
+
+    private void setTuning(int coarse, int fine) {
+        coarseSemitones = SampleTuningSettingsStore.clampCoarse(coarse);
+        fineCents = SampleTuningSettingsStore.clampFine(fine);
+        transposeKnob.setValue((coarseSemitones + 24) / 48f);
+        fineTuneKnob.setValue((fineCents + 100) / 200f);
+        updateTuningLabels();
+    }
+
+    private void updateTuningLabels() {
+        transposeValue.setText(String.format(Locale.getDefault(), "%+d st", coarseSemitones));
+        fineTuneValue.setText(String.format(Locale.getDefault(), "%+d cents", fineCents));
+        transposeKnob.setContentDescription("Transposição: " + coarseSemitones + " semitons");
+        fineTuneKnob.setContentDescription("Afinação fina: " + fineCents + " cents");
+    }
+
+    private void dispatchTuning(boolean tracking) {
+        if (listener != null) {
+            listener.onSampleTuningChanged(activeChannel, coarseSemitones, fineCents, tracking);
+        }
     }
 
     public void onConfigurationChanged(Configuration configuration) {

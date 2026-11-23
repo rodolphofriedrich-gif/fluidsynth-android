@@ -87,11 +87,9 @@ public class MainActivity extends Activity {
     private static final int PICK_SF2 = 71;
     private int pendingImportChannel = -1;
     private static final String STATE_SHOWING_SETTINGS = "showing_settings";
-    private static final String STATE_SHOWING_TIMBRE = "showing_timbre";
     private static final String STATE_SHOWING_EFFECTS = "showing_effects";
     private static final int IMPORT_LIBRARY_ONLY = -2;
     private boolean showingSettings;
-    private boolean showingTimbre;
     private boolean showingEffects;
     private final Handler statusHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideOperationStatus = () -> {
@@ -127,15 +125,14 @@ public class MainActivity extends Activity {
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         }
         showingSettings = state != null && state.getBoolean(STATE_SHOWING_SETTINGS, false);
-        showingTimbre = state != null && state.getBoolean(STATE_SHOWING_TIMBRE, false);
         showingEffects = state != null && state.getBoolean(STATE_SHOWING_EFFECTS, false);
-        if (showingEffects) { showingSettings = false; showingTimbre = false; }
-        if (showingSettings) showingTimbre = false;
+        if (showingEffects) showingSettings = false;
 
         midiScreen = new MidiScreen(this);
         timbreScreen = new TimbreScreen(this);
         settingsScreen = new SettingsScreen(this);
         effectsScreen = new EffectsScreen(this);
+        effectsScreen.addChannelEditor(timbreScreen.detachContent());
 
         status = midiScreen.status;
         audioDiagnostics = midiScreen.audioDiagnostics;
@@ -341,15 +338,12 @@ public class MainActivity extends Activity {
         }
 
         ScrollView midiScroll = midiScreen.scrollView;
-        ScrollView timbreScroll = timbreScreen.scrollView;
         ScrollView settingsScroll = settingsScreen.scrollView;
         ScrollView effectsScroll = effectsScreen.scrollView;
         // Safe area: mantém a última faixa e o fim das páginas acima da navegação fixa.
         int navigationSafeSpace = AppUi.dp(this, 104);
         midiScroll.setClipToPadding(false);
         midiScroll.setPadding(0, 0, 0, navigationSafeSpace);
-        timbreScroll.setClipToPadding(false);
-        timbreScroll.setPadding(0, 0, 0, navigationSafeSpace);
         effectsScroll.setClipToPadding(false);
         effectsScroll.setPadding(0, 0, 0, navigationSafeSpace);
         settingsScroll.setClipToPadding(false);
@@ -365,7 +359,7 @@ public class MainActivity extends Activity {
                 midiScroll, effectsScroll, midiScreen.effectsToggleButton);
         effectsWorkspaceController.setOpen(showingEffects);
         midiScreen.effectsToggleButton.setOnClickListener(v -> {
-            if (showingSettings || showingTimbre) return;
+            if (showingSettings) return;
             effectsWorkspaceController.toggle();
             showingEffects = effectsWorkspaceController.isOpen();
         });
@@ -377,15 +371,11 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         screenHost.addView(workspace, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        screenHost.addView(timbreScroll, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         screenHost.addView(settingsScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         settingsScroll.setVisibility(showingSettings ? View.VISIBLE : View.GONE);
-        timbreScroll.setVisibility(showingTimbre ? View.VISIBLE : View.GONE);
-        workspace.setVisibility(showingSettings || showingTimbre ? View.GONE : View.VISIBLE);
+        workspace.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
         midiScreen.topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
-        midiScreen.effectsToggleButton.setVisibility(showingTimbre ? View.GONE : View.VISIBLE);
 
         operationStatus.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 3), AppUi.dp(this, 12), AppUi.dp(this, 3));
         operationStatus.setBackgroundColor(Color.TRANSPARENT);
@@ -405,27 +395,19 @@ public class MainActivity extends Activity {
         navigation.setBackgroundColor(BG);
 
         Button midiTab = NavigationTabFactory.create(this, "♫", "Mixer",
-                !showingTimbre && !showingSettings, "Mixer"
-                        + (!showingTimbre && !showingSettings ? " selecionado" : ""));
-        Button timbreTab = NavigationTabFactory.create(this, "◉", "Timbre",
-                showingTimbre, "Editor de timbre"
-                        + (showingTimbre ? " selecionado" : ""));
+                !showingSettings, "Mixer" + (!showingSettings ? " selecionado" : ""));
         Button settingsTab = NavigationTabFactory.create(this, "⚙", "Config.",
-                showingSettings, "Configurações"
-                        + (showingSettings ? " selecionado" : ""));
+                showingSettings, "Configurações" + (showingSettings ? " selecionado" : ""));
 
         LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0,
                 AppUi.dp(this, 56), 1f);
         tabParams.setMargins(AppUi.dp(this, 4), 0, AppUi.dp(this, 4), 0);
         navigation.addView(midiTab, tabParams);
-        navigation.addView(timbreTab, new LinearLayout.LayoutParams(tabParams));
         navigation.addView(settingsTab, new LinearLayout.LayoutParams(tabParams));
-        midiTab.setOnClickListener(v -> showMainScreen(0, workspace, timbreScroll, settingsScroll,
-                midiScreen.topControls, midiTab, timbreTab, settingsTab));
-        timbreTab.setOnClickListener(v -> showMainScreen(1, workspace, timbreScroll, settingsScroll,
-                midiScreen.topControls, midiTab, timbreTab, settingsTab));
-        settingsTab.setOnClickListener(v -> showMainScreen(2, workspace, timbreScroll, settingsScroll,
-                midiScreen.topControls, midiTab, timbreTab, settingsTab));
+        midiTab.setOnClickListener(v -> showMainScreen(0, workspace, settingsScroll,
+                midiScreen.topControls, midiTab, settingsTab));
+        settingsTab.setOnClickListener(v -> showMainScreen(1, workspace, settingsScroll,
+                midiScreen.topControls, midiTab, settingsTab));
 
         screenHost.addView(navigation, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -436,6 +418,11 @@ public class MainActivity extends Activity {
 
         initialized = NativeEngineLifecycle.acquire(createNativeEngineBridge());
         if (initialized) {
+            for (int channel = 0; channel < 16; channel++) {
+                nativeBridge.nativeSetTrackTuning(channel,
+                        SampleTuningSettingsStore.loadCoarse(this, channel),
+                        SampleTuningSettingsStore.loadFine(this, channel));
+            }
             midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && trackManager != null
@@ -498,6 +485,17 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onVelocityCurveChanged(int channel, int curve) {
                     if (midiRouter != null) midiRouter.setVelocityCurve(channel, curve);
+                }
+            });
+            timbreScreen.setListener((channel, coarseSemitones, fineCents, tracking) -> {
+                if (initialized) {
+                    nativeBridge.nativeSetTrackTuning(channel, coarseSemitones, fineCents);
+                }
+                if (!tracking) {
+                    SampleTuningSettingsStore.save(MainActivity.this, channel,
+                            coarseSemitones, fineCents);
+                    showOperationStatus("Canal " + (channel + 1)
+                            + ": transposição e afinação fina salvas.");
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
@@ -1002,7 +1000,9 @@ public class MainActivity extends Activity {
         midiScreen.selectedInstrumentLabel.setContentDescription(
                 "Instrumento selecionado do canal " + (channel + 1) + ": " + instrument);
         if (timbreScreen != null) timbreScreen.setChannel(channel, instrument,
-                selected.hasSoundFont());
+                selected.hasSoundFont(),
+                SampleTuningSettingsStore.loadCoarse(this, channel),
+                SampleTuningSettingsStore.loadFine(this, channel));
         status.setText(getString(R.string.channel_instrument_status, channel + 1, instrument));
         if (selectInstrumentButton != null) {
             selectInstrumentButton.setText(getString(selected.hasSoundFont() ? R.string.replace_instrument : R.string.choose_instrument));
@@ -1044,25 +1044,20 @@ public class MainActivity extends Activity {
         statusHandler.postDelayed(hideOperationStatus, 4000L);
     }
 
-    private void showMainScreen(int screen, View midiWorkspace, View timbreWorkspace,
-            View settings, View topControls, Button midiTab, Button timbreTab, Button settingsTab) {
-        showingSettings = screen == 2;
-        showingTimbre = screen == 1;
+    private void showMainScreen(int screen, View midiWorkspace,
+            View settings, View topControls, Button midiTab, Button settingsTab) {
+        showingSettings = screen == 1;
         effectsWorkspaceController.setOpen(false);
         showingEffects = false;
 
-        midiWorkspace.setVisibility(screen == 0 ? View.VISIBLE : View.GONE);
-        timbreWorkspace.setVisibility(showingTimbre ? View.VISIBLE : View.GONE);
+        midiWorkspace.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
         settings.setVisibility(showingSettings ? View.VISIBLE : View.GONE);
         topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
-        midiScreen.effectsToggleButton.setVisibility(showingTimbre ? View.GONE : View.VISIBLE);
 
-        NavigationTabFactory.update(this, midiTab, screen == 0);
-        NavigationTabFactory.update(this, timbreTab, screen == 1);
-        NavigationTabFactory.update(this, settingsTab, screen == 2);
-        midiTab.setContentDescription("Mixer" + (screen == 0 ? " selecionado" : ""));
-        timbreTab.setContentDescription("Editor de timbre" + (screen == 1 ? " selecionado" : ""));
-        settingsTab.setContentDescription("Configurações" + (screen == 2 ? " selecionado" : ""));
+        NavigationTabFactory.update(this, midiTab, !showingSettings);
+        NavigationTabFactory.update(this, settingsTab, showingSettings);
+        midiTab.setContentDescription("Mixer" + (!showingSettings ? " selecionado" : ""));
+        settingsTab.setContentDescription("Configurações" + (showingSettings ? " selecionado" : ""));
     }
 
     private void applyEffectParameters(int effect) {
@@ -1124,7 +1119,6 @@ public class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(STATE_SHOWING_SETTINGS, showingSettings);
-        outState.putBoolean(STATE_SHOWING_TIMBRE, showingTimbre);
         outState.putBoolean(STATE_SHOWING_EFFECTS,
                 effectsWorkspaceController != null && effectsWorkspaceController.isOpen());
         super.onSaveInstanceState(outState);

@@ -94,12 +94,14 @@ public final class EffectsScreen {
 
     public final ScrollView scrollView;
     private final Context context;
+    private final LinearLayout root;
     private final float[][] values = new float[2][4];
     private final KnobView[][] knobs = new KnobView[2][4];
     private final TextView[][] labels = new TextView[2][4];
     private final Switch[] active = new Switch[2];
     private final View[] pages = new View[2];
-    private final Button[] tabs = new Button[3];
+    private final Button[] tabs = new Button[4];
+    private View channelEditorPage;
     private final ChannelMidiEffectsPage midiPage;
     private final Button[] resetButtons = new Button[2];
     private final TextView[] effectStateLabels = new TextView[2];
@@ -112,7 +114,7 @@ public final class EffectsScreen {
 
     public EffectsScreen(Context context) {
         this.context = context;
-        LinearLayout root = new LinearLayout(context);
+        root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(16), dp(16), dp(16), dp(36));
         root.setBackgroundColor(AppUi.BG);
@@ -138,18 +140,23 @@ public final class EffectsScreen {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tabRowParams.topMargin = dp(12);
         header.addView(tabRow, tabRowParams);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             final int effect = i;
             Button tab = new Button(context);
-            tab.setText(i == 2 ? "MIDI" : NAMES[i]);
+            tab.setText(i == 0 ? "REVERB" : i == 1 ? "CHORUS"
+                    : i == 2 ? "MIDI" : "EDIÇÃO\nDE TIMBRE");
             tab.setAllCaps(false);
-            tab.setTextSize(12);
+            tab.setTextSize(10);
             tab.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             tab.setMinHeight(0);
             tab.setMinimumHeight(0);
-            tab.setPadding(dp(4), dp(8), dp(4), dp(8));
+            tab.setPadding(dp(3), dp(8), dp(3), dp(8));
+            tab.setGravity(Gravity.CENTER);
             tab.setElevation(0);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            // Reserva um pouco mais de largura para "EDIÇÃO DE TIMBRE",
+            // evitando cortar o rótulo em telas estreitas.
+            float tabWeight = i == 3 ? 1.45f : 1f;
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(46), tabWeight);
             params.setMargins(dp(1), 0, dp(1), 0);
             tabRow.addView(tab, params);
             tabs[i] = tab;
@@ -166,6 +173,14 @@ public final class EffectsScreen {
         scrollView.setPadding(0, 0, 0, dp(88));
         scrollView.addView(root);
         selectTab(REVERB);
+    }
+
+    /** Insere os controles de edição por canal no painel global retrátil. */
+    public void addChannelEditor(View editor) {
+        if (editor == null || editor.getParent() != null) return;
+        channelEditorPage = editor;
+        root.addView(editor);
+        channelEditorPage.setVisibility(View.GONE);
     }
 
     public void setListener(Listener listener) {
@@ -524,7 +539,10 @@ public final class EffectsScreen {
         if (selected != 2) midiPage.releaseSustain();
         for (int i = 0; i < 2; i++) pages[i].setVisibility(i == selected ? View.VISIBLE : View.GONE);
         midiPage.view().setVisibility(selected == 2 ? View.VISIBLE : View.GONE);
-        for (int i = 0; i < 3; i++) {
+        if (channelEditorPage != null) {
+            channelEditorPage.setVisibility(selected == 3 ? View.VISIBLE : View.GONE);
+        }
+        for (int i = 0; i < 4; i++) {
             boolean on = i == selected;
             tabs[i].setBackground(on
                     ? AppUi.ripple(context, VisualTheme.EFFECTS, 18, 0)
