@@ -436,6 +436,11 @@ public class MainActivity extends Activity {
 
         initialized = NativeEngineLifecycle.acquire(createNativeEngineBridge());
         if (initialized) {
+            for (int channel = 0; channel < 16; channel++) {
+                nativeBridge.nativeSetTrackTuning(channel,
+                        SampleTuningSettingsStore.loadCoarse(this, channel),
+                        SampleTuningSettingsStore.loadFine(this, channel));
+            }
             midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
                     runOnUiThread(() -> {
                         if (!isFinishing() && !isDestroyed() && trackManager != null
@@ -498,6 +503,17 @@ public class MainActivity extends Activity {
                 }
                 @Override public void onVelocityCurveChanged(int channel, int curve) {
                     if (midiRouter != null) midiRouter.setVelocityCurve(channel, curve);
+                }
+            });
+            timbreScreen.setListener((channel, coarseSemitones, fineCents, tracking) -> {
+                if (initialized) {
+                    nativeBridge.nativeSetTrackTuning(channel, coarseSemitones, fineCents);
+                }
+                if (!tracking) {
+                    SampleTuningSettingsStore.save(MainActivity.this, channel,
+                            coarseSemitones, fineCents);
+                    showOperationStatus("Canal " + (channel + 1)
+                            + ": transposição e afinação fina salvas.");
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
@@ -1002,7 +1018,9 @@ public class MainActivity extends Activity {
         midiScreen.selectedInstrumentLabel.setContentDescription(
                 "Instrumento selecionado do canal " + (channel + 1) + ": " + instrument);
         if (timbreScreen != null) timbreScreen.setChannel(channel, instrument,
-                selected.hasSoundFont());
+                selected.hasSoundFont(),
+                SampleTuningSettingsStore.loadCoarse(this, channel),
+                SampleTuningSettingsStore.loadFine(this, channel));
         status.setText(getString(R.string.channel_instrument_status, channel + 1, instrument));
         if (selectInstrumentButton != null) {
             selectInstrumentButton.setText(getString(selected.hasSoundFont() ? R.string.replace_instrument : R.string.choose_instrument));
