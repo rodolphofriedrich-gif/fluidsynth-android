@@ -150,9 +150,13 @@ public final class EffectsScreen {
             tab.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             tab.setMinHeight(0);
             tab.setMinimumHeight(0);
-            tab.setPadding(dp(4), dp(8), dp(4), dp(8));
+            tab.setPadding(dp(3), dp(8), dp(3), dp(8));
+            tab.setGravity(Gravity.CENTER);
             tab.setElevation(0);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            // Reserva um pouco mais de largura para "EDIÇÃO DE TIMBRE",
+            // evitando cortar o rótulo em telas estreitas.
+            float tabWeight = i == 3 ? 1.45f : 1f;
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), tabWeight);
             params.setMargins(dp(1), 0, dp(1), 0);
             tabRow.addView(tab, params);
             tabs[i] = tab;
