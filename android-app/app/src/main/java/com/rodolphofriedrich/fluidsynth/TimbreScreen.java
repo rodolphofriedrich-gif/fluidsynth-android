@@ -152,6 +152,13 @@ public final class TimbreScreen {
         setTuning(0, 0);
     }
 
+    /** Retira o conteúdo para incorporá-lo ao painel retrátil de processamento. */
+    public View detachContent() {
+        View content = scrollView.getChildAt(0);
+        if (content != null) scrollView.removeView(content);
+        return content;
+    }
+
     public void setListener(Listener listener) {
         this.listener = listener;
     }
