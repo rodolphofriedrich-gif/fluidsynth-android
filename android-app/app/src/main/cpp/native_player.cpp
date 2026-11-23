@@ -88,6 +88,13 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackVolume(JNIEnv*, jobject, jint channel, jint volume) {
     SynthEngine::instance().setTrackVolume(channel, volume);
 }
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackTuning(
+        JNIEnv*, jobject, jint channel, jint coarseSemitones, jfloat fineCents) {
+    return SynthEngine::instance().setTrackTuning(channel, coarseSemitones, fineCents)
+            ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetActiveTrack(JNIEnv*, jobject, jint channel) {
     SynthEngine::instance().setActiveChannel(channel);
