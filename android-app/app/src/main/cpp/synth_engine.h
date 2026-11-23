@@ -5,6 +5,7 @@
 #include <mutex>
 #include <vector>
 #include <fluidsynth.h>
+#include <fluidsynth/gen.h>
 struct SoundFontPreset { int bank; int program; std::string name; };
 class SynthEngine {
 public:
