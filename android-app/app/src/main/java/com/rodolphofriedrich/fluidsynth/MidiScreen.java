@@ -26,6 +26,7 @@ public final class MidiScreen {
     public final SeekBar masterVolumeSeekBar, velocitySeekBar;
     public final KnobView masterVolumeKnob, velocityKnob;
     public final TextView masterVolumeValue, velocityValue;
+    public final TextView selectedChannelLabel, selectedInstrumentLabel;
     public final LinearLayout importProgressPanel;
     public final TextView importProgressText;
     public final ProgressBar importProgressBar;
@@ -72,8 +73,36 @@ public final class MidiScreen {
         LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(AppUi.dp(c, 82), -2);
         vp.leftMargin = AppUi.dp(c, 6);
         topControls.addView(velocity, vp);
-        View actionSpacer = new View(c);
-        topControls.addView(actionSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        LinearLayout selectedChannel = new LinearLayout(c);
+        selectedChannel.setOrientation(LinearLayout.VERTICAL);
+        selectedChannel.setGravity(Gravity.CENTER);
+        selectedChannel.setPadding(AppUi.dp(c, 4), 0, AppUi.dp(c, 4), 0);
+
+        selectedChannelLabel = new TextView(c);
+        selectedChannelLabel.setText("CANAL 01");
+        selectedChannelLabel.setTextColor(VisualTheme.ACCENT);
+        selectedChannelLabel.setTextSize(11);
+        selectedChannelLabel.setTypeface(android.graphics.Typeface.DEFAULT,
+                android.graphics.Typeface.BOLD);
+        selectedChannelLabel.setGravity(Gravity.CENTER);
+        selectedChannel.addView(selectedChannelLabel,
+                new LinearLayout.LayoutParams(-1, AppUi.dp(c, 18)));
+
+        selectedInstrumentLabel = new TextView(c);
+        selectedInstrumentLabel.setText(c.getString(R.string.soundfont_missing));
+        selectedInstrumentLabel.setTextColor(AppUi.MUTED);
+        selectedInstrumentLabel.setTextSize(10);
+        selectedInstrumentLabel.setGravity(Gravity.CENTER);
+        selectedInstrumentLabel.setSingleLine(true);
+        selectedInstrumentLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        selectedChannel.addView(selectedInstrumentLabel,
+                new LinearLayout.LayoutParams(-1, AppUi.dp(c, 18)));
+
+        LinearLayout.LayoutParams selectedChannelParams =
+                new LinearLayout.LayoutParams(0, -2, 1f);
+        selectedChannelParams.leftMargin = AppUi.dp(c, 4);
+        selectedChannelParams.rightMargin = AppUi.dp(c, 4);
+        topControls.addView(selectedChannel, selectedChannelParams);
 
         masterVolumeSeekBar = slider(c, 100, 100, c.getString(R.string.master_volume_accessibility));
         velocitySeekBar = slider(c, 126, 99, c.getString(R.string.velocity_accessibility));
