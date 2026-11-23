@@ -156,7 +156,7 @@ public final class EffectsScreen {
             // Reserva um pouco mais de largura para "EDIÇÃO DE TIMBRE",
             // evitando cortar o rótulo em telas estreitas.
             float tabWeight = i == 3 ? 1.45f : 1f;
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), tabWeight);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(46), tabWeight);
             params.setMargins(dp(1), 0, dp(1), 0);
             tabRow.addView(tab, params);
             tabs[i] = tab;
