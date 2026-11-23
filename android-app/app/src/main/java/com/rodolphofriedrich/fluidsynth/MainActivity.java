@@ -1129,6 +1129,7 @@ public class MainActivity extends Activity {
 
         // Recalcular todas as áreas que dependem da largura/orientação sem reiniciar o motor MIDI.
         if (midiScreen != null) midiScreen.updateTrackGridOrientation(newConfig);
+        if (timbreScreen != null) timbreScreen.onConfigurationChanged(newConfig);
         if (effectsScreen != null) effectsScreen.onConfigurationChanged(newConfig);
         if (effectsWorkspaceController != null) effectsWorkspaceController.onConfigurationChanged();
 
