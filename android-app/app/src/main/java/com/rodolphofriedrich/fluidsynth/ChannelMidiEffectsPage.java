@@ -20,8 +20,12 @@ public final class ChannelMidiEffectsPage {
     }
 
     private static final String[] LABELS = {
-            "Modulação", "Expression", "Pan", "Envio Reverb",
-            "Envio Chorus", "Brilho (CC74)", "Ressonância (CC71)"
+            "Modulação", "Expressão", "Panorâmica", "Envio de Reverb",
+            "Envio de Chorus", "Brilho", "Ressonância"
+    };
+    private static final String[] TRADITIONAL_LABELS = {
+            "Modulation", "Expression", "Pan", "Reverb Send",
+            "Chorus Send", "Cutoff", "Resonance"
     };
     private static final int COLUMNS = 3;
     private final Context context;
@@ -126,13 +130,24 @@ public final class ChannelMidiEffectsPage {
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
             cell.setPadding(dp(2), dp(4), dp(2), dp(6));
 
+            LinearLayout labelGroup = new LinearLayout(context);
+            labelGroup.setOrientation(LinearLayout.VERTICAL);
+            labelGroup.setGravity(Gravity.CENTER);
             TextView label = new TextView(context);
             label.setText(LABELS[i]);
-            label.setTextColor(AppUi.MUTED);
+            label.setTextColor(AppUi.TEXT);
             label.setTextSize(10);
             label.setGravity(Gravity.CENTER);
-            label.setMaxLines(2);
-            cell.addView(label, new LinearLayout.LayoutParams(-1, dp(28)));
+            label.setMaxLines(1);
+            labelGroup.addView(label, new LinearLayout.LayoutParams(-1, -2));
+            TextView traditionalLabel = new TextView(context);
+            traditionalLabel.setText("(" + TRADITIONAL_LABELS[i] + ")");
+            traditionalLabel.setTextColor(AppUi.MUTED);
+            traditionalLabel.setTextSize(8);
+            traditionalLabel.setGravity(Gravity.CENTER);
+            traditionalLabel.setMaxLines(1);
+            labelGroup.addView(traditionalLabel, new LinearLayout.LayoutParams(-1, -2));
+            cell.addView(labelGroup, new LinearLayout.LayoutParams(-1, dp(30)));
 
             KnobView knob = new KnobView(context, 68);
             knob.setContentDescription(LABELS[i] + ", CC " + cc);
