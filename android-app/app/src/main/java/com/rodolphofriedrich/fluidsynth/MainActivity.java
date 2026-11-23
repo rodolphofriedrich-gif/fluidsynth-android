@@ -365,7 +365,7 @@ public class MainActivity extends Activity {
                 midiScroll, effectsScroll, midiScreen.effectsToggleButton);
         effectsWorkspaceController.setOpen(showingEffects);
         midiScreen.effectsToggleButton.setOnClickListener(v -> {
-            if (showingSettings) return;
+            if (showingSettings || showingTimbre) return;
             effectsWorkspaceController.toggle();
             showingEffects = effectsWorkspaceController.isOpen();
         });
@@ -385,6 +385,7 @@ public class MainActivity extends Activity {
         timbreScroll.setVisibility(showingTimbre ? View.VISIBLE : View.GONE);
         workspace.setVisibility(showingSettings || showingTimbre ? View.GONE : View.VISIBLE);
         midiScreen.topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
+        midiScreen.effectsToggleButton.setVisibility(showingTimbre ? View.GONE : View.VISIBLE);
 
         operationStatus.setPadding(AppUi.dp(this, 12), AppUi.dp(this, 3), AppUi.dp(this, 12), AppUi.dp(this, 3));
         operationStatus.setBackgroundColor(Color.TRANSPARENT);
@@ -1054,6 +1055,7 @@ public class MainActivity extends Activity {
         timbreWorkspace.setVisibility(showingTimbre ? View.VISIBLE : View.GONE);
         settings.setVisibility(showingSettings ? View.VISIBLE : View.GONE);
         topControls.setVisibility(showingSettings ? View.GONE : View.VISIBLE);
+        midiScreen.effectsToggleButton.setVisibility(showingTimbre ? View.GONE : View.VISIBLE);
 
         NavigationTabFactory.update(this, midiTab, screen == 0);
         NavigationTabFactory.update(this, timbreTab, screen == 1);
