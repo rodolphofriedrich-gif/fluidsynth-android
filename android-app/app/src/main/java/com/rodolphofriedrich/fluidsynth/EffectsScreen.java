@@ -94,6 +94,7 @@ public final class EffectsScreen {
 
     public final ScrollView scrollView;
     private final Context context;
+    private final LinearLayout root;
     private final float[][] values = new float[2][4];
     private final KnobView[][] knobs = new KnobView[2][4];
     private final TextView[][] labels = new TextView[2][4];
@@ -112,7 +113,7 @@ public final class EffectsScreen {
 
     public EffectsScreen(Context context) {
         this.context = context;
-        LinearLayout root = new LinearLayout(context);
+        root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(16), dp(16), dp(16), dp(36));
         root.setBackgroundColor(AppUi.BG);
@@ -166,6 +167,12 @@ public final class EffectsScreen {
         scrollView.setPadding(0, 0, 0, dp(88));
         scrollView.addView(root);
         selectTab(REVERB);
+    }
+
+    /** Insere os controles de edição por canal no painel global retrátil. */
+    public void addChannelEditor(View editor) {
+        if (editor == null || editor.getParent() != null) return;
+        root.addView(editor, 1);
     }
 
     public void setListener(Listener listener) {
