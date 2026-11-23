@@ -102,6 +102,7 @@ public final class EffectsScreen {
     private final Button[] tabs = new Button[3];
     private final ChannelMidiEffectsPage midiPage;
     private final Button[] resetButtons = new Button[2];
+    private final TextView[] effectStateLabels = new TextView[2];
     private final Button[][] presetButtons = new Button[2][];
     private final GridLayout[] parameterGrids = new GridLayout[2];
     private final View[][] parameterCells = new View[2][4];
@@ -192,6 +193,7 @@ public final class EffectsScreen {
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
+        updateEffectStateLabel(effect);
     }
 
     public void setActive(int effect, boolean enabled) {
@@ -328,6 +330,15 @@ public final class EffectsScreen {
         page.addView(presetsRow);
         updatePresetButtons(effect);
 
+        TextView effectState = new TextView(context);
+        effectState.setTextColor(AppUi.MUTED);
+        effectState.setTextSize(10);
+        effectState.setPadding(dp(4), dp(2), dp(4), 0);
+        effectState.setGravity(Gravity.CENTER_VERTICAL);
+        effectStateLabels[effect] = effectState;
+        page.addView(effectState, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(22)));
+
         GridLayout grid = new GridLayout(context);
         boolean landscape = context.getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
@@ -406,6 +417,7 @@ public final class EffectsScreen {
         reset.setOnClickListener(v -> restoreDefaults(effect));
         resetButtons[effect] = reset;
         updateResetButton(effect);
+        updateEffectStateLabel(effect);
     }
 
     private void applyPreset(int effect, int preset) {
@@ -415,6 +427,7 @@ public final class EffectsScreen {
         }
         selectedPreset[effect] = preset;
         updatePresetButtons(effect);
+        updateEffectStateLabel(effect);
         notifyPresetApplied(effect);
     }
 
@@ -424,6 +437,7 @@ public final class EffectsScreen {
         }
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
+        updateEffectStateLabel(effect);
         notifyPresetApplied(effect);
     }
 
@@ -445,6 +459,7 @@ public final class EffectsScreen {
         selectedPreset[effect] = -1;
         updatePresetButtons(effect);
         updateResetButton(effect);
+        updateEffectStateLabel(effect);
         // As APIs globais de efeitos não são realtime-safe: aplica ao soltar o knob.
         if (tracking) return;
         if (listener != null) listener.onParamChanged(effect, param, value);
@@ -463,6 +478,28 @@ public final class EffectsScreen {
             buttons[i].setContentDescription(buttons[i].getText()
                     + (selected ? ", predefinição selecionada" : ""));
         }
+    }
+
+    private void updateEffectStateLabel(int effect) {
+        TextView label = effectStateLabels[effect];
+        if (label == null) return;
+
+        int preset = selectedPreset[effect];
+        if (preset >= 0 && presetButtons[effect] != null
+                && preset < presetButtons[effect].length) {
+            label.setText("Predefinição ativa: " + presetButtons[effect][preset].getText());
+        } else {
+            boolean modified = false;
+            for (int param = 0; param < 4; param++) {
+                if (Math.abs(values[effect][param] - SPECS[effect][param].def) > .0001f) {
+                    modified = true;
+                    break;
+                }
+            }
+            label.setText(modified ? "Configuração personalizada" : "Padrão de fábrica");
+        }
+        label.setContentDescription("Estado dos parâmetros de " + NAMES[effect]
+                + ": " + label.getText());
     }
 
     private void updateResetButton(int effect) {
