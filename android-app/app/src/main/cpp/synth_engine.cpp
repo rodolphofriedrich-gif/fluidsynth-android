@@ -16,6 +16,8 @@ bool SynthEngine::initialize() {
     bankLsb_.fill(0);
     programs_.fill(0);
     channelVolumes_.fill(127);
+    coarseTune_.fill(0);
+    fineTune_.fill(0.0f);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -85,6 +87,7 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     programs_[channel] = 0;
     if (oldId >= 0) releaseSoundFont(oldId);
     enabled_[channel] = true;
+    applyTrackTuning(channel);
     return newId;
 }
 
@@ -136,6 +139,7 @@ bool SynthEngine::selectPreset(int channel, int bank, int program) {
     if (fluid_synth_program_select(synth_, channel, soundfontIds_[channel], bank, program) != FLUID_OK) return false;
     bankMsb_[channel] = (bank >> 7) & 0x7f; bankLsb_[channel] = bank & 0x7f; programs_[channel] = program;
     fluid_synth_cc(synth_, channel, 7, channelVolumes_[channel]);
+    applyTrackTuning(channel);
     return true;
 }
 void SynthEngine::releaseSoundFont(int id) {
@@ -171,6 +175,25 @@ void SynthEngine::setTrackVolume(int channel, int volume) {
     const int midiVolume = (volume * 127 + 50) / 100;
     channelVolumes_[channel] = midiVolume;
     fluid_synth_cc(synth_, channel, 7, midiVolume);
+}
+
+void SynthEngine::applyTrackTuning(int channel) {
+    if (!synth_ || channel < 0 || channel >= 16) return;
+    fluid_synth_set_gen(synth_, channel, GEN_COARSETUNE,
+            static_cast<float>(coarseTune_[channel]));
+    fluid_synth_set_gen(synth_, channel, GEN_FINETUNE, fineTune_[channel]);
+}
+
+bool SynthEngine::setTrackTuning(int channel, int coarseSemitones, float fineCents) {
+    if (channel < 0 || channel >= 16) return false;
+    coarseSemitones = std::clamp(coarseSemitones, -24, 24);
+    fineCents = std::clamp(fineCents, -100.0f, 100.0f);
+    std::lock_guard<std::mutex> lock(mutex_);
+    coarseTune_[channel] = coarseSemitones;
+    fineTune_[channel] = fineCents;
+    if (!synth_) return false;
+    applyTrackTuning(channel);
+    return true;
 }
 
 void SynthEngine::setActiveChannel(int channel) {
@@ -232,6 +255,7 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
                 fluid_synth_program_select(synth_, channel, soundfontIds_[channel],
                     (bankMsb_[channel] << 7) | bankLsb_[channel], a) == FLUID_OK) {
                 programs_[channel] = a;
+                applyTrackTuning(channel);
                 return true;
             }
             return false;
@@ -273,6 +297,8 @@ void SynthEngine::shutdown() {
     bankLsb_.fill(0);
     programs_.fill(0);
     channelVolumes_.fill(127);
+    coarseTune_.fill(0);
+    fineTune_.fill(0.0f);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
