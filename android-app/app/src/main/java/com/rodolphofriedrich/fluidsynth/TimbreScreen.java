@@ -182,7 +182,7 @@ public final class TimbreScreen {
 
         for (int i = 0; i < moduleViews.length; i++) {
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(
-                    GridLayout.spec(i / columns), GridLayout.spec(i % columns));
+                    GridLayout.spec(i / columns), GridLayout.spec(i % columns, 1f));
             params.width = 0;
             params.height = GridLayout.LayoutParams.WRAP_CONTENT;
             params.setMargins(AppUi.dp(context, 4), AppUi.dp(context, 4),
