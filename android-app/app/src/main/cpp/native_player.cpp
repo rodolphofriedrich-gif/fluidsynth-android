@@ -95,6 +95,14 @@ Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackTuning(
             ? JNI_TRUE : JNI_FALSE;
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetTrackFilterAdsr(
+        JNIEnv*, jobject, jint channel, jfloat cutoffHz, jfloat resonance,
+        jfloat attackSeconds, jfloat decaySeconds, jfloat sustainPercent, jfloat releaseSeconds) {
+    return SynthEngine::instance().setTrackFilterAdsr(channel, cutoffHz, resonance,
+            attackSeconds, decaySeconds, sustainPercent, releaseSeconds) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_rodolphofriedrich_fluidsynth_NativeBridge_nativeSetActiveTrack(JNIEnv*, jobject, jint channel) {
     SynthEngine::instance().setActiveChannel(channel);
