@@ -196,9 +196,12 @@ void SynthEngine::applyTrackFilterAdsr(int channel) {
     const auto timecents = [](float seconds) {
         return 1200.0f * std::log2(std::max(seconds, 0.001f));
     };
-    // fluid_synth_set_gen applies an offset to the SoundFont generator; 13500 cents is the SF2 default cutoff.\n    fluid_synth_set_gen(synth_, channel, GEN_FILTERFC, cutoffCents - 13500.0f);
+    // fluid_synth_set_gen applies an offset to the SoundFont generator; 13500 cents is the SF2 default cutoff.
+    fluid_synth_set_gen(synth_, channel, GEN_FILTERFC, cutoffCents - 13500.0f);
     fluid_synth_set_gen(synth_, channel, GEN_FILTERQ, filterResonance_[channel] * 9.6f);
-    // Volume-envelope time generators default to -12000 timecents (instant).\n    // Convert the desired absolute time into the offset expected by set_gen.\n    fluid_synth_set_gen(synth_, channel, GEN_VOLENVATTACK, timecents(envelopeAttack_[channel]) + 12000.0f);
+    // Volume-envelope time generators default to -12000 timecents (instant).
+    // Convert the desired absolute time into the offset expected by set_gen.
+    fluid_synth_set_gen(synth_, channel, GEN_VOLENVATTACK, timecents(envelopeAttack_[channel]) + 12000.0f);
     fluid_synth_set_gen(synth_, channel, GEN_VOLENVDECAY, timecents(envelopeDecay_[channel]) + 12000.0f);
     fluid_synth_set_gen(synth_, channel, GEN_VOLENVSUSTAIN,
             (100.0f - envelopeSustain_[channel]) * 14.4f);
