@@ -422,6 +422,13 @@ public class MainActivity extends Activity {
                 nativeBridge.nativeSetTrackTuning(channel,
                         SampleTuningSettingsStore.loadCoarse(this, channel),
                         SampleTuningSettingsStore.loadFine(this, channel));
+                nativeBridge.nativeSetTrackFilterAdsr(channel,
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "cutoff", TimbreFilterAdsrSettingsStore.DEFAULT_CUTOFF_HZ),
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "resonance", TimbreFilterAdsrSettingsStore.DEFAULT_RESONANCE),
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "attack", TimbreFilterAdsrSettingsStore.DEFAULT_ATTACK_SECONDS),
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "decay", TimbreFilterAdsrSettingsStore.DEFAULT_DECAY_SECONDS),
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "sustain", TimbreFilterAdsrSettingsStore.DEFAULT_SUSTAIN_PERCENT),
+                        TimbreFilterAdsrSettingsStore.load(this, channel, "release", TimbreFilterAdsrSettingsStore.DEFAULT_RELEASE_SECONDS));
             }
             midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
                     runOnUiThread(() -> {
@@ -487,15 +494,24 @@ public class MainActivity extends Activity {
                     if (midiRouter != null) midiRouter.setVelocityCurve(channel, curve);
                 }
             });
-            timbreScreen.setListener((channel, coarseSemitones, fineCents, tracking) -> {
-                if (initialized) {
-                    nativeBridge.nativeSetTrackTuning(channel, coarseSemitones, fineCents);
+            timbreScreen.setListener(new TimbreScreen.Listener() {
+                @Override public void onSampleTuningChanged(int channel, int coarseSemitones,
+                        int fineCents, boolean tracking) {
+                    if (initialized) nativeBridge.nativeSetTrackTuning(channel, coarseSemitones, fineCents);
+                    if (!tracking) {
+                        SampleTuningSettingsStore.save(MainActivity.this, channel, coarseSemitones, fineCents);
+                        showOperationStatus("Canal " + (channel + 1) + ": afinação salva.");
+                    }
                 }
-                if (!tracking) {
-                    SampleTuningSettingsStore.save(MainActivity.this, channel,
-                            coarseSemitones, fineCents);
-                    showOperationStatus("Canal " + (channel + 1)
-                            + ": transposição e afinação fina salvas.");
+                @Override public void onFilterAdsrChanged(int channel, float cutoff, float resonance,
+                        float attack, float decay, float sustain, float release, boolean tracking) {
+                    if (initialized) nativeBridge.nativeSetTrackFilterAdsr(channel, cutoff, resonance,
+                            attack, decay, sustain, release);
+                    if (!tracking) {
+                        TimbreFilterAdsrSettingsStore.save(MainActivity.this, channel, cutoff,
+                                resonance, attack, decay, sustain, release);
+                        showOperationStatus("Canal " + (channel + 1) + ": filtro e envelope salvos.");
+                    }
                 }
             });
             currentVelocity = VelocitySettingsStore.load(this);
