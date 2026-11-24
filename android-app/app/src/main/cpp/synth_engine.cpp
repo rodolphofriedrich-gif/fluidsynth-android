@@ -292,6 +292,7 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
                     (bankMsb_[channel] << 7) | bankLsb_[channel], a) == FLUID_OK) {
                 programs_[channel] = a;
                 applyTrackTuning(channel);
+                applyTrackFilterAdsr(channel);
                 return true;
             }
             return false;
