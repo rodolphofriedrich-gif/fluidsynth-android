@@ -481,7 +481,7 @@ public final class TimbreScreen {
                 reverb ? "Envio de Reverb" : "Envio de Chorus",
                 reverb ? "(MIDI CC 91)" : "(MIDI CC 93)");
         KnobView knob = new KnobView(context, 68);
-        TextView value = sampleValue(reverb ? "40 / 127" : "0 / 127");
+        TextView value = sampleValue("0 / 127");
         column.addView(knob, centeredKnobParams());
         column.addView(value, sampleValueParams());
         parent.addView(column, new LinearLayout.LayoutParams(0,
