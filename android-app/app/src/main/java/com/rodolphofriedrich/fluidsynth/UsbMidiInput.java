@@ -205,7 +205,7 @@ public final class UsbMidiInput implements AutoCloseable {
         private int expectedData;
         private int dataCount;
         private final int[] data = new int[2];
-        private final boolean[][] activeNotes = new boolean[16][128];
+        private final int[][] activeNotes = new int[16][128];
         private final boolean[] sustainActive = new boolean[16];
 
         MidiStreamParser(MessageSink sink) { this.sink = sink; }
@@ -217,9 +217,10 @@ public final class UsbMidiInput implements AutoCloseable {
                     sustainActive[channel] = false;
                 }
                 for (int note = 0; note < 128; note++) {
-                    if (activeNotes[channel][note]) {
+                    int pending = activeNotes[channel][note];
+                    activeNotes[channel][note] = 0;
+                    for (int i = 0; i < pending; i++) {
                         sink.accept(this, 0x80 | channel, note, 0);
-                        activeNotes[channel][note] = false;
                     }
                 }
             }
@@ -228,8 +229,11 @@ public final class UsbMidiInput implements AutoCloseable {
         private synchronized void dispatch(int status, int d1, int d2) {
             int command = status & 0xF0;
             int channel = status & 0x0F;
-            if (command == 0x90 && d2 > 0) activeNotes[channel][d1] = true;
-            else if (command == 0x80 || (command == 0x90 && d2 == 0)) activeNotes[channel][d1] = false;
+            if (command == 0x90 && d2 > 0) {
+                if (activeNotes[channel][d1] < 65535) activeNotes[channel][d1]++;
+            } else if (command == 0x80 || (command == 0x90 && d2 == 0)) {
+                if (activeNotes[channel][d1] > 0) activeNotes[channel][d1]--;
+            }
             else if (command == 0xB0 && d1 == 64) sustainActive[channel] = d2 >= 64;
             sink.accept(this, status, d1, d2);
         }
