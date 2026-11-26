@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 
 /** Persiste os envios MIDI de Reverb (CC91) e Chorus (CC93) por canal. */
 public final class TimbreEffectSendSettingsStore {
-    public static final int DEFAULT_REVERB_SEND = 40;
+    public static final int DEFAULT_REVERB_SEND = 0;
     public static final int DEFAULT_CHORUS_SEND = 0;
     private static final String PREFS = "timbre_effect_sends";
 
