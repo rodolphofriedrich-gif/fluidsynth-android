@@ -429,6 +429,12 @@ public class MainActivity extends Activity {
                         TimbreFilterAdsrSettingsStore.load(this, channel, "decay", TimbreFilterAdsrSettingsStore.DEFAULT_DECAY_SECONDS),
                         TimbreFilterAdsrSettingsStore.load(this, channel, "sustain", TimbreFilterAdsrSettingsStore.DEFAULT_SUSTAIN_PERCENT),
                         TimbreFilterAdsrSettingsStore.load(this, channel, "release", TimbreFilterAdsrSettingsStore.DEFAULT_RELEASE_SECONDS));
+                nativeBridge.nativeSetTrackLfo(channel,
+                        TimbreLfoSettingsStore.loadRate(this, channel),
+                        TimbreLfoSettingsStore.loadDepth(this, channel));
+                nativeBridge.nativeSetTrackEffectSends(channel,
+                        TimbreEffectSendSettingsStore.loadReverb(this, channel),
+                        TimbreEffectSendSettingsStore.loadChorus(this, channel));
             }
             midiRouter = new MidiRouter(nativeBridge, (channel, bank, program) ->
                     runOnUiThread(() -> {
@@ -511,6 +517,24 @@ public class MainActivity extends Activity {
                         TimbreFilterAdsrSettingsStore.save(MainActivity.this, channel, cutoff,
                                 resonance, attack, decay, sustain, release);
                         showOperationStatus("Canal " + (channel + 1) + ": filtro e envelope salvos.");
+                    }
+                }
+                @Override public void onLfoChanged(int channel, float rateHz, float depthCents,
+                        boolean tracking) {
+                    if (initialized) nativeBridge.nativeSetTrackLfo(channel, rateHz, depthCents);
+                    if (!tracking) {
+                        TimbreLfoSettingsStore.save(MainActivity.this, channel, rateHz, depthCents);
+                        showOperationStatus("Canal " + (channel + 1) + ": LFO salvo.");
+                    }
+                }
+                @Override public void onEffectSendsChanged(int channel, int reverbSend,
+                        int chorusSend, boolean tracking) {
+                    if (initialized) nativeBridge.nativeSetTrackEffectSends(
+                            channel, reverbSend, chorusSend);
+                    if (!tracking) {
+                        TimbreEffectSendSettingsStore.save(MainActivity.this, channel,
+                                reverbSend, chorusSend);
+                        showOperationStatus("Canal " + (channel + 1) + ": envios de efeitos salvos.");
                     }
                 }
             });
