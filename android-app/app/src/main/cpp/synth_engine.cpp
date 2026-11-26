@@ -23,7 +23,7 @@ bool SynthEngine::initialize() {
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
     lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
-    reverbSend_.fill(40); chorusSend_.fill(0);
+    reverbSend_.fill(0); chorusSend_.fill(0);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -389,7 +389,7 @@ void SynthEngine::shutdown() {
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
     lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
-    reverbSend_.fill(40); chorusSend_.fill(0);
+    reverbSend_.fill(0); chorusSend_.fill(0);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
