@@ -119,6 +119,17 @@ public final class SoundFontManager {
         if (!"RIFF".equals(container) || !"sfbk".equals(form)) {
             throw new IllegalArgumentException("O arquivo selecionado não possui a estrutura de um SoundFont SF2 (RIFF/sfbk).");
         }
+
+        // RIFF stores the payload length as an unsigned little-endian 32-bit value.
+        // Reject truncated containers before passing an untrusted file to the native SF2 parser.
+        long riffPayloadLength = ((long) header[4] & 0xffL)
+                | (((long) header[5] & 0xffL) << 8)
+                | (((long) header[6] & 0xffL) << 16)
+                | (((long) header[7] & 0xffL) << 24);
+        long declaredFileLength = riffPayloadLength + 8L;
+        if (riffPayloadLength < 4L || declaredFileLength > file.length()) {
+            throw new IllegalArgumentException("O arquivo SoundFont está incompleto ou possui tamanho RIFF inválido.");
+        }
     }
 
     public void removeDisplayName(File soundFont) {

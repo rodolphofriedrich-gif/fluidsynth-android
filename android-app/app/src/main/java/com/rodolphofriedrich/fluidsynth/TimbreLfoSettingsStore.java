@@ -13,12 +13,12 @@ public final class TimbreLfoSettingsStore {
 
     public static float loadRate(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getFloat("channel_" + channel + "_rate", DEFAULT_RATE_HZ);
+        return clamp(preferences(context).getFloat("channel_" + channel + "_rate", DEFAULT_RATE_HZ), 0.1f, 20f);
     }
 
     public static float loadDepth(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getFloat("channel_" + channel + "_depth", DEFAULT_DEPTH_CENTS);
+        return clamp(preferences(context).getFloat("channel_" + channel + "_depth", DEFAULT_DEPTH_CENTS), 0f, 100f);
     }
 
     public static void save(Context context, int channel, float rateHz, float depthCents) {
@@ -30,6 +30,7 @@ public final class TimbreLfoSettingsStore {
     }
 
     private static float clamp(float value, float min, float max) {
+        if (Float.isNaN(value) || Float.isInfinite(value)) return min;
         return Math.max(min, Math.min(max, value));
     }
 

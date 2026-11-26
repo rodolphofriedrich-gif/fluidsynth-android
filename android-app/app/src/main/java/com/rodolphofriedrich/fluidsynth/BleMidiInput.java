@@ -9,6 +9,7 @@ import android.util.Log;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import jp.kshoji.blemidi.central.BleMidiCentralProvider;
 import jp.kshoji.blemidi.device.MidiInputDevice;
@@ -33,7 +34,7 @@ public final class BleMidiInput implements AutoCloseable {
     private final Activity activity;
     private final Listener listener;
     private final Set<MidiInputDevice> connectedDevices = ConcurrentHashMap.newKeySet();
-    private final Map<MidiInputDevice, Set<Integer>> activeNotesByDevice = new ConcurrentHashMap<>();
+    private final Map<MidiInputDevice, Map<Integer, AtomicInteger>> activeNotesByDevice = new ConcurrentHashMap<>();
     private final Map<MidiInputDevice, Set<Integer>> sustainChannelsByDevice = new ConcurrentHashMap<>();
     private volatile boolean started;
     private volatile boolean closed;
@@ -179,24 +180,23 @@ public final class BleMidiInput implements AutoCloseable {
             return;
         }
         connectedDevices.add(device);
-        activeNotesByDevice.putIfAbsent(device, ConcurrentHashMap.newKeySet());
+        activeNotesByDevice.putIfAbsent(device, new ConcurrentHashMap<>());
         sustainChannelsByDevice.putIfAbsent(device, ConcurrentHashMap.newKeySet());
         device.setTimestampSchedulingMode(BleMidiTimestampCoordinator.SchedulingMode.LOW_LATENCY);
         device.setMaxScheduleAheadMs(LOW_LATENCY_SCHEDULE_AHEAD_MS);
         device.setOnMidiInputEventListener(new OnMidiInputEventListener() {
             @Override public void onMidiNoteOff(MidiInputDevice sender, int channel, int note, int velocity) {
-                Set<Integer> active = activeNotesByDevice.get(sender);
-                if (active != null) active.remove(channel * 128 + note);
-                send(sender, 0x80 | channel, note, velocity);
+                if (decrementActiveNote(sender, channel * 128 + note)) {
+                    send(sender, 0x80 | channel, note, velocity);
+                }
             }
             @Override public void onMidiNoteOn(MidiInputDevice sender, int channel, int note, int velocity) {
                 if (velocity <= 0) {
-                    Set<Integer> active = activeNotesByDevice.get(sender);
-                    if (active != null) active.remove(channel * 128 + note);
-                    send(sender, 0x80 | channel, note, 0);
+                    if (decrementActiveNote(sender, channel * 128 + note)) {
+                        send(sender, 0x80 | channel, note, 0);
+                    }
                 } else {
-                    Set<Integer> active = activeNotesByDevice.get(sender);
-                    if (active != null) active.add(channel * 128 + note);
+                    incrementActiveNote(sender, channel * 128 + note);
                     send(sender, 0x90 | channel, note, velocity);
                 }
             }
@@ -247,6 +247,21 @@ public final class BleMidiInput implements AutoCloseable {
         listener.onDeviceStatus("Conectado: " + device.getDeviceName());
     }
 
+    private void incrementActiveNote(MidiInputDevice device, int encodedNote) {
+        Map<Integer, AtomicInteger> notes = activeNotesByDevice.get(device);
+        if (notes == null) return;
+        AtomicInteger count = notes.computeIfAbsent(encodedNote, key -> new AtomicInteger());
+        count.updateAndGet(value -> value < 65535 ? value + 1 : value);
+    }
+
+    private boolean decrementActiveNote(MidiInputDevice device, int encodedNote) {
+        Map<Integer, AtomicInteger> notes = activeNotesByDevice.get(device);
+        if (notes == null) return false;
+        AtomicInteger count = notes.get(encodedNote);
+        if (count == null) return false;
+        return count.getAndUpdate(value -> value > 0 ? value - 1 : 0) > 0;
+    }
+
     private void send(MidiInputDevice source, int status, int data1, int data2) {
         if (!closed) listener.onMidiMessage(source, status, data1, data2);
     }
@@ -269,12 +284,14 @@ public final class BleMidiInput implements AutoCloseable {
         if (sustain != null) {
             for (Integer channel : sustain) send(device, 0xB0 | channel, 64, 0);
         }
-        Set<Integer> active = activeNotesByDevice.remove(device);
+        Map<Integer, AtomicInteger> active = activeNotesByDevice.remove(device);
         if (active != null) {
-            for (Integer encoded : active) {
+            for (Map.Entry<Integer, AtomicInteger> entry : active.entrySet()) {
+                int encoded = entry.getKey();
                 int channel = encoded / 128;
                 int note = encoded % 128;
-                send(device, 0x80 | channel, note, 0);
+                int count = entry.getValue().getAndSet(0);
+                for (int i = 0; i < count; i++) send(device, 0x80 | channel, note, 0);
             }
         }
     }

@@ -94,7 +94,14 @@ public final class AudioEngine {
     }
 
     private void renderLoop(AudioTrack activeTrack) {
-        Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+        } catch (RuntimeException error) {
+            playing = false;
+            reportError("Não foi possível priorizar a thread de áudio.");
+            try { activeTrack.pause(); } catch (RuntimeException ignored) {}
+            return;
+        }
         float[] buffer = new float[FRAMES_PER_BLOCK * 2];
         boolean outputFailed = false;
         int lastReportedUnderruns = 0;
@@ -129,7 +136,7 @@ public final class AudioEngine {
                         // Diagnostics must never interrupt the audio render loop.
                     }
                 }
-            } catch (Throwable error) {
+            } catch (RuntimeException error) {
                 outputFailed = true;
                 break;
             }

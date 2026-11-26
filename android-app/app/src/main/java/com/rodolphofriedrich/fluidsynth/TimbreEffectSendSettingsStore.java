@@ -13,12 +13,27 @@ public final class TimbreEffectSendSettingsStore {
 
     public static int loadReverb(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getInt("channel_" + channel + "_reverb", DEFAULT_REVERB_SEND);
+        return loadOrMigrate(context, channel, "reverb", 91, DEFAULT_REVERB_SEND);
     }
 
     public static int loadChorus(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getInt("channel_" + channel + "_chorus", DEFAULT_CHORUS_SEND);
+        return loadOrMigrate(context, channel, "chorus", 93, DEFAULT_CHORUS_SEND);
+    }
+
+    /** Preserves values saved by the previous MIDI CC page before Phase 4 introduced this store. */
+    private static int loadOrMigrate(Context context, int channel, String effect,
+            int controller, int fallback) {
+        SharedPreferences current = preferences(context);
+        String currentKey = "channel_" + channel + "_" + effect;
+        if (current.contains(currentKey)) return clamp(current.getInt(currentKey, fallback));
+
+        SharedPreferences legacy = context.getApplicationContext()
+                .getSharedPreferences("channel_midi_controls", Context.MODE_PRIVATE);
+        String legacyKey = "ch_" + channel + "_cc_" + controller;
+        int value = clamp(legacy.getInt(legacyKey, fallback));
+        current.edit().putInt(currentKey, value).apply();
+        return value;
     }
 
     public static void save(Context context, int channel, int reverbSend, int chorusSend) {
