@@ -17,7 +17,20 @@ public final class TimbreFilterAdsrSettingsStore {
 
     public static float load(Context c, int channel, String key, float fallback) {
         checkChannel(channel);
-        return preferences(c).getFloat("channel_" + channel + "_" + key, fallback);
+        float min;
+        float max;
+        switch (key) {
+            case "cutoff": min = 20f; max = 20000f; break;
+            case "resonance": min = 0f; max = 100f; break;
+            case "attack":
+            case "decay":
+            case "release": min = 0.001f; max = 10f; break;
+            case "sustain": min = 0f; max = 100f; break;
+            default: throw new IllegalArgumentException("Parâmetro de timbre inválido: " + key);
+        }
+        if (Float.isNaN(fallback) || Float.isInfinite(fallback)) fallback = min;
+        float value = preferences(c).getFloat("channel_" + channel + "_" + key, fallback);
+        return clamp(value, min, max);
     }
 
     public static void save(Context c, int channel, float cutoff, float resonance,
@@ -34,6 +47,7 @@ public final class TimbreFilterAdsrSettingsStore {
     }
 
     public static float clamp(float value, float min, float max) {
+        if (Float.isNaN(value) || Float.isInfinite(value)) return min;
         return Math.max(min, Math.min(max, value));
     }
 
