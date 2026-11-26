@@ -15,6 +15,7 @@ import java.util.Locale;
 public final class TimbreScreen {
     public interface Listener {
         void onSampleTuningChanged(int channel, int coarseSemitones, int fineCents, boolean tracking);
+        void onFilterAdsrChanged(int channel, float cutoffHz, float resonance, float attack, float decay, float sustain, float release, boolean tracking);
     }
 
     public final ScrollView scrollView;
@@ -27,6 +28,9 @@ public final class TimbreScreen {
     private final KnobView fineTuneKnob;
     private final TextView transposeValue;
     private final TextView fineTuneValue;
+    private final KnobView[] timbreKnobs = new KnobView[6];
+    private final TextView[] timbreValues = new TextView[6];
+    private final float[] timbreParams = {20000f, 0f, 0.01f, 0.1f, 100f, 0.1f};
     private int activeChannel;
     private int coarseSemitones;
     private int fineCents;
@@ -110,15 +114,16 @@ public final class TimbreScreen {
         moduleGrid = new GridLayout(context);
         moduleGrid.setUseDefaultMargins(false);
         moduleViews[0] = createSampleModule();
-        for (int i = 1; i < MODULE_TITLES.length; i++) {
-            moduleViews[i] = createModule(MODULE_TITLES[i], MODULE_DETAILS[i]);
-        }
+        moduleViews[1] = createFilterModule();
+        moduleViews[2] = createEnvelopeModule();
+        moduleViews[3] = createModule(MODULE_TITLES[3], MODULE_DETAILS[3]);
+        moduleViews[4] = createModule(MODULE_TITLES[4], MODULE_DETAILS[4]);
         root.addView(moduleGrid, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         updateGridColumns(context.getResources().getConfiguration());
 
         TextView notice = new TextView(context);
-        notice.setText("Transposição e afinação fina são independentes por canal. Os demais módulos serão habilitados nas próximas etapas.");
+        notice.setText("Transposição, afinação, filtro e envelope são independentes por canal.");
         notice.setTextColor(AppUi.MUTED);
         notice.setTextSize(11);
         notice.setGravity(Gravity.CENTER);
@@ -256,6 +261,117 @@ public final class TimbreScreen {
         return text;
     }
 
+    private View createFilterModule() {
+        LinearLayout module = createActiveModule(MODULE_TITLES[1]);
+        LinearLayout controls = new LinearLayout(context);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        module.addView(controls, moduleControlsParams());
+        addTimbreControl(controls, 0, "Brilho", "(Cutoff)", "20 kHz");
+        addTimbreControl(controls, 1, "Ressonância", "(Resonance)", "0%");
+        return module;
+    }
+
+    private View createEnvelopeModule() {
+        LinearLayout module = createActiveModule(MODULE_TITLES[2]);
+        LinearLayout first = new LinearLayout(context);
+        first.setOrientation(LinearLayout.HORIZONTAL);
+        first.setGravity(Gravity.CENTER);
+        module.addView(first, moduleControlsParams());
+        addTimbreControl(first, 2, "Ataque", "(Attack)", "0.01 s");
+        addTimbreControl(first, 3, "Decaimento", "(Decay)", "0.10 s");
+        LinearLayout second = new LinearLayout(context);
+        second.setOrientation(LinearLayout.HORIZONTAL);
+        second.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams secondParams = moduleControlsParams();
+        secondParams.topMargin = AppUi.dp(context, 8);
+        module.addView(second, secondParams);
+        addTimbreControl(second, 4, "Sustentação", "(Sustain)", "100%");
+        addTimbreControl(second, 5, "Liberação", "(Release)", "0.10 s");
+        return module;
+    }
+
+    private LinearLayout createActiveModule(String titleText) {
+        LinearLayout module = new LinearLayout(context);
+        module.setOrientation(LinearLayout.VERTICAL);
+        module.setPadding(AppUi.dp(context, 12), AppUi.dp(context, 12),
+                AppUi.dp(context, 12), AppUi.dp(context, 12));
+        module.setBackground(AppUi.rounded(context, AppUi.PANEL, 10, AppUi.BORDER));
+        TextView title = new TextView(context);
+        title.setText(titleText);
+        title.setTextColor(VisualTheme.ACCENT);
+        title.setTextSize(10);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setLetterSpacing(0.04f);
+        module.addView(title);
+        return module;
+    }
+
+    private LinearLayout.LayoutParams moduleControlsParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.topMargin = AppUi.dp(context, 10);
+        return params;
+    }
+
+    private void addTimbreControl(LinearLayout parent, int index, String pt, String en, String initial) {
+        LinearLayout column = createSampleControl(pt, en);
+        KnobView knob = new KnobView(context, 68);
+        TextView value = sampleValue(initial);
+        timbreKnobs[index] = knob;
+        timbreValues[index] = value;
+        column.addView(knob, centeredKnobParams());
+        column.addView(value, sampleValueParams());
+        parent.addView(column, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        knob.setListener((view, normalized, tracking) -> {
+            switch (index) {
+                case 0: timbreParams[0] = (float) (20.0 * Math.pow(1000.0, normalized)); break;
+                case 1: timbreParams[1] = normalized * 100f; break;
+                case 2: timbreParams[2] = (float) (0.001 * Math.pow(10000.0, normalized)); break;
+                case 3: timbreParams[3] = (float) (0.001 * Math.pow(10000.0, normalized)); break;
+                case 4: timbreParams[4] = normalized * 100f; break;
+                case 5: timbreParams[5] = (float) (0.001 * Math.pow(10000.0, normalized)); break;
+            }
+            updateTimbreLabels();
+            dispatchFilterAdsr(tracking);
+        });
+    }
+
+    private void setFilterAdsr(float cutoff, float resonance, float attack,
+            float decay, float sustain, float release) {
+        timbreParams[0] = TimbreFilterAdsrSettingsStore.clamp(cutoff, 20f, 20000f);
+        timbreParams[1] = TimbreFilterAdsrSettingsStore.clamp(resonance, 0f, 100f);
+        timbreParams[2] = TimbreFilterAdsrSettingsStore.clamp(attack, 0.001f, 10f);
+        timbreParams[3] = TimbreFilterAdsrSettingsStore.clamp(decay, 0.001f, 10f);
+        timbreParams[4] = TimbreFilterAdsrSettingsStore.clamp(sustain, 0f, 100f);
+        timbreParams[5] = TimbreFilterAdsrSettingsStore.clamp(release, 0.001f, 10f);
+        timbreKnobs[0].setValue((float) (Math.log(timbreParams[0] / 20.0) / Math.log(1000.0)));
+        timbreKnobs[1].setValue(timbreParams[1] / 100f);
+        timbreKnobs[2].setValue((float) (Math.log(timbreParams[2] / 0.001) / Math.log(10000.0)));
+        timbreKnobs[3].setValue((float) (Math.log(timbreParams[3] / 0.001) / Math.log(10000.0)));
+        timbreKnobs[4].setValue(timbreParams[4] / 100f);
+        timbreKnobs[5].setValue((float) (Math.log(timbreParams[5] / 0.001) / Math.log(10000.0)));
+        updateTimbreLabels();
+    }
+
+    private void updateTimbreLabels() {
+        timbreValues[0].setText(timbreParams[0] >= 1000f
+                ? String.format(Locale.getDefault(), "%.1f kHz", timbreParams[0] / 1000f)
+                : String.format(Locale.getDefault(), "%.0f Hz", timbreParams[0]));
+        timbreValues[1].setText(String.format(Locale.getDefault(), "%.0f%%", timbreParams[1]));
+        timbreValues[2].setText(String.format(Locale.getDefault(), "%.3f s", timbreParams[2]));
+        timbreValues[3].setText(String.format(Locale.getDefault(), "%.3f s", timbreParams[3]));
+        timbreValues[4].setText(String.format(Locale.getDefault(), "%.0f%%", timbreParams[4]));
+        timbreValues[5].setText(String.format(Locale.getDefault(), "%.3f s", timbreParams[5]));
+    }
+
+    private void dispatchFilterAdsr(boolean tracking) {
+        if (listener != null) listener.onFilterAdsrChanged(activeChannel,
+                timbreParams[0], timbreParams[1], timbreParams[2], timbreParams[3],
+                timbreParams[4], timbreParams[5], tracking);
+    }
+
     private View createModule(String title, String details) {
         LinearLayout module = new LinearLayout(context);
         module.setOrientation(LinearLayout.VERTICAL);
@@ -303,6 +419,13 @@ public final class TimbreScreen {
         instrumentLabel.setTextColor(hasSoundFont ? AppUi.TEXT : AppUi.MUTED);
         activeChannel = safeChannel;
         setTuning(coarseSemitones, fineCents);
+        setFilterAdsr(
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "cutoff", TimbreFilterAdsrSettingsStore.DEFAULT_CUTOFF_HZ),
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "resonance", TimbreFilterAdsrSettingsStore.DEFAULT_RESONANCE),
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "attack", TimbreFilterAdsrSettingsStore.DEFAULT_ATTACK_SECONDS),
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "decay", TimbreFilterAdsrSettingsStore.DEFAULT_DECAY_SECONDS),
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "sustain", TimbreFilterAdsrSettingsStore.DEFAULT_SUSTAIN_PERCENT),
+                TimbreFilterAdsrSettingsStore.load(context, safeChannel, "release", TimbreFilterAdsrSettingsStore.DEFAULT_RELEASE_SECONDS));
     }
 
     private void setTuning(int coarse, int fine) {

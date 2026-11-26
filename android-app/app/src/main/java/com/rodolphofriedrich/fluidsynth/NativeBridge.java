@@ -24,6 +24,8 @@ public final class NativeBridge {
     native void nativeSetTrackEnabled(int channel, boolean enabled);
     native void nativeSetTrackVolume(int channel, int volume);
     native boolean nativeSetTrackTuning(int channel, int coarseSemitones, float fineCents);
+    native boolean nativeSetTrackFilterAdsr(int channel, float cutoffHz, float resonance,
+            float attackSeconds, float decaySeconds, float sustainPercent, float releaseSeconds);
     native void nativeSetActiveTrack(int channel);
     native void nativeNote(int note, int velocity, boolean on);
     native void nativeNoteOnTrack(int channel, int note, int velocity, boolean on);

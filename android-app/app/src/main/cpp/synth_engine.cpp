@@ -1,6 +1,7 @@
 #include "synth_engine.h"
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
 SynthEngine& SynthEngine::instance() {
     static SynthEngine engine;
@@ -18,6 +19,9 @@ bool SynthEngine::initialize() {
     channelVolumes_.fill(127);
     coarseTune_.fill(0);
     fineTune_.fill(0.0f);
+    filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
+    envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
+    envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -88,6 +92,7 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     if (oldId >= 0) releaseSoundFont(oldId);
     enabled_[channel] = true;
     applyTrackTuning(channel);
+    applyTrackFilterAdsr(channel);
     return newId;
 }
 
@@ -140,6 +145,7 @@ bool SynthEngine::selectPreset(int channel, int bank, int program) {
     bankMsb_[channel] = (bank >> 7) & 0x7f; bankLsb_[channel] = bank & 0x7f; programs_[channel] = program;
     fluid_synth_cc(synth_, channel, 7, channelVolumes_[channel]);
     applyTrackTuning(channel);
+    applyTrackFilterAdsr(channel);
     return true;
 }
 void SynthEngine::releaseSoundFont(int id) {
@@ -182,6 +188,39 @@ void SynthEngine::applyTrackTuning(int channel) {
     fluid_synth_set_gen(synth_, channel, GEN_COARSETUNE,
             static_cast<float>(coarseTune_[channel]));
     fluid_synth_set_gen(synth_, channel, GEN_FINETUNE, fineTune_[channel]);
+}
+
+void SynthEngine::applyTrackFilterAdsr(int channel) {
+    if (!synth_ || channel < 0 || channel >= 16) return;
+    const float cutoffCents = 1200.0f * std::log2(filterCutoffHz_[channel] / 8.176f);
+    const auto timecents = [](float seconds) {
+        return 1200.0f * std::log2(std::max(seconds, 0.001f));
+    };
+    // fluid_synth_set_gen applies an offset to the SoundFont generator; 13500 cents is the SF2 default cutoff.
+    fluid_synth_set_gen(synth_, channel, GEN_FILTERFC, cutoffCents - 13500.0f);
+    fluid_synth_set_gen(synth_, channel, GEN_FILTERQ, filterResonance_[channel] * 9.6f);
+    // Volume-envelope time generators default to -12000 timecents (instant).
+    // Convert the desired absolute time into the offset expected by set_gen.
+    fluid_synth_set_gen(synth_, channel, GEN_VOLENVATTACK, timecents(envelopeAttack_[channel]) + 12000.0f);
+    fluid_synth_set_gen(synth_, channel, GEN_VOLENVDECAY, timecents(envelopeDecay_[channel]) + 12000.0f);
+    fluid_synth_set_gen(synth_, channel, GEN_VOLENVSUSTAIN,
+            (100.0f - envelopeSustain_[channel]) * 14.4f);
+    fluid_synth_set_gen(synth_, channel, GEN_VOLENVRELEASE, timecents(envelopeRelease_[channel]) + 12000.0f);
+}
+
+bool SynthEngine::setTrackFilterAdsr(int channel, float cutoffHz, float resonance,
+        float attackSeconds, float decaySeconds, float sustainPercent, float releaseSeconds) {
+    if (channel < 0 || channel >= 16) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    filterCutoffHz_[channel] = std::clamp(cutoffHz, 20.0f, 20000.0f);
+    filterResonance_[channel] = std::clamp(resonance, 0.0f, 100.0f);
+    envelopeAttack_[channel] = std::clamp(attackSeconds, 0.001f, 10.0f);
+    envelopeDecay_[channel] = std::clamp(decaySeconds, 0.001f, 10.0f);
+    envelopeSustain_[channel] = std::clamp(sustainPercent, 0.0f, 100.0f);
+    envelopeRelease_[channel] = std::clamp(releaseSeconds, 0.001f, 10.0f);
+    if (!synth_) return false;
+    applyTrackFilterAdsr(channel);
+    return true;
 }
 
 bool SynthEngine::setTrackTuning(int channel, int coarseSemitones, float fineCents) {
@@ -256,6 +295,7 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
                     (bankMsb_[channel] << 7) | bankLsb_[channel], a) == FLUID_OK) {
                 programs_[channel] = a;
                 applyTrackTuning(channel);
+                applyTrackFilterAdsr(channel);
                 return true;
             }
             return false;
@@ -299,6 +339,9 @@ void SynthEngine::shutdown() {
     channelVolumes_.fill(127);
     coarseTune_.fill(0);
     fineTune_.fill(0.0f);
+    filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
+    envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
+    envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
