@@ -22,7 +22,7 @@ bool SynthEngine::initialize() {
     filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
-    lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
+    lfoRateHz_.fill(8.176f); lfoDepthCents_.fill(0.0f);
     reverbSend_.fill(0); chorusSend_.fill(0);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
@@ -388,7 +388,7 @@ void SynthEngine::shutdown() {
     filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
-    lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
+    lfoRateHz_.fill(8.176f); lfoDepthCents_.fill(0.0f);
     reverbSend_.fill(0); chorusSend_.fill(0);
     pathToId_.clear();
     idReferences_.clear();
