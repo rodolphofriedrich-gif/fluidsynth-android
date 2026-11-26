@@ -396,7 +396,7 @@ public final class TimbreScreen {
         addLfoControl(controls, false);
 
         TextView hint = new TextView(context);
-        hint.setText("Modulação de altura (vibrato) aplicada ao canal selecionado.");
+        hint.setText("Vibrato por canal. O ajuste soma-se à modulação original da SoundFont.");
         hint.setTextColor(AppUi.MUTED);
         hint.setTextSize(10);
         hint.setGravity(Gravity.CENTER);
