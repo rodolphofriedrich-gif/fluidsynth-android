@@ -16,6 +16,8 @@ public final class TimbreScreen {
     public interface Listener {
         void onSampleTuningChanged(int channel, int coarseSemitones, int fineCents, boolean tracking);
         void onFilterAdsrChanged(int channel, float cutoffHz, float resonance, float attack, float decay, float sustain, float release, boolean tracking);
+        void onLfoChanged(int channel, float rateHz, float depthCents, boolean tracking);
+        void onEffectSendsChanged(int channel, int reverbSend, int chorusSend, boolean tracking);
     }
 
     public final ScrollView scrollView;
@@ -31,6 +33,18 @@ public final class TimbreScreen {
     private final KnobView[] timbreKnobs = new KnobView[6];
     private final TextView[] timbreValues = new TextView[6];
     private final float[] timbreParams = {20000f, 0f, 0.01f, 0.1f, 100f, 0.1f};
+    private KnobView lfoRateKnob;
+    private KnobView lfoDepthKnob;
+    private TextView lfoRateValue;
+    private TextView lfoDepthValue;
+    private KnobView reverbSendKnob;
+    private KnobView chorusSendKnob;
+    private TextView reverbSendValue;
+    private TextView chorusSendValue;
+    private float lfoRateHz = TimbreLfoSettingsStore.DEFAULT_RATE_HZ;
+    private float lfoDepthCents = TimbreLfoSettingsStore.DEFAULT_DEPTH_CENTS;
+    private int reverbSend = TimbreEffectSendSettingsStore.DEFAULT_REVERB_SEND;
+    private int chorusSend = TimbreEffectSendSettingsStore.DEFAULT_CHORUS_SEND;
     private int activeChannel;
     private int coarseSemitones;
     private int fineCents;
@@ -48,8 +62,8 @@ public final class TimbreScreen {
             "",
             "Brilho (Cutoff)\nRessonância (Resonance)",
             "Ataque (Attack) · Decaimento (Decay)\nSustentação (Sustain) · Liberação (Release)",
-            "Frequência (Rate)\nIntensidade (Depth)",
-            "Reverb · Chorus"
+            "Vibrato de altura (Pitch) · Rate · Depth",
+            "Envio por canal: Reverb (CC91) · Chorus (CC93)"
     };
 
     private final View[] moduleViews = new View[MODULE_TITLES.length];
@@ -116,14 +130,14 @@ public final class TimbreScreen {
         moduleViews[0] = createSampleModule();
         moduleViews[1] = createFilterModule();
         moduleViews[2] = createEnvelopeModule();
-        moduleViews[3] = createModule(MODULE_TITLES[3], MODULE_DETAILS[3]);
-        moduleViews[4] = createModule(MODULE_TITLES[4], MODULE_DETAILS[4]);
+        moduleViews[3] = createLfoModule();
+        moduleViews[4] = createEffectSendsModule();
         root.addView(moduleGrid, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         updateGridColumns(context.getResources().getConfiguration());
 
         TextView notice = new TextView(context);
-        notice.setText("Transposição, afinação, filtro e envelope são independentes por canal.");
+        notice.setText("Transposição, filtro, envelope, LFO e envios de efeitos são independentes por canal.");
         notice.setTextColor(AppUi.MUTED);
         notice.setTextSize(11);
         notice.setGravity(Gravity.CENTER);
@@ -372,6 +386,145 @@ public final class TimbreScreen {
                 timbreParams[4], timbreParams[5], tracking);
     }
 
+    private View createLfoModule() {
+        LinearLayout module = createActiveModule(MODULE_TITLES[3]);
+        LinearLayout controls = new LinearLayout(context);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        module.addView(controls, moduleControlsParams());
+        addLfoControl(controls, true);
+        addLfoControl(controls, false);
+
+        TextView hint = new TextView(context);
+        hint.setText("Vibrato por canal. O ajuste soma-se à modulação original da SoundFont.");
+        hint.setTextColor(AppUi.MUTED);
+        hint.setTextSize(10);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hintParams.topMargin = AppUi.dp(context, 8);
+        module.addView(hint, hintParams);
+        return module;
+    }
+
+    private void addLfoControl(LinearLayout parent, boolean rate) {
+        LinearLayout column = createSampleControl(
+                rate ? "Velocidade" : "Profundidade",
+                rate ? "(Rate)" : "(Depth · Pitch)");
+        KnobView knob = new KnobView(context, 68);
+        TextView value = sampleValue(rate ? "8.2 Hz" : "0 cents");
+        column.addView(knob, centeredKnobParams());
+        column.addView(value, sampleValueParams());
+        parent.addView(column, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        if (rate) {
+            lfoRateKnob = knob;
+            lfoRateValue = value;
+            knob.setListener((view, normalized, tracking) -> {
+                lfoRateHz = (float) (0.1 * Math.pow(200.0, normalized));
+                updateLfoLabels();
+                dispatchLfo(tracking);
+            });
+        } else {
+            lfoDepthKnob = knob;
+            lfoDepthValue = value;
+            knob.setListener((view, normalized, tracking) -> {
+                lfoDepthCents = normalized * 100f;
+                updateLfoLabels();
+                dispatchLfo(tracking);
+            });
+        }
+    }
+
+    private void setLfo(float rateHz, float depthCents) {
+        lfoRateHz = Math.max(0.1f, Math.min(20f, rateHz));
+        lfoDepthCents = Math.max(0f, Math.min(100f, depthCents));
+        lfoRateKnob.setValue((float) (Math.log(lfoRateHz / 0.1) / Math.log(200.0)));
+        lfoDepthKnob.setValue(lfoDepthCents / 100f);
+        updateLfoLabels();
+    }
+
+    private void updateLfoLabels() {
+        lfoRateValue.setText(String.format(Locale.getDefault(), "%.1f Hz", lfoRateHz));
+        lfoDepthValue.setText(String.format(Locale.getDefault(), "%.0f cents", lfoDepthCents));
+        lfoRateKnob.setContentDescription("Velocidade do LFO: " + lfoRateValue.getText());
+        lfoDepthKnob.setContentDescription("Profundidade do vibrato: " + lfoDepthValue.getText());
+    }
+
+    private void dispatchLfo(boolean tracking) {
+        if (listener != null) listener.onLfoChanged(activeChannel, lfoRateHz, lfoDepthCents, tracking);
+    }
+
+    private View createEffectSendsModule() {
+        LinearLayout module = createActiveModule(MODULE_TITLES[4]);
+        LinearLayout controls = new LinearLayout(context);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        module.addView(controls, moduleControlsParams());
+        addEffectSendControl(controls, true);
+        addEffectSendControl(controls, false);
+
+        TextView hint = new TextView(context);
+        hint.setText("Envios MIDI por canal. Os parâmetros globais ficam nas abas Reverb e Chorus.");
+        hint.setTextColor(AppUi.MUTED);
+        hint.setTextSize(10);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hintParams.topMargin = AppUi.dp(context, 8);
+        module.addView(hint, hintParams);
+        return module;
+    }
+
+    private void addEffectSendControl(LinearLayout parent, boolean reverb) {
+        LinearLayout column = createSampleControl(
+                reverb ? "Envio de Reverb" : "Envio de Chorus",
+                reverb ? "(MIDI CC 91)" : "(MIDI CC 93)");
+        KnobView knob = new KnobView(context, 68);
+        TextView value = sampleValue("0 / 127");
+        column.addView(knob, centeredKnobParams());
+        column.addView(value, sampleValueParams());
+        parent.addView(column, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        if (reverb) {
+            reverbSendKnob = knob;
+            reverbSendValue = value;
+            knob.setListener((view, normalized, tracking) -> {
+                reverbSend = Math.max(0, Math.min(127, Math.round(normalized * 127f)));
+                updateEffectSendLabels();
+                dispatchEffectSends(tracking);
+            });
+        } else {
+            chorusSendKnob = knob;
+            chorusSendValue = value;
+            knob.setListener((view, normalized, tracking) -> {
+                chorusSend = Math.max(0, Math.min(127, Math.round(normalized * 127f)));
+                updateEffectSendLabels();
+                dispatchEffectSends(tracking);
+            });
+        }
+    }
+
+    private void setEffectSends(int reverb, int chorus) {
+        reverbSend = Math.max(0, Math.min(127, reverb));
+        chorusSend = Math.max(0, Math.min(127, chorus));
+        reverbSendKnob.setValue(reverbSend / 127f);
+        chorusSendKnob.setValue(chorusSend / 127f);
+        updateEffectSendLabels();
+    }
+
+    private void updateEffectSendLabels() {
+        reverbSendValue.setText(reverbSend + " / 127");
+        chorusSendValue.setText(chorusSend + " / 127");
+        reverbSendKnob.setContentDescription("Envio de Reverb CC 91: " + reverbSend);
+        chorusSendKnob.setContentDescription("Envio de Chorus CC 93: " + chorusSend);
+    }
+
+    private void dispatchEffectSends(boolean tracking) {
+        if (listener != null) listener.onEffectSendsChanged(
+                activeChannel, reverbSend, chorusSend, tracking);
+    }
+
     private View createModule(String title, String details) {
         LinearLayout module = new LinearLayout(context);
         module.setOrientation(LinearLayout.VERTICAL);
@@ -426,6 +579,10 @@ public final class TimbreScreen {
                 TimbreFilterAdsrSettingsStore.load(context, safeChannel, "decay", TimbreFilterAdsrSettingsStore.DEFAULT_DECAY_SECONDS),
                 TimbreFilterAdsrSettingsStore.load(context, safeChannel, "sustain", TimbreFilterAdsrSettingsStore.DEFAULT_SUSTAIN_PERCENT),
                 TimbreFilterAdsrSettingsStore.load(context, safeChannel, "release", TimbreFilterAdsrSettingsStore.DEFAULT_RELEASE_SECONDS));
+        setLfo(TimbreLfoSettingsStore.loadRate(context, safeChannel),
+                TimbreLfoSettingsStore.loadDepth(context, safeChannel));
+        setEffectSends(TimbreEffectSendSettingsStore.loadReverb(context, safeChannel),
+                TimbreEffectSendSettingsStore.loadChorus(context, safeChannel));
     }
 
     private void setTuning(int coarse, int fine) {
