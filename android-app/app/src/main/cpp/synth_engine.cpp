@@ -22,6 +22,8 @@ bool SynthEngine::initialize() {
     filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
+    lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
+    reverbSend_.fill(40); chorusSend_.fill(0);
     settings_ = new_fluid_settings();
     if (!settings_) return false;
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
@@ -93,6 +95,8 @@ int SynthEngine::loadSoundFontForChannel(const std::string& path, int channel) {
     enabled_[channel] = true;
     applyTrackTuning(channel);
     applyTrackFilterAdsr(channel);
+    applyTrackLfo(channel);
+    applyTrackEffectSends(channel);
     return newId;
 }
 
@@ -146,6 +150,8 @@ bool SynthEngine::selectPreset(int channel, int bank, int program) {
     fluid_synth_cc(synth_, channel, 7, channelVolumes_[channel]);
     applyTrackTuning(channel);
     applyTrackFilterAdsr(channel);
+    applyTrackLfo(channel);
+    applyTrackEffectSends(channel);
     return true;
 }
 void SynthEngine::releaseSoundFont(int id) {
@@ -223,6 +229,42 @@ bool SynthEngine::setTrackFilterAdsr(int channel, float cutoffHz, float resonanc
     return true;
 }
 
+bool SynthEngine::setTrackLfo(int channel, float rateHz, float depthCents) {
+    if (channel < 0 || channel >= 16) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    lfoRateHz_[channel] = std::clamp(rateHz, 0.1f, 20.0f);
+    lfoDepthCents_[channel] = std::clamp(depthCents, 0.0f, 100.0f);
+    if (!synth_) return false;
+    applyTrackLfo(channel);
+    return true;
+}
+
+void SynthEngine::applyTrackLfo(int channel) {
+    if (!synth_ || channel < 0 || channel >= 16) return;
+    // FluidSynth generator values are additive offsets; 0 cents is the SF2 default of 8.176 Hz.
+    const float frequencyOffset = 1200.0f * std::log2(lfoRateHz_[channel] / 8.176f);
+    fluid_synth_set_gen(synth_, channel, GEN_MODLFOFREQ, frequencyOffset);
+    // The modulation LFO is routed to pitch: this produces vibrato without altering MIDI routing.
+    fluid_synth_set_gen(synth_, channel, GEN_MODLFOTOPITCH, lfoDepthCents_[channel]);
+}
+
+bool SynthEngine::setTrackEffectSends(int channel, int reverbSend, int chorusSend) {
+    if (channel < 0 || channel >= 16) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    reverbSend_[channel] = std::clamp(reverbSend, 0, 127);
+    chorusSend_[channel] = std::clamp(chorusSend, 0, 127);
+    if (!synth_) return false;
+    applyTrackEffectSends(channel);
+    return true;
+}
+
+void SynthEngine::applyTrackEffectSends(int channel) {
+    if (!synth_ || channel < 0 || channel >= 16) return;
+    // Standard MIDI channel controls: CC91 = Reverb Send, CC93 = Chorus Send.
+    fluid_synth_cc(synth_, channel, 91, reverbSend_[channel]);
+    fluid_synth_cc(synth_, channel, 93, chorusSend_[channel]);
+}
+
 bool SynthEngine::setTrackTuning(int channel, int coarseSemitones, float fineCents) {
     if (channel < 0 || channel >= 16) return false;
     coarseSemitones = std::clamp(coarseSemitones, -24, 24);
@@ -284,6 +326,8 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
         case 0xB0:
             fluid_synth_cc(synth_, channel, a, b);
             if (a == 7) channelVolumes_[channel] = b;
+            if (a == 91) reverbSend_[channel] = b;
+            if (a == 93) chorusSend_[channel] = b;
             if (a == 0) bankMsb_[channel] = b;
             else if (a == 32) bankLsb_[channel] = b;
             // Bank Select is preparatory. Apply the selected bank once when
@@ -296,6 +340,8 @@ bool SynthEngine::midiEvent(int status, int data1, int data2) {
                 programs_[channel] = a;
                 applyTrackTuning(channel);
                 applyTrackFilterAdsr(channel);
+                applyTrackLfo(channel);
+                applyTrackEffectSends(channel);
                 return true;
             }
             return false;
@@ -342,6 +388,8 @@ void SynthEngine::shutdown() {
     filterCutoffHz_.fill(20000.0f); filterResonance_.fill(0.0f);
     envelopeAttack_.fill(0.01f); envelopeDecay_.fill(0.1f);
     envelopeSustain_.fill(100.0f); envelopeRelease_.fill(0.1f);
+    lfoRateHz_.fill(5.0f); lfoDepthCents_.fill(0.0f);
+    reverbSend_.fill(40); chorusSend_.fill(0);
     pathToId_.clear();
     idReferences_.clear();
     activeChannel_ = 0;
