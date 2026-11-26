@@ -20,11 +20,13 @@ public:
  void setTrackEnabled(int channel,bool enabled); void setTrackVolume(int channel,int volume);
  bool setTrackTuning(int channel,int coarseSemitones,float fineCents);
  bool setTrackFilterAdsr(int channel, float cutoffHz, float resonance, float attackSeconds, float decaySeconds, float sustainPercent, float releaseSeconds);
+ bool setTrackLfo(int channel, float rateHz, float depthCents);
+ bool setTrackEffectSends(int channel, int reverbSend, int chorusSend);
  void setActiveChannel(int channel); int getTrackBank(int channel);
  void note(int channel,int note,int velocity,bool on); bool midiEvent(int status,int data1,int data2);
  void render(float* output,int frames); void shutdown();
 private:
- SynthEngine()=default; ~SynthEngine()=default; void releaseSoundFont(int id); void applyTrackTuning(int channel); void applyTrackFilterAdsr(int channel);
+ SynthEngine()=default; ~SynthEngine()=default; void releaseSoundFont(int id); void applyTrackTuning(int channel); void applyTrackFilterAdsr(int channel); void applyTrackLfo(int channel); void applyTrackEffectSends(int channel);
  std::mutex mutex_; fluid_settings_t* settings_=nullptr; fluid_synth_t* synth_=nullptr;
  std::array<int,16> soundfontIds_{}; std::array<bool,16> enabled_{};
  std::array<int,16> bankMsb_{}; std::array<int,16> bankLsb_{}; std::array<int,16> programs_{};
@@ -32,5 +34,7 @@ private:
  std::array<float,16> filterCutoffHz_{}; std::array<float,16> filterResonance_{};
  std::array<float,16> envelopeAttack_{}; std::array<float,16> envelopeDecay_{};
  std::array<float,16> envelopeSustain_{}; std::array<float,16> envelopeRelease_{};
+ std::array<float,16> lfoRateHz_{}; std::array<float,16> lfoDepthCents_{};
+ std::array<int,16> reverbSend_{}; std::array<int,16> chorusSend_{};
  int activeChannel_=0; std::unordered_map<std::string,int> pathToId_; std::unordered_map<int,int> idReferences_;
 };
