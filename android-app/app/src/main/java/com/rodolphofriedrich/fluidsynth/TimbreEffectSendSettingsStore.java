@@ -13,12 +13,12 @@ public final class TimbreEffectSendSettingsStore {
 
     public static int loadReverb(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getInt("channel_" + channel + "_reverb", DEFAULT_REVERB_SEND);
+        return clamp(preferences(context).getInt("channel_" + channel + "_reverb", DEFAULT_REVERB_SEND));
     }
 
     public static int loadChorus(Context context, int channel) {
         checkChannel(channel);
-        return preferences(context).getInt("channel_" + channel + "_chorus", DEFAULT_CHORUS_SEND);
+        return clamp(preferences(context).getInt("channel_" + channel + "_chorus", DEFAULT_CHORUS_SEND));
     }
 
     public static void save(Context context, int channel, int reverbSend, int chorusSend) {
