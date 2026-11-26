@@ -412,7 +412,7 @@ public final class TimbreScreen {
                 rate ? "Velocidade" : "Profundidade",
                 rate ? "(Rate)" : "(Depth · Pitch)");
         KnobView knob = new KnobView(context, 68);
-        TextView value = sampleValue(rate ? "5.0 Hz" : "0 cents");
+        TextView value = sampleValue(rate ? "8.2 Hz" : "0 cents");
         column.addView(knob, centeredKnobParams());
         column.addView(value, sampleValueParams());
         parent.addView(column, new LinearLayout.LayoutParams(0,
