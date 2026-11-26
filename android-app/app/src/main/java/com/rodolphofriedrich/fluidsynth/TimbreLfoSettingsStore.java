@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 
 /** Persiste velocidade e profundidade do LFO independentemente nos 16 canais. */
 public final class TimbreLfoSettingsStore {
-    public static final float DEFAULT_RATE_HZ = 5f;
+    public static final float DEFAULT_RATE_HZ = 8.176f;
     public static final float DEFAULT_DEPTH_CENTS = 0f;
     private static final String PREFS = "timbre_lfo";
 
