@@ -245,6 +245,13 @@ target_include_directories(player PRIVATE
     ${CMAKE_BINARY_DIR}/include
 )
 target_compile_features(player PRIVATE cxx_std_17)
+# Android 15+ devices may use 16 KB memory pages. NDK r27 needs explicit
+# linker options so every LOAD segment in the JNI shared library is aligned.
+target_link_options(player PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
+
 target_link_libraries(player PRIVATE libfluidsynth log)
 
 set_target_properties ( libfluidsynth
