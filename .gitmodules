@@ -1,3 +1,7 @@
 [submodule "test/manual"]
 	path = test/manual
 	url = https://github.com/FluidSynth/testdata.git
+
+[submodule "vendor/fluidsynth"]
+	path = vendor/fluidsynth
+	url = https://github.com/FluidSynth/fluidsynth.git
